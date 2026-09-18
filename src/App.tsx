@@ -69,23 +69,67 @@ export function App() {
   useEffect(() => {
     let ws: WebSocket | null = null;
     let closed = false;
+    let retry = 0;
+    let timer: number | undefined;
     setConnecting(true);
-    fetchState(backendUrl)
-      .then((s) => {
-        if (!closed) setLive(s);
-      })
-      .catch(() => {
-        if (!closed) setOffline(true);
-      });
-    ws = openStateSocket(
-      backendUrl,
-      (s) => setLive(s),
-      () => {
-        if (!closed) setOffline(true);
-      }
-    );
+
+    const load = () =>
+      fetchState(backendUrl)
+        .then((s) => {
+          if (!closed) setLive(s);
+        })
+        .catch(() => {
+          if (!closed) setOffline(true);
+        });
+
+    // Reconnect with backoff (1 s … 30 s): a server restart or a network switch must not end the watch.
+    const reconnectLater = () => {
+      if (closed) return;
+      setOffline(true);
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        void load();
+        connect();
+      }, Math.min(30_000, 1000 * 2 ** retry++));
+    };
+
+    const connect = () => {
+      if (closed) return;
+      const old = ws;
+      ws = null;
+      old?.close();
+      const sock = openStateSocket(
+        backendUrl,
+        (s) => {
+          retry = 0;
+          setLive(s);
+        },
+        () => {
+          // Only the current socket may schedule a reconnect; a late close of a replaced one is ignored.
+          if (sock === ws) reconnectLater();
+        }
+      );
+      ws = sock;
+      if (!sock) setOffline(true);
+    };
+
+    // Back from background / network: try right away instead of waiting out the backoff.
+    const wake = () => {
+      if (closed || document.hidden) return;
+      if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+      retry = 0;
+      reconnectLater();
+    };
+
+    void load();
+    connect();
+    window.addEventListener("online", wake);
+    document.addEventListener("visibilitychange", wake);
     return () => {
       closed = true;
+      window.clearTimeout(timer);
+      window.removeEventListener("online", wake);
+      document.removeEventListener("visibilitychange", wake);
       ws?.close();
     };
   }, [backendUrl, setConnecting, setLive, setOffline]);
@@ -121,7 +165,7 @@ export function App() {
         }}
       />
       <Ticker now={now} />
-      <StatusBanners />
+      <StatusBanners now={now} />
       <HoverTip />
       <Fabs />
       <DisclaimerLine />
@@ -173,7 +217,8 @@ function maybeNotify(
       lastPing.set(key, now);
       useStore.getState().setSiren(true, v.id);
     } else if (v.level === "watch" && wantWatch) {
-      const key = `${v.id}-watch-${Math.round(v.points * 10)}`;
+      // Points drift every cycle, so they must not be part of the cooldown key.
+      const key = `${v.id}-watch`;
       if ((lastPing.get(key) ?? 0) > now - 10 * 60 * 1000) continue;
       lastPing.set(key, now);
       if (!opts.muted) playWatch();

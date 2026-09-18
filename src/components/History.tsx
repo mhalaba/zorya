@@ -11,7 +11,6 @@ export function HistoryView() {
   const history = useStore((s) => s.history);
   const setHistory = useStore((s) => s.setHistory);
   const setView = useStore((s) => s.setView);
-  const historyMode = useStore((s) => s.historyMode);
   const setHistoryMode = useStore((s) => s.setHistoryMode);
   const idx = useStore((s) => s.historyIdx);
   const setIdx = useStore((s) => s.setHistoryIdx);
@@ -21,25 +20,23 @@ export function HistoryView() {
   const setSpeed = useStore((s) => s.setHistorySpeed);
   const live = useStore((s) => s.state);
 
+  // Fetch a fresh bundle every time the view opens; a cached one would freeze at the first visit.
   useEffect(() => {
     let cancel = false;
-    if (!history) {
-      fetchHistory(backendUrl, 12)
-        .then((h) => {
-          if (!cancel) {
-            setHistory(h);
-            setHistoryMode(true);
-            setIdx(h.n - 1);
-          }
-        })
-        .catch(() => undefined);
-    } else if (!historyMode) {
-      setHistoryMode(true);
-    }
+    if (useStore.getState().history) setHistoryMode(true);
+    fetchHistory(backendUrl, 12)
+      .then((h) => {
+        if (!cancel) {
+          setHistory(h);
+          setHistoryMode(true);
+          setIdx(h.n - 1);
+        }
+      })
+      .catch(() => undefined);
     return () => {
       cancel = true;
     };
-  }, [backendUrl, history, historyMode, setHistory, setHistoryMode, setIdx]);
+  }, [backendUrl, setHistory, setHistoryMode, setIdx]);
 
   useEffect(() => {
     if (!playing || !history) return;

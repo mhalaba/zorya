@@ -33,10 +33,10 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("push", (event) => {
+  // Always show it: subscriptions use userVisibleOnly, and a push without a notification makes
+  // Chrome show a generic one and Safari revoke the subscription after a few silent pushes.
   event.waitUntil(
     (async () => {
-      const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-      if (clients.some((c) => c.visibilityState === "visible")) return;
       let data = { title: "Zorya", body: "", level: "watch", tag: "zorya" };
       try {
         data = { ...data, ...(event.data ? event.data.json() : {}) };

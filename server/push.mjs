@@ -12,6 +12,27 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
 const vapidPath = path.join(root, "vapid.json");
 const subsPath = path.join(root, "push-subs.json");
 const COOLDOWN_MS = 10 * 60 * 1000;
+const MAX_SUBS = 10_000;
+// Browser push services only — the server POSTs to this URL, so an arbitrary endpoint would be an SSRF hole.
+const PUSH_HOSTS = [
+  "fcm.googleapis.com",
+  "android.googleapis.com",
+  "updates.push.services.mozilla.com",
+  "web.push.apple.com",
+  ".push.apple.com",
+  ".notify.windows.com",
+];
+
+function isPushEndpoint(endpoint) {
+  let u;
+  try {
+    u = new URL(String(endpoint));
+  } catch {
+    return false;
+  }
+  if (u.protocol !== "https:") return false;
+  return PUSH_HOSTS.some((h) => (h.startsWith(".") ? u.hostname.endsWith(h) : u.hostname === h));
+}
 
 function loadVapid() {
   if (fs.existsSync(vapidPath)) {
@@ -23,17 +44,24 @@ function loadVapid() {
 }
 
 const vapid = loadVapid();
-webpush.setVapidDetails("mailto:zorya-watch@localhost", vapid.publicKey, vapid.privateKey);
+// Apple's push service rejects a VAPID subject without a real domain; set VAPID_SUBJECT in production.
+webpush.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:zorya-watch@localhost", vapid.publicKey, vapid.privateKey);
 
 let subs = [];
 try {
-  if (fs.existsSync(subsPath)) subs = JSON.parse(fs.readFileSync(subsPath, "utf8")) || [];
+  if (fs.existsSync(subsPath)) {
+    const saved = JSON.parse(fs.readFileSync(subsPath, "utf8"));
+    subs = Array.isArray(saved) ? saved.filter((s) => s?.subscription?.endpoint) : [];
+  }
 } catch {
   subs = [];
 }
 
 function saveSubs() {
-  fs.writeFileSync(subsPath, JSON.stringify(subs));
+  // Write-then-rename, so a crash mid-write cannot leave a truncated JSON file.
+  const tmp = `${subsPath}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(subs));
+  fs.renameSync(tmp, subsPath);
 }
 
 export function pushPublicKey() {
@@ -45,7 +73,11 @@ export function upsertPushSub(body) {
   if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
     throw new Error("zły endpoint");
   }
-  const places = (body.places || [])
+  if (!isPushEndpoint(subscription.endpoint)) throw new Error("endpoint spoza usług Web Push");
+  if (!Array.isArray(body.places)) throw new Error("places musi być tablicą");
+  const known = subs.some((s) => s.subscription.endpoint === subscription.endpoint);
+  if (!known && subs.length >= MAX_SUBS) throw new Error("limit subskrypcji");
+  const places = body.places
     .slice(0, 8)
     .map((p) => ({
       voivodeship: String(p.voivodeship || "").slice(0, 40),
@@ -57,7 +89,11 @@ export function upsertPushSub(body) {
   subs = subs.filter((s) => s.subscription.endpoint !== subscription.endpoint);
   if (places.length) {
     subs.push({
-      subscription,
+      subscription: {
+        endpoint: String(subscription.endpoint),
+        expirationTime: subscription.expirationTime ?? null,
+        keys: { p256dh: String(subscription.keys.p256dh), auth: String(subscription.keys.auth) },
+      },
       places,
       lang: body.lang === "en" ? "en" : "pl",
       last: {},
@@ -98,7 +134,7 @@ export async function notifyFromState(state) {
         level === "priority" ? (sub.lang === "en" ? "PRIORITY" : "PRIORYTET") : sub.lang === "en" ? "WATCH" : "UWAGA";
       const payload = JSON.stringify({
         title: `Zorya · ${name} · ${lvlWord}`,
-        body: `${Number(v.points).toFixed(1)} pkt${why ? ` — ${why}` : ""}`,
+        body: `${Number(v.points).toFixed(1)} ${sub.lang === "en" ? "pts" : "pkt"}${why ? ` — ${why}` : ""}`,
         level,
         tag: `zorya-${v.id}-${level}`,
       });

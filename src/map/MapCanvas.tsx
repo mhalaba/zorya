@@ -42,7 +42,7 @@ export function MapCanvas() {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MLMap | null>(null);
   const ready = useRef(false);
-  const pulse = useRef(0);
+  const hasFresh = useRef(false);
 
   const state = useStore((s) => s.state);
   const hover = useStore((s) => s.hoverVoiv);
@@ -53,7 +53,6 @@ export function MapCanvas() {
   const labelDensity = useStore((s) => s.labelDensity);
   const preset = useStore((s) => s.cameraPreset);
   const nonce = useStore((s) => s.cameraNonce);
-  const homeVoiv = useStore((s) => s.homeVoiv);
   const historyMode = useStore((s) => s.historyMode);
   const history = useStore((s) => s.history);
   const historyIdx = useStore((s) => s.historyIdx);
@@ -82,6 +81,9 @@ export function MapCanvas() {
     map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-left");
 
     map.on("load", () => {
+      // Settings may have been restored from storage (or changed) before the style loaded; the
+      // effects that sync them skip while !ready, so the layers below start from the store.
+      const initial = useStore.getState();
       registerMapIcons(map);
       if (map.getLayer("place_state")) {
         map.setLayoutProperty("place_state", "visibility", "none");
@@ -144,8 +146,8 @@ export function MapCanvas() {
         source: "ua",
         minzoom: 6,
         layout: {
-          "text-field": ["get", lang === "en" ? "name_en" : "name_pl"],
-          "text-font": ["Noto Sans Regular", "Open Sans Regular"],
+          "text-field": ["get", initial.lang === "en" ? "name_en" : "name_pl"],
+          "text-font": ["Noto Sans Regular"],
           "text-size": 11,
           "text-padding": 8,
         },
@@ -215,8 +217,8 @@ export function MapCanvas() {
         source: "pl",
         layout: {
           "text-field": ["get", "name"],
-          "text-font": ["Noto Sans Regular", "Open Sans Regular"],
-          "text-size": 12,
+          "text-font": ["Noto Sans Regular"],
+          "text-size": labelSize(initial.labelDensity),
           "text-padding": 4,
         },
         paint: {
@@ -230,7 +232,7 @@ export function MapCanvas() {
         id: "zones-fill",
         type: "fill",
         source: "zones",
-        layout: { visibility: "none" },
+        layout: { visibility: initial.showPazp ? "visible" : "none" },
         paint: {
           "fill-color": ["match", ["get", "kind"], "score", "#E0A100", "#9AA8B8"],
           "fill-opacity": 0.22,
@@ -240,7 +242,7 @@ export function MapCanvas() {
         id: "zones-line",
         type: "line",
         source: "zones",
-        layout: { visibility: "none" },
+        layout: { visibility: initial.showPazp ? "visible" : "none" },
         paint: {
           "line-color": ["match", ["get", "kind"], "score", COLORS.amber, "#9AA8B8"],
           "line-width": 1.2,
@@ -314,6 +316,8 @@ export function MapCanvas() {
           "icon-rotate": ["get", "heading"],
           "icon-rotation-alignment": "map",
           "icon-allow-overlap": false,
+          // Informational traffic must not win label collisions and hide voivodeship names.
+          "icon-ignore-placement": true,
           "text-field": ["step", ["zoom"], "", 8.2, ["get", "label"]],
           "text-font": ["Noto Sans Regular"],
           "text-offset": [0, 1.25],
@@ -337,6 +341,7 @@ export function MapCanvas() {
           "icon-rotate": ["get", "heading"],
           "icon-rotation-alignment": "map",
           "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
           "text-field": ["step", ["zoom"], "", 6.5, ["get", "label"]],
           "text-font": ["Noto Sans Regular"],
           "text-offset": [0, 1.3],
@@ -369,6 +374,9 @@ export function MapCanvas() {
           "text-field": ["get", "point_count_abbreviated"],
           "text-font": ["Noto Sans Regular"],
           "text-size": 11,
+          // Camera pins sit on the eastern border and would otherwise hide "lubelskie"/"podkarpackie".
+          "text-allow-overlap": true,
+          "text-ignore-placement": true,
         },
         paint: { "text-color": COLORS.text },
       });
@@ -377,8 +385,10 @@ export function MapCanvas() {
         type: "symbol",
         source: "cameras",
         filter: ["!", ["has", "point_count"]],
-        layout: { "icon-image": "cam-pin", "icon-size": 0.9, "icon-allow-overlap": true },
+        layout: { "icon-image": "cam-pin", "icon-size": 0.9, "icon-allow-overlap": true, "icon-ignore-placement": true },
       });
+      // Region names on top: markers and clusters must not cover them.
+      map.moveLayer("pl-label");
 
       map.on("mousemove", "pl-fill", (e) => {
         map.getCanvas().style.cursor = "pointer";
@@ -441,11 +451,29 @@ export function MapCanvas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** Hover and selection only — cheap enough to run on every pointer move between regions. */
+  function applyFocus(map: MLMap) {
+    const { state: st, selectedVoiv, hoverVoiv } = useStore.getState();
+    if (!st || !map.getSource("pl")) return;
+    for (const v of st.voivodeships) {
+      map.setFeatureState({ source: "pl", id: v.id }, { selected: selectedVoiv === v.id, hover: hoverVoiv === v.id });
+    }
+  }
+
+  // Everything is read from the store, not from render props: the "load" handler keeps the
+  // first render's closure, so props would be stale there.
   function applyData(map: MLMap) {
-    const st = useStore.getState().state;
-    const histMode = useStore.getState().historyMode;
-    const bundle = useStore.getState().history;
-    const idx = useStore.getState().historyIdx;
+    const {
+      state: st,
+      historyMode: histMode,
+      history: bundle,
+      historyIdx: idx,
+      showNeptun: neptunOn,
+      showUaAlerts: uaOn,
+      showCivAdsb: civOn,
+      showMilAdsb: milOn,
+      showTracks: tracksOn,
+    } = useStore.getState();
     const histPts =
       histMode && bundle
         ? Object.fromEntries(Object.entries(bundle.voivodeships).map(([id, arr]) => [id, arr[idx] ?? 0]))
@@ -455,26 +483,17 @@ export function MapCanvas() {
     const pl = map.getSource("pl") as GeoJSONSource | undefined;
     if (pl && st) {
       for (const v of st.voivodeships) {
-        const { paint } = lookup(v.id);
-        const selected = useStore.getState().selectedVoiv === v.id;
-        const hover = useStore.getState().hoverVoiv === v.id;
-        map.setFeatureState(
-          { source: "pl", id: v.id },
-          {
-            paint,
-            selected,
-            hover,
-          }
-        );
+        map.setFeatureState({ source: "pl", id: v.id }, { paint: lookup(v.id).paint });
       }
+      applyFocus(map);
     }
     if (st) {
       for (const a of st.ua_alerts) {
-        map.setFeatureState({ source: "ua", id: a.oblast }, { alert: showUaAlerts && a.active });
+        map.setFeatureState({ source: "ua", id: a.oblast }, { alert: uaOn && a.active });
       }
     }
 
-    const objects = histMode || !showNeptun ? [] : st?.objects ?? [];
+    const objects = histMode || !neptunOn ? [] : st?.objects ?? [];
     const objFc: FeatureCollection = {
       type: "FeatureCollection",
       features: objects.map((o) => {
@@ -496,6 +515,7 @@ export function MapCanvas() {
       }),
     };
     (map.getSource("objects") as GeoJSONSource | undefined)?.setData(objFc);
+    hasFresh.current = objFc.features.some((f) => f.properties?.fresh);
 
     const uncFc: FeatureCollection = {
       type: "FeatureCollection",
@@ -507,7 +527,6 @@ export function MapCanvas() {
     };
     (map.getSource("unc") as GeoJSONSource | undefined)?.setData(uncFc);
 
-    const tracksOn = useStore.getState().showTracks;
     const trFc: FeatureCollection = {
       type: "FeatureCollection",
       features: tracksOn
@@ -535,7 +554,7 @@ export function MapCanvas() {
     const adsbFc: FeatureCollection = {
       type: "FeatureCollection",
       features: (histMode ? [] : st?.adsb ?? [])
-        .filter((a) => (a.mil ? showMilAdsb : showCivAdsb))
+        .filter((a) => (a.mil ? milOn : civOn))
         .map((a) => ({
         type: "Feature" as const,
         properties: {
@@ -574,7 +593,13 @@ export function MapCanvas() {
     const map = mapRef.current;
     if (!map || !ready.current) return;
     applyData(map);
-  }, [state, hover, selected, showTracks, historyMode, history, historyIdx, showCivAdsb, showMilAdsb, showNeptun, showUaAlerts]);
+  }, [state, showTracks, historyMode, history, historyIdx, showCivAdsb, showMilAdsb, showNeptun, showUaAlerts]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready.current) return;
+    applyFocus(map);
+  }, [hover, selected]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -593,8 +618,7 @@ export function MapCanvas() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready.current) return;
-    const size = labelDensity === "dense" ? 12 : 10;
-    if (map.getLayer("pl-label")) map.setLayoutProperty("pl-label", "text-size", size);
+    if (map.getLayer("pl-label")) map.setLayoutProperty("pl-label", "text-size", labelSize(labelDensity));
   }, [labelDensity]);
 
   useEffect(() => {
@@ -605,31 +629,36 @@ export function MapCanvas() {
     }
   }, [lang]);
 
+  // Only an explicit camera request moves the camera (preset button, "reset frame", onboarding).
+  // Selecting a region or toggling 3D must not throw the user back to the preset's frame.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const pad = CAMERA.padding;
-    const opt = { padding: pad, duration: prefersReducedMotion() ? 0 : 700, pitch: pitch3d ? 48 : 0 };
+    const { homeVoiv: home, selectedVoiv: sel, pitch3d: tilted } = useStore.getState();
+    const opt = { padding: CAMERA.padding, duration: prefersReducedMotion() ? 0 : 700, pitch: tilted ? 48 : 0 };
     if (preset === "pl") map.fitBounds(CAMERA.wholePl, opt);
     else if (preset === "flank") map.fitBounds(CAMERA.flank, opt);
     else if (preset === "region") {
-      const id = homeVoiv || selected;
+      const id = home || sel;
       const meta = VOIV_BOUNDS[id ?? ""] ?? VOIV_BOUNDS.mazowieckie;
       const neighbors = NEIGHBOR_BOUNDS[id ?? "mazowieckie"] ?? meta;
       map.fitBounds(neighbors, { ...opt, pitch: 0 });
     } else map.fitBounds(CAMERA.defaultBounds, opt);
-  }, [preset, nonce, homeVoiv, selected, pitch3d]);
+  }, [preset, nonce]);
 
+  // Pulse only while a fresh object is on the map and the page is visible, at ~15 fps:
+  // every paint change forces a full map repaint, which drains a phone left on overnight.
   useEffect(() => {
     if (prefersReducedMotion()) return;
-    const map = mapRef.current;
     let raf = 0;
+    let last = 0;
     const loop = (t: number) => {
-      pulse.current = t;
-      if (map && ready.current && map.getLayer("obj-pulse")) {
-        const o = 0.08 + 0.14 * (0.5 + 0.5 * Math.sin(t / 420));
-        map.setPaintProperty("obj-pulse", "circle-opacity", o);
-        map.setPaintProperty("obj-pulse", "circle-radius", 12 + 8 * (0.5 + 0.5 * Math.sin(t / 420)));
+      const map = mapRef.current;
+      if (t - last >= 66 && hasFresh.current && !document.hidden && map && ready.current && map.getLayer("obj-pulse")) {
+        last = t;
+        const s = 0.5 + 0.5 * Math.sin(t / 420);
+        map.setPaintProperty("obj-pulse", "circle-opacity", 0.08 + 0.14 * s);
+        map.setPaintProperty("obj-pulse", "circle-radius", 12 + 8 * s);
       }
       raf = requestAnimationFrame(loop);
     };
@@ -642,6 +671,10 @@ export function MapCanvas() {
 
 function emptyFc(): FeatureCollection {
   return { type: "FeatureCollection", features: [] };
+}
+
+function labelSize(density: "low" | "dense") {
+  return density === "dense" ? 12 : 10;
 }
 
 function iconLabel(type: string) {
@@ -723,14 +756,14 @@ const NEIGHBORS: Record<string, string[]> = {
   lodzkie: ["wielkopolskie", "kujawsko-pomorskie", "mazowieckie", "swietokrzyskie", "slaskie", "opolskie"],
   malopolskie: ["slaskie", "swietokrzyskie", "podkarpackie"],
   mazowieckie: ["warminsko-mazurskie", "podlaskie", "lubelskie", "swietokrzyskie", "lodzkie", "kujawsko-pomorskie"],
-  opolskie: ["dolnoslaskie", "lodzkie", "slaskie"],
+  opolskie: ["dolnoslaskie", "wielkopolskie", "lodzkie", "slaskie"],
   podkarpackie: ["malopolskie", "swietokrzyskie", "lubelskie"],
   podlaskie: ["warminsko-mazurskie", "mazowieckie", "lubelskie"],
   pomorskie: ["zachodniopomorskie", "wielkopolskie", "kujawsko-pomorskie", "warminsko-mazurskie"],
   slaskie: ["opolskie", "lodzkie", "swietokrzyskie", "malopolskie"],
   swietokrzyskie: ["mazowieckie", "lubelskie", "podkarpackie", "malopolskie", "slaskie", "lodzkie"],
   "warminsko-mazurskie": ["pomorskie", "kujawsko-pomorskie", "mazowieckie", "podlaskie"],
-  wielkopolskie: ["zachodniopomorskie", "pomorskie", "kujawsko-pomorskie", "lodzkie", "dolnoslaskie", "lubuskie"],
+  wielkopolskie: ["zachodniopomorskie", "pomorskie", "kujawsko-pomorskie", "lodzkie", "opolskie", "dolnoslaskie", "lubuskie"],
   zachodniopomorskie: ["pomorskie", "wielkopolskie", "lubuskie"],
 };
 

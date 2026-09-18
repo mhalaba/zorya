@@ -12,9 +12,23 @@ function urlBase64ToUint8Array(base64: string) {
   return out;
 }
 
-export async function syncPushSubscription() {
+function sameKey(a: ArrayBuffer | null | undefined, b: Uint8Array) {
+  if (!a) return true;
+  const x = new Uint8Array(a);
+  return x.length === b.length && x.every((v, i) => v === b[i]);
+}
+
+let chain: Promise<void> = Promise.resolve();
+
+/** Serialized: settings changes fire this in bursts, and parallel runs could subscribe twice. */
+export function syncPushSubscription() {
+  chain = chain.then(sync).catch((err) => console.warn("Zorya push", err));
+  return chain;
+}
+
+async function sync() {
   const { notifyOn, places, homeVoiv, lang, backendUrl } = useStore.getState();
-  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return;
   const base = root(backendUrl);
   const reg = await navigator.serviceWorker.ready;
   if (!notifyOn || Notification.permission !== "granted") {
@@ -52,16 +66,23 @@ export async function syncPushSubscription() {
   const keyRes = await fetch(`${base}/api/push/key`);
   if (!keyRes.ok) return;
   const { publicKey } = (await keyRes.json()) as { publicKey: string };
+  const key = urlBase64ToUint8Array(publicKey);
   let sub = await reg.pushManager.getSubscription();
+  // A subscription made for another server key (new vapid.json, other backend) can never be delivered to.
+  if (sub && !sameKey(sub.options.applicationServerKey, key)) {
+    await sub.unsubscribe().catch(() => undefined);
+    sub = null;
+  }
   if (!sub) {
     sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(publicKey),
+      applicationServerKey: key,
     });
   }
-  await fetch(`${base}/api/push/subscribe`, {
+  const res = await fetch(`${base}/api/push/subscribe`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ subscription: sub.toJSON(), places: watch, lang }),
   });
+  if (!res.ok) throw new Error(`subscribe ${res.status}`);
 }

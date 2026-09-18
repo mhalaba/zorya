@@ -70,7 +70,8 @@ export function Onboarding() {
         )}
         <div className="row space">
           {step === 0 ? (
-            <button className="ghost" onClick={() => complete(voiv, false)}>
+            // No voivodeship was chosen yet — do not adopt the select's default as "home".
+            <button className="ghost" onClick={() => complete(null, false)}>
               {t(lang, "onboardCta")}
             </button>
           ) : (

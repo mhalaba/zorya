@@ -17,8 +17,9 @@ import { useStore } from "../store";
 import { t } from "../i18n";
 import { SOURCE_LABEL, SUPPORT_URL, GUIDE_URL, EAST_IDS } from "../config";
 import { ageSeconds, ageLabel, diodeColor, fmtPts, strongestSource } from "../lib";
-import { syncPushSubscription } from "../push";
 import type { FusionState, Level, SourceStatus } from "../types";
+
+const LEVEL_RANK: Record<Level, number> = { info: 0, watch: 1, priority: 2 };
 
 function maxLevel(state: FusionState | null): Level {
   if (!state) return "info";
@@ -72,7 +73,13 @@ export function TopBar({ onInstall }: { onInstall: () => void }) {
         <button className="icon-btn" onClick={() => setLang(lang === "pl" ? "en" : "pl")} aria-label="PL/EN">
           {lang === "pl" ? "EN" : "PL"}
         </button>
-        <button className="icon-btn" onClick={() => void enableNotify()} aria-label={t(lang, "bell")} title={t(lang, "bell")}>
+        <button
+          className="icon-btn"
+          onClick={() => void toggleNotify()}
+          aria-label={t(lang, "bell")}
+          aria-pressed={notifyOn}
+          title={`${t(lang, "bell")}: ${notifyOn ? t(lang, "on") : t(lang, "off")}`}
+        >
           <Bell size={18} color={notifyOn ? "#E0A100" : undefined} />
         </button>
         <button className="icon-btn" onClick={() => setSettingsOpen(true)} aria-label={t(lang, "settings")}>
@@ -93,11 +100,18 @@ function Diode({ src, lang, onOpen }: { src: SourceStatus; lang: "pl" | "en"; on
   );
 }
 
-async function enableNotify() {
-  if (!("Notification" in window)) return;
+/** The bell toggles: on asks for permission, off drops the push subscription (App syncs on notifyOn). */
+async function toggleNotify() {
+  if (useStore.getState().notifyOn) {
+    useStore.setState({ notifyOn: false });
+    return;
+  }
+  if (!("Notification" in window)) {
+    alert(t(useStore.getState().lang, "notifyUnsupported"));
+    return;
+  }
   const perm = await Notification.requestPermission();
   useStore.setState({ notifyOn: perm === "granted" });
-  await syncPushSubscription();
 }
 
 export function Ticker({ now }: { now: number }) {
@@ -109,10 +123,19 @@ export function Ticker({ now }: { now: number }) {
   const connecting = useStore((s) => s.connecting);
 
   const painted = live?.voivodeships ?? [];
-  const histPts = historyMode && history ? painted.map((v) => ({ ...v, points: history.voivodeships[v.id]?.[historyIdx] ?? 0 })) : painted;
-  const top = [...histPts].sort((a, b) => b.points - a.points || a.eastRank - b.eastRank)[0];
+  const inHistory = historyMode && !!history;
+  // Live: the server's level (RCB forces priority below 4 pts, transfer never raises it).
+  // History keeps only points, so the thresholds are the best available there.
+  const rows = inHistory
+    ? painted.map((v) => {
+        const points = history.voivodeships[v.id]?.[historyIdx] ?? 0;
+        const level: Level = points >= 4 ? "priority" : points >= 2 ? "watch" : "info";
+        return { ...v, points, level };
+      })
+    : painted;
+  const top = [...rows].sort((a, b) => LEVEL_RANK[b.level] - LEVEL_RANK[a.level] || b.points - a.points || a.eastRank - b.eastRank)[0];
   const age = live ? ageSeconds(live.generated_at, now) : 0;
-  const calm = !top || top.points < 2;
+  const calm = !top || top.level === "info";
 
   if (connecting && !live) {
     return <div className="ticker panel panel-ornament calm">{t(lang, "connecting")}</div>;
@@ -120,9 +143,11 @@ export function Ticker({ now }: { now: number }) {
   if (calm) {
     return <div className="ticker panel panel-ornament calm">{t(lang, "tickerCalm")}</div>;
   }
-  const lvl = top.points >= 4 ? "priority" : "watch";
+  const lvl = top.level;
   const name = lang === "en" ? top.nameEn : top.name;
-  const why = lang === "en" ? top.whyEn : top.whyPl;
+  // whyPl/whyEn and the breakdown describe the live state, not the replayed minute.
+  const why = inHistory ? "" : lang === "en" ? top.whyEn : top.whyPl;
+  const fallback = inHistory ? "" : ` · ${strongestSource(top.breakdown)}`;
   return (
     <div className="ticker panel panel-ornament">
       <span>
@@ -131,7 +156,7 @@ export function Ticker({ now }: { now: number }) {
           {fmtPts(top.points, lang)} {t(lang, "pts")}
         </strong>{" "}
         · <span className={lvl === "priority" ? "lvl-priority" : "lvl-watch"}>{lvl === "priority" ? t(lang, "levelPriority") : t(lang, "levelWatch")}</span>
-        {why ? ` — ${why}` : ` · ${strongestSource(top.breakdown)}`} · {t(lang, "update")} {age}s {t(lang, "ago")}
+        {why ? ` — ${why}` : fallback} · {t(lang, "update")} {ageLabel(age, lang)} {t(lang, "ago")}
       </span>
     </div>
   );
@@ -255,9 +280,13 @@ export function HoverTip() {
   );
 }
 
-export function StatusBanners() {
+/** The server pushes a state every minute; three silent minutes mean the picture is stale. */
+const STALE_MS = 3 * 60 * 1000;
+
+export function StatusBanners({ now }: { now: number }) {
   const lang = useStore((s) => s.lang);
   const state = useStore((s) => s.state);
+  const stateAt = useStore((s) => s.stateAt);
   const offline = useStore((s) => s.offline);
   const historyMode = useStore((s) => s.historyMode);
   const setHistoryMode = useStore((s) => s.setHistoryMode);
@@ -271,7 +300,8 @@ export function StatusBanners() {
       </div>
     );
   }
-  if (offline && state) {
+  const stale = stateAt != null && now - stateAt > STALE_MS;
+  if ((offline || stale) && state) {
     return (
       <div className="banner panel warn">
         {t(lang, "offline")} {new Date(state.generated_at).toLocaleTimeString(lang === "en" ? "en-GB" : "pl-PL")}

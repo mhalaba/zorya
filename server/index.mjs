@@ -35,9 +35,29 @@ app.get("/api/state", (_req, res) => {
 });
 
 app.get("/api/history/bundle", (req, res) => {
-  const hours = Math.min(12, Math.max(1, Number(req.query.hours || 12)));
-  res.json({ ...historyBundle, hours });
+  const asked = Math.round(Number(req.query.hours));
+  const hours = Number.isFinite(asked) ? Math.min(historyBundle.hours, Math.max(1, asked)) : historyBundle.hours;
+  res.json(sliceHistory(historyBundle, hours));
 });
+
+/** The last `hours` of the rolling bundle, with t0 and sample indices re-based. */
+function sliceHistory(bundle, hours) {
+  const n = Math.min(bundle.n, Math.round((hours * 3600) / bundle.step_s));
+  const skip = bundle.n - n;
+  if (!skip) return bundle;
+  return {
+    ...bundle,
+    hours,
+    n,
+    t0: new Date(new Date(bundle.t0).getTime() + skip * bundle.step_s * 1000).toISOString(),
+    max_pl: bundle.max_pl.slice(skip),
+    voivodeships: Object.fromEntries(Object.entries(bundle.voivodeships).map(([id, arr]) => [id, arr.slice(skip)])),
+    objects: bundle.objects.map((o) => ({
+      ...o,
+      samples: o.samples.filter((s) => s.t >= skip).map((s) => ({ ...s, t: s.t - skip })),
+    })),
+  };
+}
 
 app.get("/api/meta", (_req, res) => {
   res.json({ voivodeships: VOIV, demo: false, attribution: "https://neptun.in.ua/", pushKey: pushPublicKey() });

@@ -1,5 +1,9 @@
 /** Zorya fusion engine — scoring per voivodeship in a 60-minute window. */
 
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 export const SOURCE_IDS = ["neptun", "ua", "adsb", "rss", "rcb", "pazp"];
 
 export const VOIV = [
@@ -10,14 +14,14 @@ export const VOIV = [
   { id: "lodzkie", name: "łódzkie", nameEn: "Łódź", eastRank: 7, lat: 51.6048, lon: 19.4177, neighbors: ["wielkopolskie", "kujawsko-pomorskie", "mazowieckie", "swietokrzyskie", "slaskie", "opolskie"] },
   { id: "malopolskie", name: "małopolskie", nameEn: "Lesser Poland", eastRank: 6, lat: 49.859, lon: 20.2693, neighbors: ["slaskie", "swietokrzyskie", "podkarpackie"] },
   { id: "mazowieckie", name: "mazowieckie", nameEn: "Masovian", eastRank: 4, lat: 52.346, lon: 21.0964, neighbors: ["warminsko-mazurskie", "podlaskie", "lubelskie", "swietokrzyskie", "lodzkie", "kujawsko-pomorskie"] },
-  { id: "opolskie", name: "opolskie", nameEn: "Opole", eastRank: 12, lat: 50.647, lon: 17.8999, neighbors: ["dolnoslaskie", "lodzkie", "slaskie"] },
+  { id: "opolskie", name: "opolskie", nameEn: "Opole", eastRank: 12, lat: 50.647, lon: 17.8999, neighbors: ["dolnoslaskie", "wielkopolskie", "lodzkie", "slaskie"] },
   { id: "podkarpackie", name: "podkarpackie", nameEn: "Subcarpathian", eastRank: 2, lat: 49.9539, lon: 22.1692, neighbors: ["malopolskie", "swietokrzyskie", "lubelskie"] },
   { id: "podlaskie", name: "podlaskie", nameEn: "Podlaskie", eastRank: 0, lat: 53.2647, lon: 22.9294, neighbors: ["warminsko-mazurskie", "mazowieckie", "lubelskie"] },
   { id: "pomorskie", name: "pomorskie", nameEn: "Pomeranian", eastRank: 9, lat: 54.1548, lon: 17.9867, neighbors: ["zachodniopomorskie", "wielkopolskie", "kujawsko-pomorskie", "warminsko-mazurskie"] },
   { id: "slaskie", name: "śląskie", nameEn: "Silesian", eastRank: 10, lat: 50.331, lon: 18.9939, neighbors: ["opolskie", "lodzkie", "swietokrzyskie", "malopolskie"] },
   { id: "swietokrzyskie", name: "świętokrzyskie", nameEn: "Holy Cross", eastRank: 5, lat: 50.7635, lon: 20.7692, neighbors: ["mazowieckie", "lubelskie", "podkarpackie", "malopolskie", "slaskie", "lodzkie"] },
   { id: "warminsko-mazurskie", name: "warmińsko-mazurskie", nameEn: "Warmian-Masurian", eastRank: 3, lat: 53.8573, lon: 20.8248, neighbors: ["pomorskie", "kujawsko-pomorskie", "mazowieckie", "podlaskie"] },
-  { id: "wielkopolskie", name: "wielkopolskie", nameEn: "Greater Poland", eastRank: 11, lat: 52.3307, lon: 17.2432, neighbors: ["zachodniopomorskie", "pomorskie", "kujawsko-pomorskie", "lodzkie", "dolnoslaskie", "lubuskie"] },
+  { id: "wielkopolskie", name: "wielkopolskie", nameEn: "Greater Poland", eastRank: 11, lat: 52.3307, lon: 17.2432, neighbors: ["zachodniopomorskie", "pomorskie", "kujawsko-pomorskie", "lodzkie", "opolskie", "dolnoslaskie", "lubuskie"] },
   { id: "zachodniopomorskie", name: "zachodniopomorskie", nameEn: "West Pomeranian", eastRank: 15, lat: 53.5848, lon: 15.5431, neighbors: ["pomorskie", "wielkopolskie", "lubuskie"] },
 ];
 
@@ -69,7 +73,8 @@ export const TYPE_SCORE = {
 export const LOC_QUALITY = { track: 1, region: 0.6, locality: 0.5 };
 export const LIFECYCLE = { tracked: 1, fading: 0.7, lost: 0.4 };
 
-const PL_BORDER = [
+/** Fallback when the voivodeship GeoJSON is missing: coarse samples of the eastern border. */
+const PL_BORDER_FALLBACK = [
   [23.89, 50.37],
   [24.15, 50.82],
   [23.57, 51.55],
@@ -81,6 +86,43 @@ const PL_BORDER = [
   [23.2, 50.1],
 ];
 
+const PL_GEO_PATH = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../public/geo/pl-voivodeships.geojson");
+
+/** Voivodeship polygons (outer + hole rings) and every boundary vertex, from the same GeoJSON the map draws. */
+function loadPlGeometry() {
+  try {
+    const fc = JSON.parse(fs.readFileSync(PL_GEO_PATH, "utf8"));
+    const polygons = [];
+    for (const f of fc.features || []) {
+      const g = f.geometry;
+      if (g?.type === "Polygon") polygons.push(g.coordinates);
+      else if (g?.type === "MultiPolygon") polygons.push(...g.coordinates);
+    }
+    const vertices = polygons.flatMap((rings) => rings.flat());
+    if (!vertices.length) throw new Error("pusta geometria");
+    return { polygons, vertices };
+  } catch (err) {
+    console.error("Zorya: brak granic PL z GeoJSON, używam przybliżenia —", err.message || err);
+    return { polygons: [], vertices: PL_BORDER_FALLBACK };
+  }
+}
+
+const PL_GEOMETRY = loadPlGeometry();
+
+function inRing(lon, lat, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    if (yi > lat !== yj > lat && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+export function insidePl(lat, lon) {
+  return PL_GEOMETRY.polygons.some(([outer, ...holes]) => inRing(lon, lat, outer) && !holes.some((h) => inRing(lon, lat, h)));
+}
+
 export function haversine(lon1, lat1, lon2, lat2) {
   const R = 6371;
   const p1 = (lat1 * Math.PI) / 180;
@@ -91,9 +133,11 @@ export function haversine(lon1, lat1, lon2, lat2) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+/** 0 inside Poland; otherwise distance (km) to the nearest point of the Polish border. */
 export function distToPlBorder(lat, lon) {
+  if (insidePl(lat, lon)) return 0;
   let min = Infinity;
-  for (const [blon, blat] of PL_BORDER) {
+  for (const [blon, blat] of PL_GEOMETRY.vertices) {
     min = Math.min(min, haversine(lon, lat, blon, blat));
   }
   return min;
@@ -121,6 +165,7 @@ export function distFactor(km) {
 }
 
 export function headingToPlFactor(course, lat, lon) {
+  if (insidePl(lat, lon)) return 1;
   if (course == null || Number.isNaN(course)) return 0.7;
   const az = azimuthToPl(lat, lon);
   let diff = Math.abs(((course - az + 540) % 360) - 180);
@@ -176,6 +221,7 @@ export function scoreWorld(now, input) {
     const age = ageMin(obj.ts);
     const tw = timeWeight(age);
     const observation = dist > 250 || !!obj.area_only;
+    const fHead = headingToPlFactor(obj.course, obj.lat, obj.lon);
     const contrib = [];
     let raw = 0;
     if (!observation && tw > 0) {
@@ -183,7 +229,6 @@ export function scoreWorld(now, input) {
       const fDist = distFactor(dist);
       const fConf = Math.max(0.1, Math.min(1, obj.confidence));
       const fConfirms = Math.min(1.4, 0.7 + 0.15 * (obj.confirmations ?? 1));
-      const fHead = headingToPlFactor(obj.course, obj.lat, obj.lon);
       const fLife = LIFECYCLE[obj.lifecycle] ?? 1;
       const fLoc = LOC_QUALITY[obj.loc_quality] ?? 1;
       raw = fType * Math.sqrt(obj.count ?? 1) * fDist * fConf * fConfirms * fHead * fLife * fLoc * tw;
@@ -208,7 +253,7 @@ export function scoreWorld(now, input) {
           type: obj.type,
           n: obj.count || 1,
           dist,
-          toward: headingToPlFactor(obj.course, obj.lat, obj.lon) >= 1,
+          toward: fHead >= 1,
         });
       }
     }
@@ -411,10 +456,9 @@ export function scoreWorld(now, input) {
     const ownSum = Object.values(breakdown).reduce((a, x) => a + x, 0);
     const transfer = round2(b.transfer);
     const points = round2(ownSum + transfer);
-    const ownForLevel = ownSum;
-    const paint =
-      ownForLevel >= 4 ? "priority" : ownForLevel >= 2 ? "watch" : transfer >= 0.1 ? "transfer" : "info";
-    const level = levelOf(ownForLevel, b.rcbForce);
+    const level = levelOf(ownSum, b.rcbForce);
+    // Colour = level: an RCB alert forces priority even when its decayed points are < 4.
+    const paint = level !== "info" ? level : transfer >= 0.1 ? "transfer" : "info";
     const why = whyLines(b, v);
     return {
       id: v.id,
@@ -798,6 +842,10 @@ export function stampHistory(bundle, state) {
       while (bundle.voivodeships[id].length < bundle.n) bundle.voivodeships[id].push(0);
     }
     bundle.t0 = new Date(t0 + shift * bundle.step_s * 1000).toISOString();
+    // Sample indices are relative to t0, so they move with the window.
+    for (const o of bundle.objects || []) {
+      o.samples = o.samples.map((s) => ({ ...s, t: s.t - shift }));
+    }
     idx = bundle.n - 1;
   }
   if (idx < 0) idx = 0;
@@ -810,7 +858,7 @@ export function stampHistory(bundle, state) {
   bundle.generated_at = state.generated_at;
   const prev = Object.fromEntries((bundle.objects || []).map((o) => [o.id, o]));
   bundle.objects = (state.objects || []).map((o) => {
-    const samples = [...(prev[o.id]?.samples || [])];
+    const samples = (prev[o.id]?.samples || []).filter((s) => s.t !== idx);
     samples.push({ t: idx, lat: o.lat, lon: o.lon });
     return { id: o.id, type: o.type, samples: samples.filter((s) => s.t >= idx - 15) };
   });

@@ -32,23 +32,25 @@ const OBLAST_PATTERNS = [
   [/луганськ/i, "luhansk"],
 ];
 
+// Stems must not match inside other names: "opolsk" ⊂ "małopolsk"/"wielkopolsk", "śląsk" ⊂ "dolnośląsk",
+// "pomorsk" ⊂ "kujawsko-pomorsk"/"zachodniopomorsk", "podlask" ⊂ "Biała Podlaska" (lubelskie).
 const VOIV_FROM_TEXT = [
-  [/podkarpack/i, "podkarpackie"],
-  [/lubelsk/i, "lubelskie"],
-  [/podlask/i, "podlaskie"],
-  [/mazowieck|warszaw/i, "mazowieckie"],
-  [/warmińsk|warminsk|mazursk/i, "warminsko-mazurskie"],
-  [/świętokrzysk|swietokrzysk/i, "swietokrzyskie"],
-  [/małopolsk|malopolsk|krakow/i, "malopolskie"],
-  [/śląsk|slask/i, "slaskie"],
-  [/łódzk|lodzk/i, "lodzkie"],
-  [/kujawsk/i, "kujawsko-pomorskie"],
-  [/zachodniopomorsk|szczecin/i, "zachodniopomorskie"],
-  [/(?<!zachodnio)pomorsk/i, "pomorskie"],
-  [/wielkopolsk/i, "wielkopolskie"],
-  [/dolnośląsk|dolnoslask/i, "dolnoslaskie"],
-  [/opolsk/i, "opolskie"],
-  [/lubusk/i, "lubuskie"],
+  [/podkarpack|rzesz[oó]w|przemy[sś]l/iu, "podkarpackie"],
+  [/lubelsk|lublin(?!iec)|zamo[sś][cć]|che[lł]m(?![nżz]|ek|ku)|bia[lł]\p{L}{0,3}\s+podlask/iu, "lubelskie"],
+  [/(?<!bia[lł]\p{L}{0,3}\s+)podlask|bia[lł]\p{L}{0,3}stok|suwa[lł]k/iu, "podlaskie"],
+  [/mazowieck|warszaw/iu, "mazowieckie"],
+  [/warmińsk|warminsk|mazursk|olsztyn/iu, "warminsko-mazurskie"],
+  [/świętokrzysk|swietokrzysk|kielc/iu, "swietokrzyskie"],
+  [/małopolsk|malopolsk|krak[oó]w/iu, "malopolskie"],
+  [/(?<!dolno|doln\p{L}{0,3}\s+)(?:śląsk|slask)|katowic/iu, "slaskie"],
+  [/łódzk|lodzk/iu, "lodzkie"],
+  [/kujawsk|bydgoszcz/iu, "kujawsko-pomorskie"],
+  [/zachodniopomorsk|szczecin/iu, "zachodniopomorskie"],
+  [/(?<!\p{L}|kujawsko[-\s])pomorsk|gda[nń]sk|gdyni/iu, "pomorskie"],
+  [/wielkopolsk|pozna[nń]/iu, "wielkopolskie"],
+  [/dolnośląsk|dolnoslask|doln\p{L}{0,3}\s+(?:śląsk|slask)|wroc[lł]aw/iu, "dolnoslaskie"],
+  [/(?<!\p{L})opolsk/iu, "opolskie"],
+  [/lubusk/iu, "lubuskie"],
 ];
 
 export function emptyInput() {
@@ -171,14 +173,15 @@ export function mapThreats(payload) {
 }
 
 export function mapUaAlerts(payload) {
+  // The oblast field wins: a raion name can carry another oblast's stem (a "Київський район" outside Kyiv oblast).
   const active = new Map();
   for (const o of payload?.oblasts || []) {
-    const id = matchOblast(`${o.key || ""} ${o.name || ""} ${o.oblast || ""}`);
+    const id = matchOblast(o.oblast) || matchOblast(`${o.name || ""} ${o.key || ""}`);
     if (!id) continue;
     active.set(id, Date.parse(o.since) || Date.now());
   }
   for (const r of payload?.raions || []) {
-    const id = matchOblast(`${r.oblast || ""} ${r.name || ""} ${r.key || ""}`);
+    const id = matchOblast(r.oblast) || matchOblast(`${r.name || ""} ${r.key || ""}`);
     if (!id) continue;
     const since = Date.parse(r.since) || Date.now();
     if (!active.has(id) || since < active.get(id)) active.set(id, since);
@@ -243,11 +246,39 @@ function provincesFromRso(item) {
   return ids;
 }
 
+const WARSAW_PARTS = new Intl.DateTimeFormat("en-US", {
+  timeZone: "Europe/Warsaw",
+  hourCycle: "h23",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+});
+
+function warsawOffsetMs(utcMs) {
+  const p = Object.fromEntries(WARSAW_PARTS.formatToParts(new Date(utcMs)).map((x) => [x.type, x.value]));
+  const asUtc = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
+  return asUtc - Math.floor(utcMs / 1000) * 1000;
+}
+
+/** RSO stamps are Polish wall-clock time without a zone ("2026-09-18 11:42:38"); parse them independent of the server TZ. */
+export function parseWarsawTime(s) {
+  const str = String(s || "").trim();
+  if (/(?:Z|[+-]\d{2}:?\d{2})$/i.test(str)) return Date.parse(str) || 0;
+  const m = str.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (!m) return 0;
+  const wall = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0));
+  const guess = wall - warsawOffsetMs(wall);
+  return wall - warsawOffsetMs(guess);
+}
+
 export function mapRso(payload) {
   const rows = (payload?.newses || [])
     .map((n) => {
       const text = `${n.title || ""} ${n.shortcut || ""} ${stripHtml(n.content || "")}`;
-      const ts = Date.parse(String(n.updated_at || n.created_at || "").replace(" ", "T")) || 0;
+      const ts = parseWarsawTime(n.updated_at || n.created_at);
       return { n, text, ts, voiv: provincesFromRso(n) };
     })
     .sort((a, b) => b.ts - a.ts);
@@ -297,6 +328,8 @@ function stripHtml(html) {
 }
 
 function parseRss(xml, sourceId) {
+  // A dead feed may answer 200 with an HTML page ("Not found.") — that is a failure, not an empty feed.
+  if (!/<(?:rss|rdf:RDF)[\s>]/i.test(xml)) throw new Error("odpowiedź nie jest kanałem RSS");
   const items = [];
   const blocks = xml.match(/<item[\s\S]*?<\/item>/gi) || [];
   for (const b of blocks.slice(0, 25)) {
@@ -304,7 +337,8 @@ function parseRss(xml, sourceId) {
     const desc = decode(tag(b, "description") || tag(b, "content:encoded"));
     const link = decode(tag(b, "link"));
     const date = tag(b, "pubDate") || tag(b, "dc:date");
-    const ts = Date.parse(date) || Date.now();
+    // No parseable date = unknown age; never treat it as fresh.
+    const ts = Date.parse(date) || 0;
     items.push({ id: `${sourceId}-${hash(link || title)}`, title, desc, url: link, ts });
   }
   return items;
@@ -316,8 +350,21 @@ function tag(block, name) {
   return m ? m[1].trim() : "";
 }
 
+function codePoint(n) {
+  return n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : " ";
+}
+
 function decode(s) {
-  return stripHtml(s.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"'));
+  // &amp; last, so "&amp;lt;" stays the literal text "&lt;" instead of becoming a tag.
+  return stripHtml(
+    s
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#(\d+);/g, (_, n) => codePoint(Number(n)))
+      .replace(/&#x([0-9a-f]+);/gi, (_, n) => codePoint(parseInt(n, 16)))
+      .replace(/&amp;/g, "&")
+  );
 }
 
 function hash(s) {
@@ -360,7 +407,7 @@ function toCraft(a, mil) {
     mil: !!mil,
     lat: a.lat,
     lon: a.lon,
-    heading: a.track || a.true_heading || 0,
+    heading: a.track ?? a.true_heading ?? 0,
     alt_ft: alt,
     speed_kt: a.gs || 0,
     ts: Date.now() - Math.round((a.seen_pos || 0) * 1000),
@@ -391,12 +438,23 @@ export function mapAdsb(payload) {
   return mergeAdsb({ ac: [] }, payload);
 }
 
-function sourceStatus(id, ok, ageS, message, records) {
+const LATE_S = 120;
+const DEAD_S = 900;
+
+/** Diode by age of the last good fetch; a failed latest attempt shows its error and at best "late". */
+function sourceStatus(id, entry, now, okMessage, records) {
+  const ageS = entry.at ? (now - entry.at) / 1000 : 9999;
   let diode = "ok";
-  if (!ok) diode = "dead";
-  else if (ageS > 900) diode = "dead";
-  else if (ageS > 120) diode = "late";
-  return { id, ok, age_s: Math.max(0, Math.round(ageS)), message, records, diode };
+  if (entry.data === null || ageS > DEAD_S) diode = "dead";
+  else if (entry.err || ageS > LATE_S) diode = "late";
+  return {
+    id,
+    ok: !entry.err && entry.data !== null,
+    age_s: Math.max(0, Math.round(ageS)),
+    message: entry.err || okMessage,
+    records,
+    diode,
+  };
 }
 
 const cache = {
@@ -408,6 +466,9 @@ const cache = {
 };
 
 export const INGEST_EVERY_MS = 60_000;
+
+const ADSB_GAP_MS = 3500;
+let adsbPartialError = "";
 
 async function settle(name, fn) {
   try {
@@ -423,33 +484,41 @@ export async function ingestLive() {
     settle("neptun", async () => mapThreats((await getJson("https://neptun.in.ua/api/v1/threats")).json)),
     settle("ua", async () => mapUaAlerts((await getJson("https://neptun.in.ua/api/v1/alerts")).json)),
     settle("adsb", async () => {
-      const [pl, mil] = await Promise.allSettled([
-        getJson("https://api.adsb.lol/v2/lat/52.13/lon/19.40/dist/250"),
-        getJson("https://api.adsb.lol/v2/mil"),
-      ]);
-      if (pl.status === "rejected" && mil.status === "rejected") {
-        throw new Error(pl.reason?.message || "ADS-B niedostępny");
-      }
-      return mergeAdsb(
-        pl.status === "fulfilled" ? pl.value.json : { ac: [] },
-        mil.status === "fulfilled" ? mil.value.json : { ac: [] }
-      );
+      // adsb.lol rate-limits per client: a second request within ~2 s gets HTTP 429, so space them out.
+      const errors = [];
+      const get = async (label, url) => {
+        try {
+          return (await getJson(url)).json;
+        } catch (e) {
+          errors.push(`${label}: ${e.message || e}`);
+          return null;
+        }
+      };
+      const pl = await get("PL", "https://api.adsb.lol/v2/lat/52.13/lon/19.40/dist/250");
+      await new Promise((r) => setTimeout(r, ADSB_GAP_MS));
+      const mil = await get("mil", "https://api.adsb.lol/v2/mil");
+      adsbPartialError = errors.join(" · ");
+      if (!pl && !mil) throw new Error(adsbPartialError || "ADS-B niedostępny");
+      return mergeAdsb(pl || { ac: [] }, mil || { ac: [] });
     }),
     settle("rso", async () => mapRso((await getJson("https://komunikaty.tvp.pl/komunikatyxml/wszystkie/wszystkie/0?_format=json")).json)),
     settle("rss", async () => {
       const feeds = ["https://www.rmf24.pl/feed", "https://www.pap.pl/rss.xml"];
       const collected = [];
+      const errors = [];
       let ok = 0;
       for (const url of feeds) {
+        const sourceId = url.includes("pap") ? "pap" : "rmf";
         try {
           const { text } = await getText(url);
-          collected.push(...parseRss(text, url.includes("pap") ? "pap" : "rmf"));
+          collected.push(...parseRss(text, sourceId));
           ok += 1;
-        } catch {
+        } catch (e) {
           /* one feed may fail */
+          errors.push(`${sourceId}: ${e.message || e}`);
         }
       }
-      if (!ok) throw new Error("RSS niedostępny");
+      if (!ok) throw new Error(errors.join(" · ") || "RSS niedostępny");
       return collected
         .map((it) => {
           const score = scoreRssItem(it);
@@ -462,58 +531,54 @@ export async function ingestLive() {
   ]);
 
   const now = Date.now();
-  const rso = cache.rso.data || { rcb: emptyInput().rcb, rss: [] };
-  const rssCombined = [...(rso.rss || []), ...(cache.rss.data || [])];
+  // Data older than the dead threshold is dropped: a frozen UA alert list must not keep scoring forever.
+  const fresh = (name) => (cache[name].data !== null && now - cache[name].at <= DEAD_S * 1000 ? cache[name].data : null);
+  const neptun = fresh("neptun") || [];
+  const ua = fresh("ua") || [];
+  const adsb = fresh("adsb") || [];
+  const rso = fresh("rso") || { rcb: emptyInput().rcb, rss: [] };
+  const rssCombined = [...(rso.rss || []), ...(fresh("rss") || [])];
 
   const input = {
-    objects: cache.neptun.data || [],
-    ua_alerts: cache.ua.data || [],
+    objects: neptun,
+    ua_alerts: ua,
     rcb: rso.rcb || emptyInput().rcb,
     rss: rssCombined,
     zones: [],
     baltic: [],
     nato: [],
-    adsb: cache.adsb.data || [],
+    adsb,
+  };
+
+  const rssEntry = {
+    at: Math.max(cache.rss.at, cache.rso.at),
+    data: cache.rss.data ?? cache.rso.data,
+    err: cache.rss.err && cache.rso.err ? cache.rss.err : null,
   };
 
   const sources = [
-    sourceStatus(
-      "neptun",
-      cache.neptun.data !== null,
-      cache.neptun.at ? (now - cache.neptun.at) / 1000 : 9999,
-      cache.neptun.data
-        ? "NEPTUN OSINT, nie radar · neptun.in.ua"
-        : cache.neptun.err || "brak",
-      (cache.neptun.data || []).length
-    ),
-    sourceStatus(
-      "ua",
-      cache.ua.data !== null,
-      cache.ua.at ? (now - cache.ua.at) / 1000 : 9999,
-      cache.ua.data ? `alarmy UA (NEPTUN) · ${(cache.ua.data || []).length} obwodów` : cache.ua.err || "brak",
-      (cache.ua.data || []).length
-    ),
+    sourceStatus("neptun", cache.neptun, now, "NEPTUN OSINT, nie radar · neptun.in.ua", neptun.length),
+    sourceStatus("ua", cache.ua, now, `alarmy UA (NEPTUN) · ${ua.length} obwodów`, ua.length),
     sourceStatus(
       "adsb",
-      cache.adsb.data !== null,
-      cache.adsb.at ? (now - cache.adsb.at) / 1000 : 9999,
-      cache.adsb.data
-        ? `adsb.lol · ${(cache.adsb.data || []).filter((a) => !a.mil).length} cywilnych nad PL · ${(cache.adsb.data || []).filter((a) => a.mil).length} wojskowych · 0 pkt`
-        : cache.adsb.err || "brak",
-      (cache.adsb.data || []).length
+      cache.adsb,
+      now,
+      `adsb.lol · ${adsb.filter((a) => !a.mil).length} cywilnych nad PL · ${adsb.filter((a) => a.mil).length} wojskowych · 0 pkt` +
+        (adsbPartialError ? ` · częściowo: ${adsbPartialError}` : ""),
+      adsb.length
     ),
     sourceStatus(
       "rss",
-      cache.rss.data !== null || cache.rso.data !== null,
-      Math.min(cache.rss.at || now, cache.rso.at || now) ? (now - Math.max(cache.rss.at || 0, cache.rso.at || 0)) / 1000 : 9999,
-      rssCombined.length ? "RMF / PAP / RSO · treść, nie sam tytuł" : cache.rss.err || "brak relacji operacyjnych",
+      rssEntry,
+      now,
+      rssCombined.length ? "RMF / PAP / RSO · treść, nie sam tytuł" : "brak relacji operacyjnych",
       rssCombined.length
     ),
     sourceStatus(
       "rcb",
-      cache.rso.data !== null,
-      cache.rso.at ? (now - cache.rso.at) / 1000 : 9999,
-      cache.rso.err && !cache.rso.data ? cache.rso.err : rso.rcb?.active ? rso.rcb.title : "RSO · brak alertu powietrznego",
+      cache.rso,
+      now,
+      rso.rcb?.active ? rso.rcb.title : "RSO · brak alertu powietrznego",
       rso.rcb?.active ? 1 : 0
     ),
     { id: "pazp", ok: true, age_s: 0, message: "brak publicznego AUP w tym cyklu — warstwa pusta", records: 0, diode: "late" },

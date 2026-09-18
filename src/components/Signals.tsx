@@ -21,7 +21,8 @@ export function SignalsView({ now }: { now: number }) {
     const rows = [...(state?.voivodeships ?? [])];
     rows.sort((a, b) => b.points - a.points || a.eastRank - b.eastRank);
     return rows.filter((v) => {
-      if (watch && v.points < 2) return false;
+      // Level too: an RCB alert is priority even below 2 points.
+      if (watch && v.level === "info" && v.points < 2) return false;
       if (east && !EAST_IDS.includes(v.id) && v.eastRank > 4) return false;
       if (neptun && v.breakdown.neptun <= 0) return false;
       return true;

@@ -299,7 +299,7 @@ export function VoivBody({
                 s.title
               )}
               <div className="tiny">
-                {s.source} · {t(lang, "update")} {ageLabel(age, lang)} · waga {s.weight.toFixed(2)}
+                {s.source} · {t(lang, "update")} {ageLabel(age, lang)} · {t(lang, "weight")} {s.weight.toFixed(2)}
               </div>
             </div>
             <span className="tabular">{fmtPts(s.points, lang)}</span>

@@ -4,6 +4,7 @@ import { useStore } from "../store";
 import { t } from "../i18n";
 import { uid } from "../lib";
 import { playTest } from "../audio";
+import { isValidBackendUrl } from "../api";
 import type { Place } from "../types";
 
 export function SettingsView() {
@@ -36,8 +37,20 @@ export function SettingsView() {
   const [name, setName] = useState("");
   const [voiv, setVoiv] = useState("lubelskie");
   const [url, setUrl] = useState(backendUrl);
+  const [urlInvalid, setUrlInvalid] = useState(false);
 
   if (!open) return null;
+
+  function saveBackend() {
+    const next = url.trim().replace(/\/$/, "");
+    // A malformed URL would be persisted and break every reload, so it never reaches the store.
+    if (!isValidBackendUrl(next)) {
+      setUrlInvalid(true);
+      return;
+    }
+    setUrlInvalid(false);
+    setBackendUrl(next);
+  }
 
   function addPlace() {
     if (places.length >= 8 || !name.trim()) return;
@@ -46,11 +59,13 @@ export function SettingsView() {
     setName("");
   }
 
-  async function gps(id: string) {
+  function gps(id: string) {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setPlaces(places.map((p) => (p.id === id ? { ...p, lat: pos.coords.latitude, lon: pos.coords.longitude } : p)));
+        // The fix can take seconds; read the current list so edits made meanwhile are kept.
+        const current = useStore.getState().places;
+        setPlaces(current.map((p) => (p.id === id ? { ...p, lat: pos.coords.latitude, lon: pos.coords.longitude } : p)));
       },
       () => undefined,
       { enableHighAccuracy: false, maximumAge: 0, timeout: 8000 }
@@ -170,10 +185,18 @@ export function SettingsView() {
 
         <label className="field">
           {t(lang, "backend")}
-          <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://" />
+          <input
+            value={url}
+            onChange={(e) => {
+              setUrl(e.target.value);
+              setUrlInvalid(false);
+            }}
+            placeholder="https://"
+            aria-invalid={urlInvalid}
+          />
         </label>
-        <p className="tiny">{t(lang, "backendHint")}</p>
-        <button className="ghost" onClick={() => setBackendUrl(url.trim())}>
+        <p className="tiny">{t(lang, urlInvalid ? "backendInvalid" : "backendHint")}</p>
+        <button className="ghost" onClick={saveBackend}>
           {t(lang, "save")}
         </button>
       </div>
