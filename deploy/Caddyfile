@@ -1,0 +1,6 @@
+# Caddy terminates HTTPS (automatic Let's Encrypt) and proxies HTTP + WebSocket to the Node server,
+# which stays bound to 127.0.0.1. setup.sh substitutes the host name.
+{$ZORYA_HOST} {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8787
+}

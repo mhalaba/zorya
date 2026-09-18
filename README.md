@@ -14,7 +14,7 @@ npm run dev
 ```
 
 UI: [http://127.0.0.1:5173](http://127.0.0.1:5173)  
-API: `GET /api/state`, `GET /api/history/bundle?hours=12`, `WS /ws/state`
+API: `GET /api/state`, `GET /api/history/bundle?hours=12`, `WS /api/ws`
 
 Produkcja:
 
@@ -23,7 +23,20 @@ npm run build
 npm start
 ```
 
-Domyślny stan mock to spokój: Polska bez progów, 1–2 obiekty NEPTUN daleko na Ukrainie (warstwa obserwacji, 0 pkt), jedna strefa TSA bez punktów. Brak fałszywego ruchu nad Polską.
+Serwer od startu czyta źródła na żywo (co 60 s). Źródło, które nie odpowiada dłużej niż 15 minut, gaśnie (czerwona dioda) i przestaje wnosić dane do fuzji.
+
+W produkcji ustaw `VAPID_SUBJECT` (np. `mailto:ty@twojadomena.pl`) — usługa push Apple odrzuca domyślny adres `@localhost`.
+
+## Publikacja (Oracle Cloud Always Free)
+
+Maszyna z Ubuntu 22.04/24.04 (np. `VM.Standard.A1.Flex`), w security list VCN otwarte porty 80 i 443. Na serwerze:
+
+```bash
+git clone https://github.com/mhalaba/zorya.git && cd zorya
+sudo ZORYA_HOST=<ip-z-kreskami>.sslip.io bash deploy/setup.sh
+```
+
+Skrypt instaluje Node 22 i Caddy (HTTPS z Let's Encrypt), buduje aplikację i uruchamia ją jako usługę `zorya`. Aktualizacja: `sudo bash /opt/zorya/deploy/update.sh`. Klucze VAPID powstają w `/opt/zorya/server/vapid.json` — nie kasuj ich, bo wygasną wszystkie subskrypcje push.
 
 ## Zasady fuzji
 

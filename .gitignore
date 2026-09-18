@@ -8,3 +8,4 @@ logs
 *.log
 server/vapid.json
 server/push-subs.json
+.claude/

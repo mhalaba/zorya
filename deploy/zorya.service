@@ -1,0 +1,21 @@
+[Unit]
+Description=Zorya fusion server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=zorya
+WorkingDirectory=/opt/zorya
+Environment=NODE_ENV=production
+Environment=PORT=8787
+EnvironmentFile=-/etc/zorya.env
+ExecStart=/usr/bin/node server/index.mjs
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
