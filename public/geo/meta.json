@@ -1,0 +1,334 @@
+{
+  "pl": [
+    {
+      "id": "slaskie",
+      "name": "śląskie",
+      "east_rank": 10,
+      "lat": 50.331,
+      "lon": 18.9939
+    },
+    {
+      "id": "opolskie",
+      "name": "opolskie",
+      "east_rank": 12,
+      "lat": 50.647,
+      "lon": 17.8999
+    },
+    {
+      "id": "wielkopolskie",
+      "name": "wielkopolskie",
+      "east_rank": 11,
+      "lat": 52.3307,
+      "lon": 17.2432
+    },
+    {
+      "id": "zachodniopomorskie",
+      "name": "zachodniopomorskie",
+      "east_rank": 15,
+      "lat": 53.5848,
+      "lon": 15.5431
+    },
+    {
+      "id": "swietokrzyskie",
+      "name": "świętokrzyskie",
+      "east_rank": 5,
+      "lat": 50.7635,
+      "lon": 20.7692
+    },
+    {
+      "id": "kujawsko-pomorskie",
+      "name": "kujawsko-pomorskie",
+      "east_rank": 8,
+      "lat": 53.0726,
+      "lon": 18.4879
+    },
+    {
+      "id": "podlaskie",
+      "name": "podlaskie",
+      "east_rank": 0,
+      "lat": 53.2647,
+      "lon": 22.9294
+    },
+    {
+      "id": "dolnoslaskie",
+      "name": "dolnośląskie",
+      "east_rank": 13,
+      "lat": 51.0897,
+      "lon": 16.4105
+    },
+    {
+      "id": "podkarpackie",
+      "name": "podkarpackie",
+      "east_rank": 2,
+      "lat": 49.9539,
+      "lon": 22.1692
+    },
+    {
+      "id": "malopolskie",
+      "name": "małopolskie",
+      "east_rank": 6,
+      "lat": 49.859,
+      "lon": 20.2693
+    },
+    {
+      "id": "pomorskie",
+      "name": "pomorskie",
+      "east_rank": 9,
+      "lat": 54.1548,
+      "lon": 17.9867
+    },
+    {
+      "id": "warminsko-mazurskie",
+      "name": "warmińsko-mazurskie",
+      "east_rank": 3,
+      "lat": 53.8573,
+      "lon": 20.8248
+    },
+    {
+      "id": "lodzkie",
+      "name": "łódzkie",
+      "east_rank": 7,
+      "lat": 51.6048,
+      "lon": 19.4177
+    },
+    {
+      "id": "mazowieckie",
+      "name": "mazowieckie",
+      "east_rank": 4,
+      "lat": 52.346,
+      "lon": 21.0964
+    },
+    {
+      "id": "lubelskie",
+      "name": "lubelskie",
+      "east_rank": 1,
+      "lat": 51.2208,
+      "lon": 22.9004
+    },
+    {
+      "id": "lubuskie",
+      "name": "lubuskie",
+      "east_rank": 14,
+      "lat": 52.1962,
+      "lon": 15.3428
+    }
+  ],
+  "ua": [
+    {
+      "id": "cherkasy",
+      "name_pl": "czerkaski",
+      "name_en": "Cherkasy",
+      "lon": 31.3784,
+      "lat": 49.2536,
+      "dist_km": 429.5
+    },
+    {
+      "id": "chernihiv",
+      "name_pl": "czernihowski",
+      "name_en": "Chernihiv",
+      "lon": 32.0167,
+      "lat": 51.3472,
+      "dist_km": 443.8
+    },
+    {
+      "id": "chernivtsi",
+      "name_pl": "czerniowiecki",
+      "name_en": "Chernivtsi",
+      "lon": 25.9711,
+      "lat": 48.2698,
+      "dist_km": 182.2
+    },
+    {
+      "id": "crimea",
+      "name_pl": "Krym",
+      "name_en": "Crimea",
+      "lon": 34.3802,
+      "lat": 45.333,
+      "dist_km": 827.4
+    },
+    {
+      "id": "dnipropetrovsk",
+      "name_pl": "dniepropetrowski",
+      "name_en": "Dnipropetrovsk",
+      "lon": 34.8565,
+      "lat": 48.2758,
+      "dist_km": 708.5
+    },
+    {
+      "id": "donetsk",
+      "name_pl": "doniecki",
+      "name_en": "Donetsk",
+      "lon": 37.6694,
+      "lat": 48.0473,
+      "dist_km": 927.0
+    },
+    {
+      "id": "ivano-frankivsk",
+      "name_pl": "iwanofrankiwski",
+      "name_en": "Ivano-Frankivsk",
+      "lon": 24.6093,
+      "lat": 48.7051,
+      "dist_km": 49.1
+    },
+    {
+      "id": "kharkiv",
+      "name_pl": "charkowski",
+      "name_en": "Kharkiv",
+      "lon": 36.5144,
+      "lat": 49.6128,
+      "dist_km": 768.6
+    },
+    {
+      "id": "kherson",
+      "name_pl": "chersoński",
+      "name_en": "Kherson",
+      "lon": 33.5774,
+      "lat": 46.6627,
+      "dist_km": 698.7
+    },
+    {
+      "id": "khmelnytskyi",
+      "name_pl": "chmielnicki",
+      "name_en": "Khmelnytskyi",
+      "lon": 26.9303,
+      "lat": 49.509,
+      "dist_km": 156.9
+    },
+    {
+      "id": "kyiv",
+      "name_pl": "kijowski",
+      "name_en": "Kyiv Oblast",
+      "lon": 30.4778,
+      "lat": 50.3014,
+      "dist_km": 361.4
+    },
+    {
+      "id": "kyiv-city",
+      "name_pl": "Kijów",
+      "name_en": "Kyiv",
+      "lon": 30.5222,
+      "lat": 50.4578,
+      "dist_km": 432.5
+    },
+    {
+      "id": "kirovohrad",
+      "name_pl": "kirowohradzki",
+      "name_en": "Kirovohrad",
+      "lon": 32.1072,
+      "lat": 48.4608,
+      "dist_km": 476.0
+    },
+    {
+      "id": "lviv",
+      "name_pl": "lwowski",
+      "name_en": "Lviv",
+      "lon": 23.9162,
+      "lat": 49.7241,
+      "dist_km": 0.5
+    },
+    {
+      "id": "luhansk",
+      "name_pl": "ługański",
+      "name_en": "Luhansk",
+      "lon": 39.0267,
+      "lat": 48.9859,
+      "dist_km": 986.8
+    },
+    {
+      "id": "mykolaiv",
+      "name_pl": "mikołajowski",
+      "name_en": "Mykolaiv",
+      "lon": 31.7899,
+      "lat": 47.442,
+      "dist_km": 522.2
+    },
+    {
+      "id": "odesa",
+      "name_pl": "odeski",
+      "name_en": "Odesa",
+      "lon": 29.8653,
+      "lat": 46.745,
+      "dist_km": 439.6
+    },
+    {
+      "id": "poltava",
+      "name_pl": "połtawski",
+      "name_en": "Poltava",
+      "lon": 33.8113,
+      "lat": 49.7136,
+      "dist_km": 566.5
+    },
+    {
+      "id": "rivne",
+      "name_pl": "rówieński",
+      "name_en": "Rivne",
+      "lon": 26.3976,
+      "lat": 51.0434,
+      "dist_km": 71.6
+    },
+    {
+      "id": "sevastopol",
+      "name_pl": "Sewastopol",
+      "name_en": "Sevastopol",
+      "lon": 33.6527,
+      "lat": 44.5732,
+      "dist_km": 932.5
+    },
+    {
+      "id": "sumy",
+      "name_pl": "sumski",
+      "name_en": "Sumy",
+      "lon": 34.1431,
+      "lat": 51.0948,
+      "dist_km": 619.3
+    },
+    {
+      "id": "ternopil",
+      "name_pl": "tarnopolski",
+      "name_en": "Ternopil",
+      "lon": 25.64,
+      "lat": 49.4026,
+      "dist_km": 104.0
+    },
+    {
+      "id": "vinnytsia",
+      "name_pl": "winnicki",
+      "name_en": "Vinnytsia",
+      "lon": 28.6921,
+      "lat": 48.9265,
+      "dist_km": 279.9
+    },
+    {
+      "id": "volyn",
+      "name_pl": "wołyński",
+      "name_en": "Volyn",
+      "lon": 24.8818,
+      "lat": 51.2026,
+      "dist_km": 0.5
+    },
+    {
+      "id": "zakarpattia",
+      "name_pl": "zakarpacki",
+      "name_en": "Zakarpattia",
+      "lon": 23.2813,
+      "lat": 48.4049,
+      "dist_km": 0.7
+    },
+    {
+      "id": "zaporizhzhia",
+      "name_pl": "zaporoski",
+      "name_en": "Zaporizhzhia",
+      "lon": 35.6995,
+      "lat": 47.2514,
+      "dist_km": 811.9
+    },
+    {
+      "id": "zhytomyr",
+      "name_pl": "żytomierski",
+      "name_en": "Zhytomyr",
+      "lon": 28.4846,
+      "lat": 50.6426,
+      "dist_km": 216.7
+    }
+  ]
+}
