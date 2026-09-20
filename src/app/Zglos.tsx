@@ -124,6 +124,7 @@ export function Zglos() {
         <div className="field">
           <label>{s("report.note")}</label>
           <textarea
+            rows={1}
             maxLength={200}
             placeholder={s("report.note_placeholder")}
             value={note}

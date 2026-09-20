@@ -36,17 +36,19 @@ html.reduce-motion *::after {
 .app-root {
   max-width: var(--z-size-app-column);
   margin: 0 auto;
-  min-height: 100dvh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   background: var(--z-bg);
   color: var(--z-text);
   position: relative;
+  overflow: hidden;
 }
 .app-root main {
   flex: 1;
+  min-height: 0;
   overflow: auto;
-  padding-bottom: var(--z-space-2);
+  padding-bottom: var(--z-space-4);
 }
 
 .hdr {
@@ -203,7 +205,8 @@ html.reduce-motion *::after {
 .card.lvl-alarm .when,
 .card.lvl-alarm .where,
 .card.lvl-alarm .conf,
-.card.lvl-alarm .badge { color: var(--z-on-status); }
+.card.lvl-alarm .badge,
+.card.lvl-alarm .lg { color: var(--z-on-status); }
 .card .src { display: flex; flex-wrap: wrap; gap: 6px; }
 .src .s { font-size: 13px; line-height: 18px; padding: 1px 6px; border: 1px solid var(--z-line-strong); color: var(--z-text-2); }
 .card.lvl-alarm .src .s { border-color: var(--z-on-status); color: var(--z-on-status); }
@@ -227,14 +230,12 @@ html.reduce-motion *::after {
 .sig .k { grid-column: 1 / -1; font-size: 13px; line-height: 18px; color: var(--z-text-2); }
 
 .nav {
-  margin-top: auto;
+  flex: none;
   min-height: 64px;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   border-top: 1px solid var(--z-line-strong);
   background: var(--z-bg-raised);
-  position: sticky;
-  bottom: 0;
   z-index: 20;
   padding-bottom: env(safe-area-inset-bottom);
 }
@@ -345,9 +346,9 @@ html.reduce-motion *::after {
 .health b { width: 8px; height: 8px; background: var(--z-status-odwolanie); display: inline-block; }
 .health.warn b { background: var(--z-status-ostrzezenie); }
 .health.off b { background: transparent; border: 1.5px solid var(--z-line-strong); }
-h1.screen { margin: 0; padding: var(--z-space-5) var(--z-space-4) var(--z-space-2); font-size: 28px; line-height: 34px; font-weight: 700; }
+h1.screen { margin: 0; padding: var(--z-space-4) var(--z-space-4) var(--z-space-2); font-size: 28px; line-height: 34px; font-weight: 700; }
 
-.form { padding: 0 var(--z-space-4) var(--z-space-4); display: grid; gap: var(--z-space-4); }
+.form { padding: 0 var(--z-space-4) var(--z-space-2); display: grid; gap: var(--z-space-3); }
 .field { display: grid; gap: 6px; }
 .field label { font-size: 14px; line-height: 20px; color: var(--z-text-2); }
 .field .in, .field input, .field textarea {
@@ -359,13 +360,16 @@ h1.screen { margin: 0; padding: var(--z-space-5) var(--z-space-4) var(--z-space-
   color: var(--z-text);
   width: 100%;
 }
-.field textarea { min-height: 88px; resize: vertical; }
+.field textarea { min-height: 44px; height: 44px; resize: vertical; }
 .field .in.ph, .field input::placeholder, .field textarea::placeholder { color: var(--z-text-2); }
 .field .file-ph {
   position: relative;
   display: flex;
   align-items: center;
   cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .field .file-ph input[type="file"] {
   position: absolute;
@@ -395,7 +399,7 @@ h1.screen { margin: 0; padding: var(--z-space-5) var(--z-space-4) var(--z-space-
 .map {
   position: relative;
   flex: 1;
-  min-height: 560px;
+  min-height: 0;
   background: var(--z-map-land);
   overflow: hidden;
 }

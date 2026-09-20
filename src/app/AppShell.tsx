@@ -127,17 +127,19 @@ export function AppShell({ path }: { path: string }) {
         <Mapa />
       ) : rest[0] === "zdarzenie" && rest[1] ? (
         <Zdarzenie id={rest[1]} />
-      ) : rest[0] === "sygnaly" && rest[1] ? (
-        <Zrodlo id={rest[1]} />
-      ) : view === "sygnaly" ? (
-        <Sygnaly />
-      ) : view === "zglos" ? (
-        <Zglos />
-      ) : view === "wiecej" ? (
-        <Wiecej />
       ) : (
         <main>
-          <Horyzont />
+          {rest[0] === "sygnaly" && rest[1] ? (
+            <Zrodlo id={rest[1]} />
+          ) : view === "sygnaly" ? (
+            <Sygnaly />
+          ) : view === "zglos" ? (
+            <Zglos />
+          ) : view === "wiecej" ? (
+            <Wiecej />
+          ) : (
+            <Horyzont />
+          )}
         </main>
       )}
       <FilterSheet />
