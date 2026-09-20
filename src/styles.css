@@ -497,6 +497,165 @@ h1.screen { margin: 0; padding: var(--z-space-4) var(--z-space-4) var(--z-space-
   text-align: right;
   z-index: 2;
 }
+.app-root.map-view {
+  max-width: none;
+}
+
+.map-root {
+  position: absolute;
+  inset: 0;
+}
+.map-root .maplibregl-canvas { outline: none; }
+.maplibregl-ctrl-attrib {
+  background: transparent !important;
+  color: var(--z-text-2) !important;
+  font-size: 10px !important;
+}
+
+.map-tools-end {
+  gap: 8px;
+}
+.map-fab {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--z-bg-raised);
+  border: 1px solid var(--z-line-strong);
+  color: var(--z-text);
+  position: relative;
+}
+.map-fab.on { border-color: var(--z-text); }
+.chip-count {
+  font-family: var(--z-font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--z-text-2);
+}
+.icon-btn {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--z-text);
+}
+.map-chips .chip { position: relative; }
+.map-status {
+  position: absolute;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  font-size: 13px;
+  color: var(--z-text-2);
+  background: var(--z-bg-raised);
+  border: 1px solid var(--z-line-strong);
+  padding: 4px 10px;
+}
+.live-map .map-attr {
+  left: max(var(--z-space-3), env(safe-area-inset-left));
+  right: auto;
+  text-align: left;
+  max-width: 70%;
+  z-index: 3;
+}
+
+.drawer {
+  position: absolute;
+  z-index: 26;
+  width: min(360px, calc(100% - 24px));
+  max-height: calc(100% - 140px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  right: max(var(--z-space-3), env(safe-area-inset-right));
+  bottom: calc(64px + env(safe-area-inset-bottom) + 8px);
+  left: auto;
+  background: var(--z-bg-raised);
+  border: 1px solid var(--z-line-strong);
+}
+.drawer-head, .sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 12px 0 16px;
+}
+.drawer-body, .sheet-body { overflow: auto; padding: 16px 16px 24px; }
+.drawer h2 { margin: 0; font-size: 18px; font-weight: 700; }
+.stack { display: flex; flex-direction: column; gap: 10px; }
+.scale {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 8px 10px;
+  align-items: center;
+  font-size: 13px;
+}
+.swatch { width: 22px; height: 14px; border: 1px solid var(--z-line-strong); }
+@media (max-width: 899px) {
+  .drawer {
+    left: 8px;
+    right: 8px;
+    width: auto;
+  }
+}
+.muted { color: var(--z-text-2); }
+.tiny { color: var(--z-text-2); font-size: 12px; line-height: 1.35; }
+.tabular { font-variant-numeric: tabular-nums; }
+.drawer .row { padding: 0; align-items: center; }
+.row.space { justify-content: space-between; }
+.icon-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.obj-glyph {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border: 1px solid var(--z-text-2);
+  transform: rotate(45deg);
+}
+.cameras { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cam-tile {
+  aspect-ratio: 16/10;
+  border: 1px solid var(--z-line-strong);
+  display: flex;
+  align-items: flex-end;
+  padding: 8px;
+  font-size: 12px;
+  color: var(--z-text-2);
+}
+.bar {
+  display: flex;
+  height: 6px;
+  overflow: hidden;
+  background: var(--z-bg);
+  margin-top: 8px;
+}
+.bar span { display: block; height: 100%; }
+.bar .neptun { background: var(--z-status-ostrzezenie); }
+.bar .ua { background: var(--z-status-alarm); }
+.bar .rcb { background: var(--z-text); }
+.bar .media { background: var(--z-calm); }
+.bar .pazp { background: var(--z-text-2); }
+.bar .other { background: var(--z-line-strong); }
+.drawer .sig {
+  margin: 0;
+  width: 100%;
+  grid-template-columns: 20px 1fr auto;
+  padding: 8px 0;
+}
+.drawer .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--z-text-2);
+  display: inline-block;
+}
+.drawer .dot.ok { background: var(--z-status-odwolanie); }
 
 .offline-bar {
   font-size: 14px;

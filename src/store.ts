@@ -10,6 +10,7 @@ import type {
   UserReport,
   WatchedArea,
 } from "./model";
+import type { FusionState, HistoryBundle, Lang, Place } from "./types";
 
 export type Sheet =
   | { kind: "areas" }
@@ -19,6 +20,16 @@ export type Sheet =
   | { kind: "theme" }
   | { kind: "quiet" }
   | { kind: "add-area" }
+  | null;
+
+export type Drawer =
+  | { kind: "source"; id: string }
+  | { kind: "legend" }
+  | { kind: "object"; id: string }
+  | { kind: "zone"; id: string }
+  | { kind: "cameras" }
+  | { kind: "adsb"; id: string }
+  | { kind: "voiv"; id: string }
   | null;
 
 interface Settings {
@@ -36,6 +47,19 @@ interface Settings {
   reports: UserReport[];
   alarmOpened: Record<string, boolean>;
   lastHorizon: HorizonPayload | null;
+  lang: Lang;
+  backendUrl: string;
+  muted: boolean;
+  pitch3d: boolean;
+  showPazp: boolean;
+  showTracks: boolean;
+  showCivAdsb: boolean;
+  showMilAdsb: boolean;
+  showNeptun: boolean;
+  showUaAlerts: boolean;
+  labelDensity: "low" | "dense";
+  places: Place[];
+  homeVoiv: string | null;
 }
 
 interface Live {
@@ -49,6 +73,21 @@ interface Live {
   sample: boolean;
   signalFilter: Record<string, boolean>;
   mapLayers: { events: boolean; sensors: boolean; areas: boolean };
+  state: FusionState | null;
+  stateAt: number | null;
+  connecting: boolean;
+  drawer: Drawer;
+  selectedVoiv: string | null;
+  hoverVoiv: string | null;
+  cameraPreset: "default" | "region" | "pl" | "flank";
+  cameraNonce: number;
+  historyMode: boolean;
+  history: HistoryBundle | null;
+  historyIdx: number;
+  historyPlaying: boolean;
+  historySpeed: 1 | 4 | 12;
+  sirenOn: boolean;
+  sirenVoiv: string | null;
 }
 
 interface Actions {
@@ -75,6 +114,32 @@ interface Actions {
   setError: (v: string | null) => void;
   setSignalFilter: (k: string, v: boolean) => void;
   setMapLayer: (k: "events" | "sensors" | "areas", v: boolean) => void;
+  setLang: (lang: Lang) => void;
+  setBackendUrl: (url: string) => void;
+  setMuted: (v: boolean) => void;
+  setPitch3d: (v: boolean) => void;
+  setShowPazp: (v: boolean) => void;
+  setShowTracks: (v: boolean) => void;
+  setShowCivAdsb: (v: boolean) => void;
+  setShowMilAdsb: (v: boolean) => void;
+  setShowNeptun: (v: boolean) => void;
+  setShowUaAlerts: (v: boolean) => void;
+  setLabelDensity: (v: "low" | "dense") => void;
+  setPlaces: (places: Place[]) => void;
+  setHomeVoiv: (id: string | null) => void;
+  setDrawer: (d: Drawer) => void;
+  setSelectedVoiv: (id: string | null) => void;
+  setHoverVoiv: (id: string | null) => void;
+  setCameraPreset: (p: Live["cameraPreset"]) => void;
+  bumpCamera: () => void;
+  setLiveState: (s: FusionState) => void;
+  setConnecting: (v: boolean) => void;
+  setHistory: (h: HistoryBundle | null) => void;
+  setHistoryMode: (v: boolean) => void;
+  setHistoryIdx: (i: number) => void;
+  setHistoryPlaying: (v: boolean) => void;
+  setHistorySpeed: (s: 1 | 4 | 12) => void;
+  setSiren: (on: boolean, voiv?: string | null) => void;
 }
 
 export type Store = Settings & Live & Actions;
@@ -96,6 +161,19 @@ export const useStore = create<Store>()(
       reports: [],
       alarmOpened: {},
       lastHorizon: null,
+      lang: "pl",
+      backendUrl: "",
+      muted: false,
+      pitch3d: false,
+      showPazp: false,
+      showTracks: true,
+      showCivAdsb: true,
+      showMilAdsb: true,
+      showNeptun: true,
+      showUaAlerts: true,
+      labelDensity: "dense",
+      places: [],
+      homeVoiv: null,
       view: "horyzont",
       sheet: null,
       selectedAreaId: null,
@@ -106,6 +184,21 @@ export const useStore = create<Store>()(
       sample: false,
       signalFilter: { official: true, sensor: true, radio: true, reports: true },
       mapLayers: { events: true, sensors: false, areas: false },
+      state: null,
+      stateAt: null,
+      connecting: true,
+      drawer: null,
+      selectedVoiv: null,
+      hoverVoiv: null,
+      cameraPreset: "default",
+      cameraNonce: 0,
+      historyMode: false,
+      history: null,
+      historyIdx: 0,
+      historyPlaying: false,
+      historySpeed: 1,
+      sirenOn: false,
+      sirenVoiv: null,
       setTheme: (theme) => set({ theme }),
       setReduceMotion: (reduceMotion) => set({ reduceMotion }),
       setAreas: (areas) => set({ areas, selectedAreaId: areas.find((a) => a.primary)?.area.id ?? areas[0]?.area.id ?? null }),
@@ -132,6 +225,7 @@ export const useStore = create<Store>()(
           areas,
           notifyGranted,
           selectedAreaId: areas.find((a) => a.primary)?.area.id ?? areas[0]?.area.id ?? null,
+          homeVoiv: areas.find((a) => a.area.kind === "wojewodztwo")?.area.id ?? null,
         }),
       setNotifyGranted: (notifyGranted) => set({ notifyGranted }),
       muteEvent: (id, until) => set((s) => ({ mutedEvents: { ...s.mutedEvents, [id]: until } })),
@@ -157,6 +251,32 @@ export const useStore = create<Store>()(
       setError: (error) => set({ error }),
       setSignalFilter: (k, v) => set((s) => ({ signalFilter: { ...s.signalFilter, [k]: v } })),
       setMapLayer: (k, v) => set((s) => ({ mapLayers: { ...s.mapLayers, [k]: v } })),
+      setLang: (lang) => set({ lang }),
+      setBackendUrl: (backendUrl) => set({ backendUrl }),
+      setMuted: (muted) => set({ muted }),
+      setPitch3d: (pitch3d) => set({ pitch3d }),
+      setShowPazp: (showPazp) => set({ showPazp }),
+      setShowTracks: (showTracks) => set({ showTracks }),
+      setShowCivAdsb: (showCivAdsb) => set({ showCivAdsb }),
+      setShowMilAdsb: (showMilAdsb) => set({ showMilAdsb }),
+      setShowNeptun: (showNeptun) => set({ showNeptun }),
+      setShowUaAlerts: (showUaAlerts) => set({ showUaAlerts }),
+      setLabelDensity: (labelDensity) => set({ labelDensity }),
+      setPlaces: (places) => set({ places }),
+      setHomeVoiv: (homeVoiv) => set({ homeVoiv }),
+      setDrawer: (drawer) => set({ drawer }),
+      setSelectedVoiv: (selectedVoiv) => set({ selectedVoiv }),
+      setHoverVoiv: (hoverVoiv) => set({ hoverVoiv }),
+      setCameraPreset: (cameraPreset) => set({ cameraPreset, cameraNonce: Date.now() }),
+      bumpCamera: () => set({ cameraNonce: Date.now() }),
+      setLiveState: (state) => set({ state, stateAt: Date.now(), connecting: false, offline: false }),
+      setConnecting: (connecting) => set({ connecting }),
+      setHistory: (history) => set({ history }),
+      setHistoryMode: (historyMode) => set({ historyMode, historyPlaying: false }),
+      setHistoryIdx: (historyIdx) => set({ historyIdx }),
+      setHistoryPlaying: (historyPlaying) => set({ historyPlaying }),
+      setHistorySpeed: (historySpeed) => set({ historySpeed }),
+      setSiren: (sirenOn, sirenVoiv = null) => set({ sirenOn, sirenVoiv }),
     }),
     {
       name: "zorya-local-v2",
@@ -176,6 +296,19 @@ export const useStore = create<Store>()(
         alarmOpened: s.alarmOpened,
         lastHorizon: s.lastHorizon,
         selectedAreaId: s.selectedAreaId,
+        lang: s.lang,
+        backendUrl: s.backendUrl,
+        muted: s.muted,
+        pitch3d: s.pitch3d,
+        showPazp: s.showPazp,
+        showTracks: s.showTracks,
+        showCivAdsb: s.showCivAdsb,
+        showMilAdsb: s.showMilAdsb,
+        showNeptun: s.showNeptun,
+        showUaAlerts: s.showUaAlerts,
+        labelDensity: s.labelDensity,
+        places: s.places,
+        homeVoiv: s.homeVoiv,
       }),
     }
   )

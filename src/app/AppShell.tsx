@@ -13,6 +13,7 @@ import { Zglos } from "./Zglos";
 import { Wiecej } from "./Wiecej";
 import { Onboarding } from "./Onboarding";
 import { maybeNotify } from "../notify";
+import { useLiveFusion } from "../live";
 
 export function AppShell({ path }: { path: string }) {
   const [hydrated, setHydrated] = useState(() => useStore.persist.hasHydrated());
@@ -27,6 +28,9 @@ export function AppShell({ path }: { path: string }) {
   const cacheHorizon = useStore((x) => x.cacheHorizon);
   const error = useStore((x) => x.error);
   const setError = useStore((x) => x.setError);
+  const fusion = useStore((x) => x.state);
+
+  useLiveFusion();
 
   const parts = path.replace(/\/$/, "").split("/").filter(Boolean);
   const rest = parts.slice(1);
@@ -103,7 +107,8 @@ export function AppShell({ path }: { path: string }) {
     return <div className="app-root" />;
   }
 
-  if (!onboardingDone) {
+  const liveReady = Boolean(fusion);
+  if (!onboardingDone && !liveReady && !activeScenario()) {
     return (
       <div className="app-root">
         <Onboarding />
@@ -112,7 +117,7 @@ export function AppShell({ path }: { path: string }) {
   }
 
   return (
-    <div className="app-root">
+    <div className={`app-root${view === "mapa" ? " map-view" : ""}`}>
       <AppHeader level={level} />
       {(offline || activeScenario() === "offline") && dataTime && <OfflineBar time={fmtTime(dataTime)} />}
       {error && (
