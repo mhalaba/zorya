@@ -104,7 +104,7 @@ export function Horyzont() {
 
   return (
     <>
-      {!notifyGranted && onboardingDone && (
+      {!notifyGranted && onboardingDone && !horizon?.sample && (
         <p className="notify-off">
           {s("home.notifications_off")}{" "}
           <button type="button" className="linkish" onClick={() => go("/app/wiecej")}>

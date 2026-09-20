@@ -119,8 +119,8 @@ export function fixtureHorizon(areaId: string | null, scenario: Scenario = "alar
     }
     return src;
   });
-  const enabled = sourcesView.filter((s) => s.enabled && s.health !== "disabled");
-  const activeSources = enabled.filter((s) => s.health === "fresh").length;
+  const counting = sourcesView.filter((src) => src.id !== "radio_ews" && src.enabled);
+  const activeSources = counting.filter((src) => src.health === "fresh" || src.health === "stale").length;
 
   const status: AreaStatus = {
     area,

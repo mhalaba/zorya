@@ -2,6 +2,14 @@ import type { ReactNode } from "react";
 import type { Confidence, Level } from "../model";
 import { s } from "../strings";
 
+const GLYPH: Record<Level, string> = {
+  cisza: `<g transform="scale(0.2)"><circle cx="120" cy="20" r="17" fill="none" stroke="currentColor" stroke-width="6"/><rect x="0" y="60" width="160" height="10" fill="currentColor"/></g>`,
+  obserwacja: `<g transform="scale(0.2)"><circle cx="120" cy="20" r="20" fill="currentColor"/><rect x="0" y="60" width="160" height="10" fill="currentColor"/></g>`,
+  ostrzezenie: `<g transform="scale(0.2)"><circle cx="120" cy="20" r="20" fill="currentColor"/><rect x="0" y="50" width="160" height="5" fill="currentColor"/><rect x="0" y="65" width="160" height="5" fill="currentColor"/></g>`,
+  alarm: `<g transform="scale(0.2)"><circle cx="120" cy="20" r="20" fill="currentColor"/><rect x="0" y="50" width="160" height="5" fill="currentColor"/><rect x="0" y="65" width="160" height="5" fill="currentColor"/></g>`,
+  odwolanie: `<g transform="scale(0.2)"><circle cx="120" cy="20" r="20" fill="currentColor"/><rect x="0" y="60" width="160" height="10" fill="currentColor"/></g>`,
+};
+
 export function LevelGlyph({
   level,
   size = "card",
@@ -11,8 +19,28 @@ export function LevelGlyph({
   size?: "inline" | "card" | "hero";
   breathe?: boolean;
 }) {
-  const cls = `lg lg-${level} lg-${size} lvl-${level}${breathe ? " star-breathe" : ""}`;
-  return <span className={cls} aria-hidden />;
+  const dim = size === "hero" ? { w: 56, h: 25 } : size === "inline" ? { w: 12, h: 5 } : { w: 24, h: 10.5 };
+  return (
+    <svg
+      className={`lg lg-${size} lvl-${level}${breathe ? " star-breathe" : ""}`}
+      viewBox="0 0 32 14"
+      width={dim.w}
+      height={dim.h}
+      fill="currentColor"
+      aria-hidden
+      dangerouslySetInnerHTML={{ __html: GLYPH[level] }}
+    />
+  );
+}
+
+/** Official mark geometry from brand/03-logo/zorya-mark-mono.svg (currentColor). */
+export function MarkSvg({ className = "mark" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 200 110" fill="currentColor" aria-hidden>
+      <circle cx="140" cy="40" r="20" fill="currentColor" />
+      <rect x="20" y="80" width="160" height="10" fill="currentColor" />
+    </svg>
+  );
 }
 
 export function ConfidenceRule({

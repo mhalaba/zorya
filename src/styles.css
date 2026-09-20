@@ -74,10 +74,14 @@ html.reduce-motion *::after {
   text-decoration: none;
   color: var(--z-text);
 }
-.brand .mark {
+.brand .mark,
+.brand svg.mark {
   height: var(--z-size-logo-header);
   width: auto;
+  max-width: none;
   display: block;
+  color: inherit;
+  flex: none;
 }
 .brand .wm {
   font-weight: 800;
@@ -92,6 +96,7 @@ html.reduce-motion *::after {
   align-items: center;
   gap: 6px;
   height: 32px;
+  max-width: 46%;
   padding: 0 var(--z-space-3);
   border: 1px solid var(--z-line-strong);
   font-size: 14px;
@@ -99,6 +104,9 @@ html.reduce-motion *::after {
   color: var(--z-text);
   background: transparent;
   font-family: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .chip.on { border-color: var(--z-text); }
 .chip .ico { width: 16px; height: 16px; }
@@ -110,7 +118,8 @@ html.reduce-motion *::after {
   gap: var(--z-space-4);
   align-items: start;
 }
-.status .star { width: 56px; height: 25px; margin-top: 6px; }
+.status .star,
+.status .lg-hero { width: 56px; height: 25px; margin-top: 6px; }
 .status .word { font-size: 28px; line-height: 34px; font-weight: 700; }
 .status .meta { color: var(--z-text-2); font-size: 14px; line-height: 20px; margin-top: 2px; }
 .status .meta .mono { font-family: var(--z-font-mono); font-weight: 500; }
@@ -124,24 +133,9 @@ html.reduce-motion *::after {
 
 .lg {
   display: inline-block;
-  background-color: currentColor;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-  -webkit-mask-size: contain;
-  mask-size: contain;
-  vertical-align: middle;
   flex: none;
+  vertical-align: middle;
 }
-.lg-cisza { -webkit-mask-image: url("/icons/level-cisza.svg"); mask-image: url("/icons/level-cisza.svg"); }
-.lg-obserwacja { -webkit-mask-image: url("/icons/level-obserwacja.svg"); mask-image: url("/icons/level-obserwacja.svg"); }
-.lg-ostrzezenie { -webkit-mask-image: url("/icons/level-ostrzezenie.svg"); mask-image: url("/icons/level-ostrzezenie.svg"); }
-.lg-alarm { -webkit-mask-image: url("/icons/level-alarm.svg"); mask-image: url("/icons/level-alarm.svg"); }
-.lg-odwolanie { -webkit-mask-image: url("/icons/level-odwolanie.svg"); mask-image: url("/icons/level-odwolanie.svg"); }
-.lg-inline { width: var(--z-size-star-inline); height: 5px; }
-.lg-card { width: 24px; height: 10.5px; }
-.lg-hero { width: 56px; height: 25px; }
 
 @keyframes star-breath {
   0%, 100% { opacity: 1; }
@@ -165,7 +159,7 @@ html.reduce-motion *::after {
 
 .horizon {
   position: relative;
-  margin: var(--z-space-2) var(--z-space-4);
+  margin: var(--z-space-2) var(--z-space-4) var(--z-space-8);
   height: 2px;
   background: var(--z-line-strong);
 }
@@ -348,7 +342,7 @@ html.reduce-motion *::after {
 .toggle.on i { left: auto; right: 3px; background: var(--z-text); }
 
 .health { display: inline-flex; align-items: center; gap: 6px; }
-.health b { width: 8px; height: 8px; border-radius: 9999px; background: var(--z-status-odwolanie); display: inline-block; }
+.health b { width: 8px; height: 8px; background: var(--z-status-odwolanie); display: inline-block; }
 .health.warn b { background: var(--z-status-ostrzezenie); }
 .health.off b { background: transparent; border: 1.5px solid var(--z-line-strong); }
 h1.screen { margin: 0; padding: var(--z-space-5) var(--z-space-4) var(--z-space-2); font-size: 28px; line-height: 34px; font-weight: 700; }
@@ -367,6 +361,21 @@ h1.screen { margin: 0; padding: var(--z-space-5) var(--z-space-4) var(--z-space-
 }
 .field textarea { min-height: 88px; resize: vertical; }
 .field .in.ph, .field input::placeholder, .field textarea::placeholder { color: var(--z-text-2); }
+.field .file-ph {
+  position: relative;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+.field .file-ph input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  min-height: 0;
+  border: 0;
+  padding: 0;
+}
 .field .err { font-size: 14px; color: var(--z-status-alarm); }
 .seg { display: grid; grid-template-columns: repeat(3, 1fr); }
 .seg button, .seg span {
@@ -505,7 +514,7 @@ details.box p { margin: var(--z-space-2) 0 0; font-size: 15px; line-height: 22px
 .demo .ev .k { display: flex; gap: 8px; align-items: center; color: var(--z-text-2); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500; }
 .demo .sub { border-top: 1px dashed var(--z-line-strong); padding-top: var(--z-space-3); color: var(--z-text-2); font-size: 14px; display: grid; gap: 4px; }
 .demo .sub .mono { font-family: var(--z-font-mono); font-weight: 500; }
-.sample-tag { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--z-text-2); }
+.sample-tag { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--z-text-2); font-weight: 500; }
 .band { border-top: 2px solid var(--z-line-strong); padding: var(--z-space-16) 0; }
 .band h2 { margin: 0 0 var(--z-space-8); font-size: 13px; line-height: 18px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500; color: var(--z-text-2); }
 .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--z-space-8); }

@@ -104,7 +104,7 @@ function HorizonDiagram() {
 export function Landing() {
   const [status, setStatus] = useState<StatusPayload | null>(null);
   const hero = landingHeroHorizon();
-  const sample = !status || status.sample !== false;
+  const sample = true;
 
   useEffect(() => {
     void fetchStatus().then(setStatus);

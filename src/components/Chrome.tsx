@@ -3,7 +3,7 @@ import { s } from "../strings";
 import { go } from "../nav";
 import { areaChipName } from "../format";
 import { useStore } from "../store";
-import { NAV_ICONS, PinIcon } from "./ui";
+import { MarkSvg, NAV_ICONS, PinIcon } from "./ui";
 
 export function AppHeader({ level }: { level: Level }) {
   const areas = useStore((s) => s.areas);
@@ -11,7 +11,7 @@ export function AppHeader({ level }: { level: Level }) {
   const setSheet = useStore((s) => s.setSheet);
   const primary = areas.find((a) => a.area.id === selected) ?? areas.find((a) => a.primary) ?? areas[0];
   const extra = Math.max(0, areas.length - 1);
-  const label = primary ? areaChipName(primary.area.name) : s("home.no_areas");
+  const label = primary ? areaChipName(primary.area.name) : s("settings.areas");
   const more = extra > 0 ? ` ${s("header.area_more", { n: extra })}` : "";
 
   return (
@@ -25,7 +25,7 @@ export function AppHeader({ level }: { level: Level }) {
           go("/app");
         }}
       >
-        <img className="mark" src="/icons/zorya-mark-mono.svg" alt="" />
+        <MarkSvg />
         <span className="wm">{s("brand.wordmark")}</span>
       </a>
       <button

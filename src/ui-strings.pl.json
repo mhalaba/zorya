@@ -111,7 +111,8 @@
     "s_reports": "Zgłoszenia użytkowników", "s_reports_desc": "pokazuj pod horyzontem",
     "s_radio": "Radio publiczne (RDS/EWS)", "s_radio_desc": "wymaga odbiornika",
     "a11y": "Dostępność",
-    "theme": "Motyw", "theme_desc": "noc · dzień · systemowy", "theme_noc": "noc", "theme_dzien": "dzień", "theme_system": "systemowy",
+    "theme": "Motyw", "theme_desc": "noc · dzień · systemowy", "theme_noc": "noc", "theme_dzien": "dzień", "theme_system": "systemowy", "theme_chosen": "wybrane",
+    "quiet_from": "od", "quiet_to": "do",
     "text_size": "Rozmiar tekstu", "text_size_desc": "podąża za systemem, do 200 %",
     "reduce_motion": "Ogranicz ruch", "reduce_motion_desc": "wyłącza pulsowanie gwiazdy w alarmie",
     "about": "O aplikacji", "version": "wersja {v}", "licences": "Licencje", "source_code": "Kod źródłowy", "contact": "Kontakt"

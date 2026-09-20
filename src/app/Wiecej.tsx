@@ -155,7 +155,7 @@ export function Wiecej() {
                 }}
               >
                 <span className="t">{s(`settings.theme_${t}`)}</span>
-                <span className="r">{theme === t ? "●" : ""}</span>
+                <span className="r">{theme === t ? s("settings.theme_chosen") : ""}</span>
               </button>
             ))}
           </div>
@@ -165,11 +165,11 @@ export function Wiecej() {
         <SheetFrame title={s("settings.quiet")} onClose={() => setSheet(null)}>
           <div className="form" style={{ padding: 0 }}>
             <div className="field">
-              <label>od</label>
+              <label>{s("settings.quiet_from")}</label>
               <input type="time" value={quiet.from} onChange={(e) => setQuiet({ ...quiet, from: e.target.value })} />
             </div>
             <div className="field">
-              <label>do</label>
+              <label>{s("settings.quiet_to")}</label>
               <input type="time" value={quiet.to} onChange={(e) => setQuiet({ ...quiet, to: e.target.value })} />
             </div>
             <p className="note">{s("settings.quiet_desc")}</p>

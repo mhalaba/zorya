@@ -3,7 +3,7 @@ import type { AreaRef, AreaRole, WatchedArea } from "../model";
 import { s } from "../strings";
 import { searchAreas, SAMPLE_AREAS } from "../api";
 import { useStore } from "../store";
-import { Toggle } from "../components/ui";
+import { MarkSvg, Toggle } from "../components/ui";
 
 export function Onboarding() {
   const complete = useStore((x) => x.completeOnboarding);
@@ -40,7 +40,7 @@ export function Onboarding() {
   return (
     <div className="onboard">
       <a className="brand" href="/" aria-label={s("header.home_a11y")}>
-        <img className="mark" src="/icons/zorya-mark-mono.svg" alt="" />
+        <MarkSvg />
         <span className="wm">{s("brand.wordmark")}</span>
       </a>
       {step === 0 && (

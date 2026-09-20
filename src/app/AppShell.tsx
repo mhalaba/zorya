@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { NavId } from "../model";
 import { activeScenario, fetchHorizon, SAMPLE_AREAS } from "../api";
 import { fmtTime } from "../format";
@@ -15,6 +15,7 @@ import { Onboarding } from "./Onboarding";
 import { maybeNotify } from "../notify";
 
 export function AppShell({ path }: { path: string }) {
+  const [hydrated, setHydrated] = useState(() => useStore.persist.hasHydrated());
   const onboardingDone = useStore((x) => x.onboardingDone);
   const completeOnboarding = useStore((x) => x.completeOnboarding);
   const selectedAreaId = useStore((x) => x.selectedAreaId);
@@ -37,14 +38,24 @@ export function AppShell({ path }: { path: string }) {
   else if (rest[0] === "zdarzenie") view = "horyzont";
 
   useEffect(() => {
-    if (activeScenario() && !useStore.getState().onboardingDone && SAMPLE_AREAS[0]) {
-      const seeded = [
-        { area: SAMPLE_AREAS[0], role: "dom" as const, primary: true },
-        ...(SAMPLE_AREAS[1] ? [{ area: SAMPLE_AREAS[1], role: "praca" as const, primary: false }] : []),
-      ];
-      completeOnboarding(seeded, false);
+    if (useStore.persist.hasHydrated()) setHydrated(true);
+    const unsub = useStore.persist.onFinishHydration(() => setHydrated(true));
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (activeScenario() && SAMPLE_AREAS[0]) {
+      const cur = useStore.getState();
+      if (!cur.onboardingDone || cur.areas.length === 0) {
+        const seeded = [
+          { area: SAMPLE_AREAS[0], role: "dom" as const, primary: true },
+          ...(SAMPLE_AREAS[1] ? [{ area: SAMPLE_AREAS[1], role: "praca" as const, primary: false }] : []),
+        ];
+        completeOnboarding(seeded, true);
+      }
     }
-  }, [completeOnboarding]);
+  }, [completeOnboarding, hydrated]);
 
   useEffect(() => {
     let stop = false;
@@ -87,6 +98,10 @@ export function AppShell({ path }: { path: string }) {
 
   const level = horizon?.status.level ?? lastHorizon?.status.level ?? "cisza";
   const dataTime = horizon?.status.data_as_of ?? lastHorizon?.status.data_as_of;
+
+  if (!hydrated) {
+    return <div className="app-root" />;
+  }
 
   if (!onboardingDone) {
     return (

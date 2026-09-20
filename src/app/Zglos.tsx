@@ -19,7 +19,9 @@ export function Zglos() {
   const [kind, setKind] = useState<ReportKind>("syrena");
   const [note, setNote] = useState("");
   const [when] = useState(() => new Date().toISOString());
-  const [where, setWhere] = useState(area?.area.name ?? "");
+  const [where, setWhere] = useState(() =>
+    area?.area.name ? `${area.area.name.replace(/^gmina\s+/i, "")} — ${s("onboarding.from_device")}` : ""
+  );
   const [fileName, setFileName] = useState("");
   const [error, setError] = useState("");
   const last = reports[0];
@@ -130,12 +132,14 @@ export function Zglos() {
         </div>
         <div className="field">
           <label>{s("report.media")}</label>
-          <input
-            type="file"
-            accept="image/*,video/*,audio/*"
-            onChange={(e) => setFileName(e.target.files?.[0]?.name ?? "")}
-          />
-          <span className="note">{fileName || s("report.media_placeholder")}</span>
+          <label className="in ph file-ph">
+            <input
+              type="file"
+              accept="image/*,video/*,audio/*"
+              onChange={(e) => setFileName(e.target.files?.[0]?.name ?? "")}
+            />
+            {fileName || s("report.media_placeholder")}
+          </label>
         </div>
         {error ? <p className="err field">{error}</p> : null}
         <p className="note">{s("report.privacy")}</p>
