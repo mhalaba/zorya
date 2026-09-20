@@ -78,7 +78,7 @@ export function MapCanvas() {
       dragRotate: false,
     });
     mapRef.current = map;
-    map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-left");
+    map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
 
     map.on("load", () => {
       // Settings may have been restored from storage (or changed) before the style loaded; the

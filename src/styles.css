@@ -48,7 +48,7 @@ button { cursor: pointer; }
   background: transparent !important;
   color: var(--muted) !important;
   font-size: 10px !important;
-  margin: 0 8px 28px !important;
+  margin: 0 8px 8px !important;
 }
 .maplibregl-ctrl-attrib a { color: var(--muted) !important; }
 
@@ -236,7 +236,9 @@ button { cursor: pointer; }
   line-height: 1.35;
   pointer-events: none;
   text-shadow: 0 1px 2px #070b12;
-  max-width: 920px;
+  max-width: 640px;
+  padding: 4px 10px 6px 0;
+  background: linear-gradient(90deg, rgba(7, 11, 18, 0.78), rgba(7, 11, 18, 0.28) 78%, transparent);
 }
 .disclaimer-foundation {
   font-size: 10px;
@@ -538,7 +540,7 @@ input[type="range"] { width: 100%; accent-color: var(--amber); }
   .side-nav {
     position: absolute;
     left: 12px;
-    bottom: 48px;
+    bottom: 72px;
     z-index: 22;
     display: flex;
     flex-direction: column;
