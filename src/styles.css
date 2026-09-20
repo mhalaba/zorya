@@ -519,11 +519,13 @@ h1.screen { margin: 0; padding: var(--z-space-4) var(--z-space-4) var(--z-space-
   gap: 8px;
   pointer-events: none;
   color: var(--z-text);
+  background: color-mix(in srgb, var(--z-bg) 62%, transparent);
+  padding: 6px 8px;
 }
 .map-hud .mark {
   height: 16px;
   width: auto;
-  opacity: 0.9;
+  opacity: 0.95;
 }
 .map-hud .wm {
   font-weight: 800;
@@ -531,7 +533,7 @@ h1.screen { margin: 0; padding: var(--z-space-4) var(--z-space-4) var(--z-space-
   font-size: 12px;
   line-height: 1;
   text-transform: uppercase;
-  opacity: 0.88;
+  opacity: 0.95;
 }
 .map-diode {
   width: 8px;
@@ -553,6 +555,7 @@ h1.screen { margin: 0; padding: var(--z-space-4) var(--z-space-4) var(--z-space-
   background: transparent !important;
   color: var(--z-text-2) !important;
   font-size: 10px !important;
+  max-width: 88px;
 }
 
 .map-tools-end {
@@ -605,9 +608,13 @@ h1.screen { margin: 0; padding: var(--z-space-4) var(--z-space-4) var(--z-space-
 .live-map .map-attr {
   left: max(var(--z-space-3), env(safe-area-inset-left));
   right: auto;
+  bottom: max(12px, env(safe-area-inset-bottom));
   text-align: left;
-  max-width: 70%;
+  max-width: calc(100% - 96px);
   z-index: 3;
+  background: color-mix(in srgb, var(--z-bg) 62%, transparent);
+  padding: 4px 8px;
+  pointer-events: none;
 }
 
 .drawer {
