@@ -1,0 +1,217 @@
+{
+ "signals": [
+  {
+   "id": "s-0920-041",
+   "source": "rcb",
+   "kind": "air",
+   "observed_at": "2026-09-20T05:37:04+02:00",
+   "received_at": "2026-09-20T05:37:06+02:00",
+   "areas": [
+    {
+     "id": "2401",
+     "name": "powiat brzegowski",
+     "kind": "powiat"
+    }
+   ],
+   "text": "Alert RCB dla powiatu brzegowskiego",
+   "meta": "RCB · SMS cell broadcast · treść oryginalna w źródle",
+   "original_text": "UWAGA! Zagrożenie powietrzne. Udaj się do najbliższego schronu lub miejsca ukrycia. Zachowaj spokój i słuchaj komunikatów.",
+   "original_url": "https://example.invalid/rcb/2026-09-20-0537",
+   "event_id": "2026-0920-017",
+   "counted": true
+  },
+  {
+   "id": "s-0920-042",
+   "source": "syreny",
+   "kind": "siren_unscheduled",
+   "observed_at": "2026-09-20T05:37:31+02:00",
+   "received_at": "2026-09-20T05:37:33+02:00",
+   "areas": [
+    {
+     "id": "2401022",
+     "name": "gmina Nadwiśle",
+     "kind": "gmina"
+    }
+   ],
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     18.71,
+     50.31
+    ]
+   },
+   "text": "Syrena: sygnał modulowany 3 min",
+   "meta": "czujnik akustyczny nr 3, Nadwiśle · 96 dB · nie jest próbą planową",
+   "measurements": {
+    "duration_s": 180,
+    "spl_db": 96,
+    "pattern": "modulated"
+   },
+   "scheduled": false,
+   "event_id": "2026-0920-017",
+   "counted": true
+  },
+  {
+   "id": "s-0920-040",
+   "source": "sdr",
+   "kind": "aircraft_unidentified",
+   "observed_at": "2026-09-20T05:36:10+02:00",
+   "received_at": "2026-09-20T05:36:12+02:00",
+   "areas": [
+    {
+     "id": "2401011",
+     "name": "gmina Brzegowo",
+     "kind": "gmina"
+    },
+    {
+     "id": "2401022",
+     "name": "gmina Nadwiśle",
+     "kind": "gmina"
+    }
+   ],
+   "text": "3 statki powietrzne bez identyfikatora",
+   "meta": "SDR/ADS-B · 200–400 m AGL · kurs 270°",
+   "measurements": {
+    "count": 3,
+    "altitude_m_agl": [
+     200,
+     400
+    ],
+    "heading_deg": 270
+   },
+   "event_id": "2026-0920-017",
+   "counted": true
+  },
+  {
+   "id": "s-0920-043",
+   "source": "zgloszenia",
+   "kind": "siren_unscheduled",
+   "observed_at": "2026-09-20T05:38:00+02:00",
+   "received_at": "2026-09-20T05:44:00+02:00",
+   "areas": [
+    {
+     "id": "2401011",
+     "name": "gmina Brzegowo",
+     "kind": "gmina"
+    },
+    {
+     "id": "2401033",
+     "name": "gmina Zaborów",
+     "kind": "gmina"
+    }
+   ],
+   "text": "14 zgłoszeń użytkowników",
+   "meta": "zgłoszenia · „syrena” ×9, „huk” ×5 · niezweryfikowane, nie liczone do poziomu",
+   "measurements": {
+    "count": 14,
+    "window_min": 6
+   },
+   "event_id": "2026-0920-017",
+   "counted": false
+  },
+  {
+   "id": "s-0920-031",
+   "source": "imgw",
+   "kind": "weather",
+   "observed_at": "2026-09-20T04:52:00+02:00",
+   "received_at": "2026-09-20T04:52:20+02:00",
+   "valid_until": "2026-09-21T06:00:00+02:00",
+   "areas": [
+    {
+     "id": "2401",
+     "name": "powiat brzegowski",
+     "kind": "powiat"
+    }
+   ],
+   "text": "Ostrzeżenie IMGW: silny wiatr, 2. stopnia",
+   "meta": "IMGW · powiat brzegowski · do 21.09, 06:00",
+   "original_text": "Prognozuje się wystąpienie silnego wiatru o średniej prędkości od 45 km/h do 60 km/h, w porywach do 90 km/h, z zachodu i północnego zachodu.",
+   "original_url": "https://example.invalid/imgw/2026-09-20-0452",
+   "event_id": "2026-0920-016",
+   "counted": true
+  },
+  {
+   "id": "s-0920-033",
+   "source": "syreny",
+   "kind": "siren_unscheduled",
+   "observed_at": "2026-09-20T05:12:00+02:00",
+   "received_at": "2026-09-20T05:12:44+02:00",
+   "areas": [
+    {
+     "id": "2401022",
+     "name": "gmina Nadwiśle",
+     "kind": "gmina"
+    }
+   ],
+   "text": "Czujnik akustyczny nr 3: sygnał ciągły 41 s",
+   "meta": "syreny · Nadwiśle · brak drugiego źródła · zgodne z harmonogramem prób: nie",
+   "measurements": {
+    "duration_s": 41,
+    "pattern": "continuous"
+   },
+   "scheduled": false,
+   "event_id": null,
+   "counted": false
+  },
+  {
+   "id": "s-0920-032",
+   "source": "sdr",
+   "kind": "aircraft_unidentified",
+   "observed_at": "2026-09-20T05:03:00+02:00",
+   "received_at": "2026-09-20T05:03:05+02:00",
+   "areas": [
+    {
+     "id": "2401011",
+     "name": "gmina Brzegowo",
+     "kind": "gmina"
+    }
+   ],
+   "text": "ADS-B: statek powietrzny bez identyfikatora, 300 m AGL",
+   "meta": "SDR · 6 km na wschód od Brzegowa · trwa 4 min",
+   "measurements": {
+    "altitude_m_agl": 300,
+    "duration_min": 4
+   },
+   "event_id": null,
+   "counted": false
+  },
+  {
+   "id": "s-0920-030",
+   "source": "zgloszenia",
+   "kind": "explosion",
+   "observed_at": "2026-09-20T04:58:00+02:00",
+   "received_at": "2026-09-20T04:58:30+02:00",
+   "areas": [
+    {
+     "id": "2401033",
+     "name": "gmina Zaborów",
+     "kind": "gmina"
+    }
+   ],
+   "text": "Zgłoszenie: „huk, drżą szyby”",
+   "meta": "zgłoszenie · Zaborów · niezweryfikowane",
+   "event_id": null,
+   "counted": false
+  },
+  {
+   "id": "s-0920-020",
+   "source": "psp",
+   "kind": "siren_test",
+   "observed_at": "2026-09-20T04:00:00+02:00",
+   "received_at": "2026-09-20T04:00:10+02:00",
+   "valid_until": "2026-09-20T12:30:00+02:00",
+   "areas": [
+    {
+     "id": "2401",
+     "name": "powiat brzegowski",
+     "kind": "powiat"
+    }
+   ],
+   "text": "Próba syren zapowiedziana na 12:00",
+   "meta": "PSP · powiat brzegowski · komunikat planowy",
+   "scheduled": true,
+   "event_id": null,
+   "counted": false
+  }
+ ]
+}

@@ -1,14 +1,14 @@
 # Zorya
 
-Nieoficjalna fuzja sygnałów o zagrożeniach powietrznych dla Polski. Czuwanie świtu — nie syrena, nie urząd, nie radar.
+**czuwanie świtu** — jeden poziom dla Twojej gminy z alertów RCB, ostrzeżeń IMGW, komunikatów PSP, czujników syren, radia i zgłoszeń sąsiadów.
 
-**Produkcja jest online:** [https://zorya.website](https://zorya.website) — własna domena, HTTPS, mapa na żywo. Krawędź: Cloudflare Tunnel na `http://127.0.0.1:8787`.
+**Produkcja:** [https://zorya.website](https://zorya.website) — HTTPS, PWA. Krawędź: Cloudflare Tunnel na `http://127.0.0.1:8787`.
 
-**To NIE jest oficjalny system ostrzegania.** Nie zastępuje syren, Alertu RCB ani RSO. W razie realnego zagrożenia kieruj się kanałami oficjalnymi. Zorya może dać dodatkowy, wcześniejszy sygnał — albo nic nie dać.
+**To nie jest oficjalny system ostrzegania.** Nie zastępuje syren, Alertu RCB ani RSO. W razie realnego zagrożenia kieruj się kanałami oficjalnymi.
 
-Projekt Fundacji Terra Incognita. Nadal nieoficjalne narzędzie fuzji - nie system ostrzegania.
+Projekt Fundacji Terra Incognita. Wpis do KRS w toku.
 
-Nazwa pochodzi od Zorzy: w mitologii słowiańskiej strażniczek świtu i zmierzchu. Aplikacja nie udaje instytucji państwa.
+Pakiet tożsamości i specyfikacji UX: [`brand/`](brand/) (zaczynaj od `brand/GROK-BRIEF.md`).
 
 ## Uruchomienie
 
@@ -17,8 +17,11 @@ npm install
 npm run dev
 ```
 
-UI: [http://127.0.0.1:5173](http://127.0.0.1:5173)  
-API: `GET /api/state`, `GET /api/history/bundle?hours=12`, `WS /api/ws`
+- Strona: [http://127.0.0.1:5173/](http://127.0.0.1:5173/)
+- Aplikacja: [http://127.0.0.1:5173/app](http://127.0.0.1:5173/app)
+- Tryb makiety (dane z `brand/04-ux/sample-data/`): [http://127.0.0.1:5173/app?fixture=1](http://127.0.0.1:5173/app?fixture=1)
+
+Scenariusze makiety: `?fixture=1` (alarm), `?fixture=obserwacja`, `?fixture=ostrzezenie`, `?fixture=odwolanie`, `?fixture=cisza`, `?fixture=stale`, `?fixture=offline`. Motyw: Ustawienia → Dostępność, albo `data-theme` na `html` (`noc` / `dzien`).
 
 Produkcja:
 
@@ -27,40 +30,27 @@ npm run build
 npm start
 ```
 
-Serwer od startu czyta źródła na żywo (co 60 s). Źródło, które nie odpowiada dłużej niż 15 minut, gaśnie (czerwona dioda) i przestaje wnosić dane do fuzji.
+API (nowe + zachowane):
 
-W produkcji ustaw `VAPID_SUBJECT` (np. `mailto:ty@twojadomena.pl`) — usługa push Apple odrzuca domyślny adres `@localhost`.
+- `GET /api/status`, `GET /api/horizon`, `GET /api/events/:id`, `GET /api/sources/:id`, `POST /api/reports`
+- `GET /api/state`, `GET /api/history/bundle?hours=12`, `WS /api/ws` (stara fuzja)
+- Push: `GET /api/push/key`, `POST /api/push/subscribe`
 
-## Publikacja (Oracle / Caddy - wariant)
+Serwer od startu czyta źródła na żywo (co 60 s). UI mapuje fuzję na model horyzontu; makieta nie wymaga backendu.
 
-Live **zorya.website** idzie tunelem Cloudflare na Node (`npm start`, port 8787). Poniższe skrypty zostają jako wariant Caddy + Let's Encrypt na Oracle Always Free.
+W produkcji ustaw `VAPID_SUBJECT` (np. `mailto:ty@twojadomena.pl`).
 
-Maszyna z Ubuntu 22.04/24.04 (np. `VM.Standard.A1.Flex`), w security list VCN otwarte porty 80 i 443. DNS A/AAAA domeny wskazuje na publiczny IP instancji. Na serwerze:
+## Publikacja (Oracle / Caddy — wariant)
+
+Live **zorya.website** idzie tunelem Cloudflare na Node (`npm start`, port 8787). Skrypty w `deploy/` zostają jako wariant Caddy + Let's Encrypt.
 
 ```bash
 git clone https://github.com/mhalaba/zorya.git && cd zorya
 sudo ZORYA_HOST=zorya.website bash deploy/setup.sh
 ```
 
-Skrypt instaluje Node 22 i Caddy (HTTPS z Let's Encrypt), buduje aplikację i uruchamia ją jako usługę `zorya`. Aktualizacja: `sudo bash /opt/zorya/deploy/update.sh`. Klucze VAPID powstają w `/opt/zorya/server/vapid.json` — nie kasuj ich, bo wygasną wszystkie subskrypcje push.
-
-Tymczasowy host `sslip.io` można użyć tylko do testu, zanim DNS domeny się rozpropaguje:
-
-```bash
-sudo ZORYA_HOST=<ip-z-kreskami>.sslip.io bash deploy/setup.sh
-```
-
-## Zasady fuzji
-
-Liczenie per województwo, okno 60 minut. Kolor = poziom, nie ozdoba.
-
-- <2 cisza (navy)
-- ≥2 uwaga (bursztyn)
-- ≥4 priorytet (czerwień)
-- oliwkowy = transfer sąsiada, bez powiadomienia
-
-Pełna tabela: w aplikacji **Więcej → Tabela punktacji**.
+Aktualizacja: `sudo bash /opt/zorya/deploy/update.sh`. Kluczy VAPID w `/opt/zorya/server/vapid.json` nie kasować.
 
 ## Prywatność
 
-Brak kont, reklam i inwazyjnej analityki. Moje miejsca zostają w `localStorage` tej przeglądarki.
+Brak kont, reklam, ciasteczek i skryptów trzecich. Fonty Atkinson Hyperlegible są self-hostowane (`public/fonts/`). Serwer dostaje nazwy subskrybowanych gmin, token push i zgłoszenia (miejsce zaokrąglone do 500 m).

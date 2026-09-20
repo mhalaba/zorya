@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="pl" data-theme="noc">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>zorya.website — Zorya (makieta)</title>
+<link rel="stylesheet" href="../../02-tokens/tokens.css">
+<link rel="stylesheet" href="mock.css">
+<style>body { background: var(--z-bg); } 
+.site { max-width: var(--z-size-site-column); margin: 0 auto; padding: 0 var(--z-space-8); }
+.top { height: 72px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--z-line-strong); }
+.top .brand svg { height: 24px; }
+.top nav { display: flex; gap: var(--z-space-8); font-size: 15px; }
+.top nav a { text-decoration: none; }
+.hero { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: var(--z-space-16); padding: var(--z-space-20) 0 var(--z-space-16); align-items: center; }
+.hero h1 { margin: 0 0 var(--z-space-6); max-width: 14ch; }
+.hero p { font-size: 20px; line-height: 30px; max-width: 42ch; color: var(--z-text-2); margin: 0 0 var(--z-space-8); }
+.hero .cta { display: flex; gap: var(--z-space-3); }
+.demo { border: 1px solid var(--z-line-strong); background: var(--z-bg-raised); padding: var(--z-space-6); display: grid; gap: var(--z-space-4); }
+.demo .st { display: grid; grid-template-columns: 56px 1fr; gap: var(--z-space-4); align-items: center; padding-bottom: var(--z-space-4); border-bottom: 2px solid var(--z-status-obserwacja); }
+.demo .st svg { width: 56px; }
+.demo .st .w { font-size: 28px; line-height: 34px; font-weight: 700; }
+.demo .st .m { color: var(--z-text-2); font-size: 14px; }
+.demo .ev { display: grid; gap: 6px; font-size: 15px; line-height: 22px; }
+.demo .ev .k { display: flex; gap: 8px; align-items: center; color: var(--z-text-2); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500; }
+.demo .ev .k svg { width: 24px; }
+.demo .sub { border-top: 1px dashed var(--z-line-strong); padding-top: var(--z-space-3); color: var(--z-text-2); font-size: 14px; display: grid; gap: 4px; }
+.demo .sub .mono { font-family: var(--z-font-mono); font-weight: 500; }
+.band { border-top: 2px solid var(--z-line-strong); padding: var(--z-space-16) 0; }
+.band h2 { margin: 0 0 var(--z-space-8); font-size: 13px; line-height: 18px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500; color: var(--z-text-2); }
+.three { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--z-space-8); }
+.three h3 { margin: 0 0 var(--z-space-3); font-size: 22px; line-height: 28px; }
+.three p { margin: 0; color: var(--z-text-2); max-width: 36ch; }
+.how { display: grid; grid-template-columns: 1fr 1fr; gap: var(--z-space-16); align-items: center; }
+.how p { max-width: 48ch; color: var(--z-text-2); }
+.levels { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--z-space-4); }
+.levels div { border: 1px solid var(--z-line-strong); padding: var(--z-space-4); display: grid; gap: var(--z-space-3); }
+.levels svg { width: 48px; }
+.levels b { font-size: 17px; }
+.levels small { font-size: 14px; line-height: 20px; color: var(--z-text-2); }
+.srcs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border: 1px solid var(--z-line-strong); }
+.srcs div { padding: var(--z-space-5); border-right: 1px solid var(--z-line-strong); display: grid; gap: 4px; }
+.srcs div:last-child { border-right: 0; }
+.srcs b { font-size: 17px; } .srcs span { font-size: 14px; line-height: 20px; color: var(--z-text-2); }
+footer.site-foot { border-top: 2px solid var(--z-line-strong); padding: var(--z-space-8) 0 var(--z-space-12); display: flex; justify-content: space-between; align-items: flex-start; font-size: 14px; color: var(--z-text-2); gap: var(--z-space-8); }
+footer.site-foot .lk { display: grid; gap: 4px; }
+footer.site-foot .lk a { text-decoration: none; }
+.horizon-diagram { border: 1px solid var(--z-line-strong); padding: var(--z-space-6); }
+.horizon-diagram svg { width: 100%; height: auto; display: block; }
+</style>
+</head>
+<body>
+<div class="site">
+<header class="top">
+  <a class="brand" href="#" aria-label="Zorya"><svg viewBox="0 0 633.38 110.00" fill="currentColor" aria-hidden="true"><circle cx="140.00" cy="40.00" r="20.00" fill="currentColor"/>
+  <rect x="20.00" y="80.00" width="160.00" height="10.00" fill="currentColor"/>
+  <g fill="currentColor" transform="translate(220.00 90.00)"><path d="M3.143712574850299 0.0V-13.41317365269461L37.30538922155689 -54.281437125748496H4.715568862275449V-70.0H60.67365269461077V-56.58682634730538L26.82634730538922 -15.718562874251496H62.24550898203592V0.0Z M113.38323353293413 1.2574850299401197Q102.58982035928143 1.2574850299401197 94.31137724550898 -3.2485029940119756Q86.03293413173652 -7.754491017964071 81.36976047904191 -15.87574850299401Q76.7065868263473 -23.99700598802395 76.7065868263473 -35.0Q76.7065868263473 -46.00299401197604 81.36976047904191 -54.124251497005986Q86.03293413173652 -62.24550898203592 94.31137724550898 -66.75149700598801Q102.58982035928143 -71.25748502994011 113.38323353293413 -71.25748502994011Q124.17664670658681 -71.25748502994011 132.45508982035926 -66.75149700598801Q140.73353293413174 -62.24550898203592 145.39670658682635 -54.124251497005986Q150.05988023952096 -46.00299401197604 150.05988023952096 -35.0Q150.05988023952096 -23.99700598802395 145.39670658682635 -15.87574850299401Q140.73353293413174 -7.754491017964071 132.45508982035926 -3.2485029940119756Q124.17664670658681 1.2574850299401197 113.38323353293413 1.2574850299401197ZM113.38323353293413 -13.41317365269461Q118.20359281437125 -13.41317365269461 122.18562874251495 -15.823353293413172Q126.16766467065867 -18.233532934131734 128.57784431137725 -23.053892215568858Q130.9880239520958 -27.874251497005986 130.9880239520958 -35.0Q130.9880239520958 -42.12574850299401 128.57784431137725 -46.946107784431135Q126.16766467065867 -51.76646706586826 122.18562874251495 -54.17664670658682Q118.20359281437125 -56.58682634730538 113.38323353293413 -56.58682634730538Q108.56287425149699 -56.58682634730538 104.58083832335328 -54.17664670658682Q100.59880239520957 -51.76646706586826 98.188622754491 -46.946107784431135Q95.77844311377245 -42.12574850299401 95.77844311377245 -35.0Q95.77844311377245 -27.874251497005986 98.188622754491 -23.053892215568858Q100.59880239520957 -18.233532934131734 104.58083832335328 -15.823353293413172Q108.56287425149699 -13.41317365269461 113.38323353293413 -13.41317365269461Z M167.03592814371257 0.0V-70.0H200.14970059880238Q207.38023952095807 -70.0 213.51047904191614 -67.74700598802394Q219.6407185628742 -65.4940119760479 223.36077844311373 -60.621257485029936Q227.08083832335325 -55.74850299401197 227.08083832335325 -47.88922155688623Q227.08083832335325 -39.29640718562874 222.57485029940116 -34.26646706586826Q218.06886227544908 -29.236526946107784 211.04790419161674 -27.245508982035926L230.64371257485027 0.0H209.8952095808383L191.9760479041916 -25.673652694610777H184.8502994011976V0.0ZM184.8502994011976 -40.76347305389221H199.1017964071856Q201.8263473053892 -40.76347305389221 203.86976047904187 -41.49700598802395Q205.91317365269458 -42.23053892215569 207.11826347305387 -43.80239520958084Q208.32335329341316 -45.374251497005986 208.32335329341316 -47.88922155688623Q208.32335329341316 -50.40419161676646 207.11826347305387 -51.97604790419162Q205.91317365269458 -53.547904191616766 203.86976047904187 -54.22904191616766Q201.8263473053892 -54.91017964071856 199.1017964071856 -54.91017964071856H184.8502994011976Z M266.69161676646706 0.0V-27.45508982035928L239.76047904191614 -70.0H260.6137724550898L275.4940119760479 -44.32634730538922L290.47904191616766 -70.0H311.437125748503L284.50598802395206 -27.45508982035928V0.0Z M320.2395209580838 0.0 346.751497005988 -70.0H366.34730538922156L392.96407185628743 0.0H373.47305389221555L369.49101796407183 -11.946107784431137H343.6077844311377L339.7305389221557 0.0ZM348.32335329341316 -26.302395209580837H364.77544910179637L356.49700598802394 -51.032934131736525Z"/></g></svg></a>
+  <nav aria-label="Menu"><a href="#jak">Jak działa</a><a href="#zrodla">Źródła</a><a href="#prywatnosc">Prywatność</a><a href="#status">Status</a><a class="btn" href="#" style="height:40px">Otwórz aplikację</a></nav>
+</header>
+<section class="hero">
+  <div>
+    <h1 class="z-display">Zorya czuwa, kiedy Ty śpisz.</h1>
+    <p>Jedna aplikacja zbiera alerty RCB, ostrzeżenia IMGW, komunikaty straży, czujniki syren, radio i zgłoszenia sąsiadów. Łączy je w jeden poziom dla Twojej gminy i mówi, co robić. Bez chmury dużych firm, bez śledzenia.</p>
+    <div class="cta"><a class="btn primary" href="#">Otwórz aplikację</a><a class="btn" href="#jak">Jak liczymy poziom</a></div>
+  </div>
+  <div class="demo" aria-label="Przykładowy ekran">
+    <div class="st"><span class="lvl-obserwacja"><svg class="lv" viewBox="0 0 32.00 14.00" fill="currentColor" aria-hidden="true"><g transform="scale(0.2)"><circle cx="120.00" cy="20.00" r="20.00" fill="currentColor"/>
+  <rect x="0.00" y="60.00" width="160.00" height="10.00" fill="currentColor"/></g></svg></span><div><div class="w lvl-obserwacja">Obserwacja</div><div class="m">gmina Brzegowo · od 04:52 · 6 z 6 źródeł aktywnych</div></div></div>
+    <div class="ev"><div class="k"><span class="lvl-obserwacja"><svg class="lv" viewBox="0 0 32.00 14.00" fill="currentColor" aria-hidden="true"><g transform="scale(0.2)"><circle cx="120.00" cy="20.00" r="20.00" fill="currentColor"/>
+  <rect x="0.00" y="60.00" width="160.00" height="10.00" fill="currentColor"/></g></svg></span>obserwacja · 04:52</div><b>Ostrzeżenie IMGW: silny wiatr, 2. stopnia</b><span style="color:var(--z-text-2)">powiat brzegowski · do 21.09, 06:00 · prawdopodobne</span></div>
+    <div class="sub"><span><span class="mono">05:12</span> czujnik akustyczny nr 3: sygnał ciągły 41 s · brak drugiego źródła</span><span><span class="mono">05:03</span> ADS-B: statek powietrzny bez identyfikatora, 300 m AGL</span></div>
+  </div>
+</section>
+<section class="band" id="jak">
+  <h2>Jak działa</h2>
+  <div class="three">
+    <div><h3>Zbiera</h3><p>Sześć źródeł, każde z własnym znacznikiem czasu i stanem. Oficjalne komunikaty, czujniki, radio, zgłoszenia.</p></div>
+    <div><h3>Łączy</h3><p>Dwa niezależne źródła mówiące o tym samym miejscu i czasie to jedno zdarzenie. Jedno źródło zostaje pod horyzontem.</p></div>
+    <div><h3>Mówi, co robić</h3><p>Pięć poziomów, jedno słowo każdy. Przy alarmie trzy kroki, nie artykuł. Odwołanie też jest powiadomieniem.</p></div>
+  </div>
+</section>
+<section class="band">
+  <h2>Pięć poziomów horyzontu</h2>
+  <div class="levels">
+    <div><span class="lvl-cisza"><svg class="lv" viewBox="0 0 32.00 14.00" fill="currentColor" aria-hidden="true"><g transform="scale(0.2)"><circle cx="120.00" cy="20.00" r="17.00" fill="none" stroke="currentColor" stroke-width="6.00"/>
+  <rect x="0.00" y="60.00" width="160.00" height="10.00" fill="currentColor"/></g></svg></span><b>cisza</b><small>Nic się nie dzieje. Wszystkie źródła raportują.</small></div>
+    <div><span class="lvl-obserwacja"><svg class="lv" viewBox="0 0 32.00 14.00" fill="currentColor" aria-hidden="true"><g transform="scale(0.2)"><circle cx="120.00" cy="20.00" r="20.00" fill="currentColor"/>
+  <rect x="0.00" y="60.00" width="160.00" height="10.00" fill="currentColor"/></g></svg></span><b>obserwacja</b><small>Jeden sygnał albo komunikat bez lokalnego potwierdzenia. Przeczytaj.</small></div>
+    <div><span class="lvl-ostrzezenie"><svg class="lv" viewBox="0 0 32.00 14.00" fill="currentColor" aria-hidden="true"><g transform="scale(0.2)"><circle cx="120.00" cy="20.00" r="20.00" fill="currentColor"/>
+  <rect x="0.00" y="50.00" width="160.00" height="5.00" fill="currentColor"/>
+  <rect x="0.00" y="65.00" width="160.00" height="5.00" fill="currentColor"/></g></svg></span><b>ostrzeżenie</b><small>Dwa źródła się zgadzają albo oficjalne ostrzeżenie dla Twojej gminy. Przygotuj się.</small></div>
+    <div><span class="lvl-alarm"><svg class="lv" viewBox="0 0 32.00 14.00" fill="currentColor" aria-hidden="true"><g transform="scale(0.2)"><circle cx="120.00" cy="20.00" r="20.00" fill="currentColor"/>
+  <rect x="0.00" y="50.00" width="160.00" height="5.00" fill="currentColor"/>
+  <rect x="0.00" y="65.00" width="160.00" height="5.00" fill="currentColor"/></g></svg></span><b>alarm</b><small>Alarm RCB albo syrena potwierdzona drugim źródłem. Działaj.</small></div>
+    <div><span class="lvl-odwolanie"><svg class="lv" viewBox="0 0 32.00 14.00" fill="currentColor" aria-hidden="true"><g transform="scale(0.2)"><circle cx="120.00" cy="20.00" r="20.00" fill="currentColor"/>
+  <rect x="0.00" y="60.00" width="160.00" height="10.00" fill="currentColor"/></g></svg></span><b>odwołanie</b><small>Zdarzenie odwołane lub wygasło. Po godzinie wracamy do ciszy.</small></div>
+  </div>
+</section>
+<section class="band" id="zrodla">
+  <h2>Źródła</h2>
+  <div class="srcs">
+    <div><b>Oficjalne</b><span>Alert RCB, ostrzeżenia IMGW, komunikaty PSP. Treść oryginalna zawsze pod ręką.</span></div>
+    <div><b>Syreny</b><span>Czujniki akustyczne rozpoznają sygnał i odróżniają próbę od alarmu.</span></div>
+    <div><b>Radio i powietrze</b><span>ADS-B, skaner 433 i 868 MHz, radio publiczne. Sygnał bez identyfikatora to sygnał, nie wyrok.</span></div>
+    <div><b>Sąsiedzi</b><span>Anonimowe zgłoszenia, zaokrąglone do 500 m. Same nigdy nie podnoszą poziomu.</span></div>
+  </div>
+</section>
+<section class="band" id="prywatnosc">
+  <div class="how">
+    <div><h2>Prywatność</h2><p style="font-size:20px;line-height:30px;color:var(--z-text)">Zorya nie ma konta, nie ma numeru telefonu i nie ma reklam. Lokalizacja zostaje na telefonie; serwer dostaje tylko nazwę gminy. Serwer stoi w Polsce, kod jest otwarty.</p></div>
+    <div class="horizon-diagram" aria-hidden="true">
+      <svg viewBox="0 0 520 200">
+        <text x="0" y="16" font-size="12" letter-spacing="1" fill="var(--z-text-2)" font-family="var(--z-font-ui)">NAD HORYZONTEM · ZDARZENIA</text>
+        <rect x="0" y="30" width="520" height="44" fill="var(--z-bg-raised)" stroke="var(--z-status-obserwacja)"/>
+        <circle cx="24" cy="52" r="6" fill="var(--z-status-obserwacja)"/><text x="40" y="57" font-size="14" fill="var(--z-text)" font-family="var(--z-font-ui)" font-weight="700">Ostrzeżenie IMGW: silny wiatr</text>
+        <rect x="0" y="98" width="520" height="2" fill="var(--z-line-strong)"/>
+        <text x="520" y="118" text-anchor="end" font-size="12" letter-spacing="1" fill="var(--z-text-2)" font-family="var(--z-font-ui)">HORYZONT</text>
+        <g font-size="13" fill="var(--z-text-2)" font-family="var(--z-font-ui)">
+          <line x1="0" y1="140" x2="520" y2="140" stroke="var(--z-line-strong)" stroke-dasharray="4 3"/><text x="0" y="135">czujnik nr 3 · sygnał ciągły 41 s</text>
+          <line x1="0" y1="170" x2="520" y2="170" stroke="var(--z-line-strong)" stroke-dasharray="4 3"/><text x="0" y="165">ADS-B · bez identyfikatora · 300 m AGL</text>
+          <line x1="0" y1="198" x2="520" y2="198" stroke="var(--z-line-strong)" stroke-dasharray="1 3"/><text x="0" y="193">zgłoszenie · „huk" · niezweryfikowane</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+</section>
+<footer class="site-foot" id="status">
+  <div><svg viewBox="0 0 200.00 110.00" fill="currentColor" style="height:28px" aria-hidden="true"><circle cx="140.00" cy="40.00" r="20.00" fill="currentColor"/>
+  <rect x="20.00" y="80.00" width="160.00" height="10.00" fill="currentColor"/></svg><div style="margin-top:12px">Zorya · czuwanie świtu · wersja 0.1 · stan na <span style="font-family:var(--z-font-mono)">2026-09-20</span></div><div>Status źródeł: 6 z 6 · ostatnia aktualizacja <span style="font-family:var(--z-font-mono)">05:41</span></div></div>
+  <div class="lk"><a href="#">Jak działa</a><a href="#">Źródła danych i licencje</a><a href="#">Polityka prywatności</a><a href="#">Kod źródłowy</a><a href="#">Kontakt</a></div>
+</footer>
+</div>
+</body>
+</html>

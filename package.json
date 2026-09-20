@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Zorya — nieoficjalna fuzja sygnałów wczesnego ostrzegania dla Polski",
+  "description": "Zorya — czuwanie świtu. Jeden poziom dla Twojej gminy.",
   "scripts": {
     "dev": "concurrently -k -n server,web -c cyan,magenta \"npm:dev:server\" \"npm:dev:web\"",
     "dev:web": "vite",

@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zorya.website/schema/content-model.json",
+  "title": "Zorya content model",
+  "description": "Shapes the UI renders. Times are ISO 8601 with offset (Europe/Warsaw). Coordinates are WGS84 and never more precise than 0.01° in anything shown to users; reports are rounded to 500 m on the device.",
+  "$defs": {
+    "Level": { "type": "string", "enum": ["cisza", "obserwacja", "ostrzezenie", "alarm", "odwolanie"], "description": "The five horizon levels, in order. Label in Polish: cisza, obserwacja, ostrzeżenie, alarm, odwołanie." },
+    "Confidence": { "type": "string", "enum": ["potwierdzone", "prawdopodobne", "pojedynczy", "niezweryfikowane"], "description": "potwierdzone = ≥2 independent kinds, one official or sensor · prawdopodobne = 2 same-kind or 1 official · pojedynczy = 1 source · niezweryfikowane = user reports only" },
+    "SourceKind": { "type": "string", "enum": ["official", "sensor", "radio", "reports"], "description": "Independence is counted by kind." },
+    "SourceId": { "type": "string", "enum": ["rcb", "imgw", "psp", "syreny", "sdr", "adsb", "radio_ews", "zgloszenia"] },
+    "EventKind": { "type": "string", "enum": ["air", "weather", "fire", "chemical", "flood", "power", "siren_test", "siren_unscheduled", "aircraft_unidentified", "explosion", "other"] },
+    "AreaRef": {
+      "type": "object", "required": ["id", "name", "kind"],
+      "properties": {
+        "id": { "type": "string", "description": "TERYT code (gmina 7 digits, powiat 4, województwo 2)" },
+        "name": { "type": "string", "examples": ["gmina Brzegowo", "powiat brzegowski"] },
+        "kind": { "type": "string", "enum": ["gmina", "powiat", "wojewodztwo"] }
+      }
+    },
+    "Geometry": { "type": "object", "description": "GeoJSON geometry (Polygon or MultiPolygon for areas, Point for a sensor or a rounded report)" },
+    "Source": {
+      "type": "object", "required": ["id", "kind", "name", "description", "freshness_s", "enabled", "health"],
+      "properties": {
+        "id": { "$ref": "#/$defs/SourceId" },
+        "kind": { "$ref": "#/$defs/SourceKind" },
+        "name": { "type": "string", "examples": ["RCB — Alert RCB"] },
+        "short": { "type": "string", "examples": ["RCB"], "description": "Chip text" },
+        "description": { "type": "string" },
+        "freshness_s": { "type": "integer", "description": "Seconds after which the source counts as stale (default 900; PSP 21600)" },
+        "enabled": { "type": "boolean" },
+        "locked": { "type": "boolean", "description": "true = the user cannot disable it (RCB)" },
+        "health": { "type": "string", "enum": ["fresh", "stale", "down", "disabled"] },
+        "last_update": { "type": "string", "format": "date-time" },
+        "attribution": { "type": "string", "description": "Licence / attribution line shown on the source page" }
+      }
+    },
+    "Signal": {
+      "type": "object", "required": ["id", "source", "kind", "observed_at", "received_at", "areas", "text"],
+      "properties": {
+        "id": { "type": "string" },
+        "source": { "$ref": "#/$defs/SourceId" },
+        "kind": { "$ref": "#/$defs/EventKind" },
+        "observed_at": { "type": "string", "format": "date-time" },
+        "received_at": { "type": "string", "format": "date-time" },
+        "valid_until": { "type": "string", "format": "date-time" },
+        "areas": { "type": "array", "items": { "$ref": "#/$defs/AreaRef" } },
+        "geometry": { "$ref": "#/$defs/Geometry" },
+        "text": { "type": "string", "description": "What the UI shows as the signal line (voice-and-copy §2)" },
+        "meta": { "type": "string", "description": "The meta line: source · place · why it is below the horizon" },
+        "original_text": { "type": "string", "description": "Verbatim official text where one exists" },
+        "original_url": { "type": "string", "format": "uri" },
+        "measurements": { "type": "object", "description": "Free-form numeric detail: {\"duration_s\": 41, \"spl_db\": 96, \"altitude_m_agl\": 300, \"heading_deg\": 270}", "additionalProperties": true },
+        "scheduled": { "type": "boolean", "description": "true = matches a published siren test schedule" },
+        "event_id": { "type": ["string", "null"], "description": "Set when fused into an event" },
+        "counted": { "type": "boolean", "description": "Whether it counted towards the event's level (reports never do)" }
+      }
+    },
+    "Event": {
+      "type": "object", "required": ["id", "level", "confidence", "kind", "title", "areas", "started_at", "updated_at", "state", "signals"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{4}-[0-9]{3}$", "description": "YYYY-MMDD-NNN, shown in mono on the detail screen" },
+        "level": { "$ref": "#/$defs/Level" },
+        "confidence": { "$ref": "#/$defs/Confidence" },
+        "confidence_reason": { "type": "string", "examples": ["RCB + czujnik", "1 źródło oficjalne"] },
+        "kind": { "$ref": "#/$defs/EventKind" },
+        "title": { "type": "string", "description": "Official wording where it exists, otherwise the measurement" },
+        "areas": { "type": "array", "items": { "$ref": "#/$defs/AreaRef" } },
+        "geometry": { "$ref": "#/$defs/Geometry" },
+        "started_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" },
+        "valid_until": { "type": ["string", "null"], "format": "date-time" },
+        "state": { "type": "string", "enum": ["active", "cancelled", "expired"] },
+        "cancelled_at": { "type": ["string", "null"], "format": "date-time" },
+        "sources": { "type": "array", "items": { "$ref": "#/$defs/SourceId" }, "description": "Chips, in the order they contributed" },
+        "instructions": {
+          "type": "object",
+          "properties": {
+            "official": { "type": "string", "description": "Verbatim official instruction, shown first" },
+            "steps": { "type": "array", "maxItems": 3, "items": { "type": "string", "maxLength": 90 }, "description": "Zorya's own steps, marked 'wskazówki Zoryi'" }
+          }
+        },
+        "signals": { "type": "array", "items": { "$ref": "#/$defs/Signal" }, "description": "The timeline, oldest first" },
+        "report_count": { "type": "integer", "description": "User reports in the window, never counted towards the level" }
+      }
+    },
+    "Report": {
+      "type": "object", "required": ["id", "kind", "observed_at", "location", "state"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "type": "string", "enum": ["syrena", "huk", "dron_samolot", "dym_pozar", "brak_pradu", "inne"] },
+        "observed_at": { "type": "string", "format": "date-time" },
+        "location": { "type": "object", "properties": { "lat": { "type": "number" }, "lon": { "type": "number" }, "rounded_m": { "type": "integer", "const": 500 } } },
+        "area": { "$ref": "#/$defs/AreaRef" },
+        "note": { "type": "string", "maxLength": 200 },
+        "media": { "type": "array", "items": { "type": "string", "format": "uri" }, "description": "EXIF stripped on device" },
+        "state": { "type": "string", "enum": ["queued", "sent", "withdrawn", "aggregated"] },
+        "withdraw_until": { "type": "string", "format": "date-time", "description": "sent + 10 min" }
+      }
+    },
+    "AreaStatus": {
+      "type": "object", "required": ["area", "level", "since", "active_events", "sources_active", "sources_total", "data_as_of"],
+      "properties": {
+        "area": { "$ref": "#/$defs/AreaRef" },
+        "level": { "$ref": "#/$defs/Level" },
+        "since": { "type": "string", "format": "date-time" },
+        "active_events": { "type": "integer" },
+        "sources_active": { "type": "integer" },
+        "sources_total": { "type": "integer" },
+        "data_as_of": { "type": "string", "format": "date-time" },
+        "stale": { "type": "boolean" }
+      }
+    },
+    "Settings": {
+      "type": "object",
+      "properties": {
+        "areas": { "type": "array", "maxItems": 5, "items": { "type": "object", "properties": { "area": { "$ref": "#/$defs/AreaRef" }, "role": { "type": "string", "enum": ["dom", "praca", "rodzina", "inne"] }, "primary": { "type": "boolean" } } } },
+        "notifications": { "type": "object", "properties": { "alarm": { "const": true }, "ostrzezenie": { "type": "boolean" }, "obserwacja": { "type": "boolean" }, "odwolanie": { "type": "boolean" }, "quiet_hours": { "type": "object", "properties": { "from": { "type": "string", "pattern": "^[0-2][0-9]:[0-5][0-9]$" }, "to": { "type": "string", "pattern": "^[0-2][0-9]:[0-5][0-9]$" } } } } },
+        "sources": { "type": "object", "additionalProperties": { "type": "boolean" } },
+        "theme": { "type": "string", "enum": ["noc", "dzien", "system"] },
+        "reduce_motion": { "type": "boolean" }
+      }
+    }
+  },
+  "api": {
+    "description": "Suggested read endpoints for the website and app (JSON). The website's hero panel and footer read /status; the app reads /areas/{id}/horizon.",
+    "GET /status": { "returns": { "level_max": "Level", "sources": ["Source"], "data_as_of": "date-time", "version": "string" } },
+    "GET /areas/{id}/horizon": { "returns": { "status": "AreaStatus", "events": ["Event"], "signals": ["Signal"] } },
+    "GET /events/{id}": { "returns": "Event" },
+    "GET /sources/{id}": { "returns": { "source": "Source", "items": ["Signal"] } },
+    "POST /reports": { "body": "Report", "returns": { "id": "string", "withdraw_until": "date-time" } },
+    "DELETE /reports/{id}": { "note": "allowed until withdraw_until" }
+  }
+}

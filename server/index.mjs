@@ -7,6 +7,7 @@ import { WebSocketServer } from "ws";
 import { buildState, emptyHistory, stampHistory, VOIV } from "./fusion.mjs";
 import { ingestLive, emptyInput, INGEST_EVERY_MS } from "./ingest.mjs";
 import { notifyFromState, pushPublicKey, upsertPushSub, removePushSub } from "./push.mjs";
+import { addReport, horizonFromFusion, loadFixtures, statusFromFusion, withdrawReport } from "./horizon.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
@@ -20,6 +21,12 @@ app.use((_, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS");
+  if (isProd) {
+    res.setHeader(
+      "Content-Security-Policy",
+      "default-src 'self'; img-src 'self' data:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; worker-src 'self'"
+    );
+  }
   next();
 });
 
@@ -78,6 +85,63 @@ app.post("/api/push/subscribe", (req, res) => {
 app.post("/api/push/unsubscribe", (req, res) => {
   removePushSub(req.body?.endpoint);
   res.json({ ok: true });
+});
+
+app.get("/api/status", (req, res) => {
+  if (req.query.fixture) {
+    const fx = loadFixtures();
+    return res.json({ ...fx.status, sources: fx.sources, sample: true });
+  }
+  try {
+    res.json(statusFromFusion(state));
+  } catch {
+    const fx = loadFixtures();
+    res.json({ ...fx.status, sources: fx.sources, sample: true });
+  }
+});
+
+app.get("/api/horizon", (req, res) => {
+  if (req.query.fixture) {
+    const fx = loadFixtures();
+    const area = fx.areas.find((a) => a.id === req.query.area) || fx.areas[0];
+    const status = (fx.status.area_status || []).find((s) => s.area.id === area.id) || fx.status.area_status[0];
+    return res.json({ status, events: fx.events, signals: fx.signals.filter((s) => !s.event_id), sources: fx.sources, sample: true });
+  }
+  res.json(horizonFromFusion(state, req.query.area || null));
+});
+
+app.get("/api/events/:id", (req, res) => {
+  const fx = loadFixtures();
+  const fromFx = fx.events.find((e) => e.id === req.params.id);
+  if (fromFx) return res.json(fromFx);
+  const live = horizonFromFusion(state, null).events.find((e) => e.id === req.params.id);
+  if (live) return res.json(live);
+  res.status(404).json({ error: "brak" });
+});
+
+app.get("/api/sources/:id", (req, res) => {
+  const fx = loadFixtures();
+  const source = fx.sources.find((s) => s.id === req.params.id);
+  const items = fx.signals.filter((s) => s.source === req.params.id).slice(-20);
+  if (source) return res.json({ source, items });
+  res.status(404).json({ error: "brak" });
+});
+
+app.get("/api/areas", (_req, res) => {
+  res.json({ areas: loadFixtures().areas, voivodeships: VOIV });
+});
+
+app.post("/api/reports", (req, res) => {
+  try {
+    res.json(addReport(req.body || {}));
+  } catch (err) {
+    res.status(400).json({ error: err.message || "report" });
+  }
+});
+
+app.delete("/api/reports/:id", (req, res) => {
+  const ok = withdrawReport(req.params.id);
+  res.status(ok ? 200 : 404).json({ ok });
 });
 
 if (isProd) {

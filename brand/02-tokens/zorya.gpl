@@ -1,0 +1,23 @@
+GIMP Palette
+Name: Zorya
+Columns: 4
+#
+ 14  18  25	night
+ 22  28  38	night-raised
+ 42  51  65	night-line
+ 92 104 120	night-line-strong
+243 237 224	ivory
+169 176 186	ash
+238 241 245	fog
+255 255 255	fog-raised
+205 212 220	fog-line
+125 135 148	fog-line-strong
+ 84  94 107	slate
+242 181  68	dawn
+125  79   0	dawn-deep
+240 120  58	ember
+168  58  16	ember-deep
+255  97  87	alarm
+181  36  28	alarm-deep
+143 199 234	calm
+ 28  90 131	calm-deep
