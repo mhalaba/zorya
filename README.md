@@ -2,7 +2,7 @@
 
 Nieoficjalna fuzja sygnałów o zagrożeniach powietrznych dla Polski. Czuwanie świtu — nie syrena, nie urząd, nie radar.
 
-**Produkcja jest online:** [https://zorya.website](https://zorya.website) — własna domena, HTTPS, mapa na żywo.
+**Produkcja jest online:** [https://zorya.website](https://zorya.website) — własna domena, HTTPS, mapa na żywo. Krawędź: Cloudflare Tunnel na `http://127.0.0.1:8787`.
 
 **To NIE jest oficjalny system ostrzegania.** Nie zastępuje syren, Alertu RCB ani RSO. W razie realnego zagrożenia kieruj się kanałami oficjalnymi. Zorya może dać dodatkowy, wcześniejszy sygnał — albo nic nie dać.
 
@@ -31,9 +31,9 @@ Serwer od startu czyta źródła na żywo (co 60 s). Źródło, które nie odpow
 
 W produkcji ustaw `VAPID_SUBJECT` (np. `mailto:ty@twojadomena.pl`) — usługa push Apple odrzuca domyślny adres `@localhost`.
 
-## Publikacja (Oracle Cloud Always Free)
+## Publikacja (Oracle / Caddy - wariant)
 
-Aplikacja działa pod własną domeną **zorya.website** (Caddy + Let's Encrypt).
+Live **zorya.website** idzie tunelem Cloudflare na Node (`npm start`, port 8787). Poniższe skrypty zostają jako wariant Caddy + Let's Encrypt na Oracle Always Free.
 
 Maszyna z Ubuntu 22.04/24.04 (np. `VM.Standard.A1.Flex`), w security list VCN otwarte porty 80 i 443. DNS A/AAAA domeny wskazuje na publiczny IP instancji. Na serwerze:
 
