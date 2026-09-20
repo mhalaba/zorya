@@ -93,12 +93,7 @@ app.get("/api/status", (req, res) => {
     const fx = loadFixtures();
     return res.json({ ...fx.status, sources: fx.sources, sample: true });
   }
-  try {
-    res.json(statusFromFusion(state));
-  } catch {
-    const fx = loadFixtures();
-    res.json({ ...fx.status, sources: fx.sources, sample: true });
-  }
+  res.json(statusFromFusion(state));
 });
 
 app.get("/api/horizon", (req, res) => {

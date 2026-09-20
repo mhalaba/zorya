@@ -445,8 +445,8 @@ h1.screen { margin: 0; padding: var(--z-space-4) var(--z-space-4) var(--z-space-
 .map-tools-start {
   top: var(--z-space-3);
   left: max(var(--z-space-3), env(safe-area-inset-left));
-  right: auto;
-  max-width: calc(100% - 44px);
+  right: 56px;
+  max-width: none;
   flex-direction: column;
   align-items: flex-start;
 }

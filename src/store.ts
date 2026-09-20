@@ -233,19 +233,22 @@ export const useStore = create<Store>()(
       withdrawReport: (id) =>
         set((s) => ({ reports: s.reports.map((r) => (r.id === id ? { ...r, state: "withdrawn" as const } : r)) })),
       markAlarmOpened: (id) => set((s) => ({ alarmOpened: { ...s.alarmOpened, [id]: true } })),
-      cacheHorizon: (lastHorizon) => set({ lastHorizon }),
+      cacheHorizon: (h) => {
+        if (h?.sample) return;
+        set({ lastHorizon: h });
+      },
       setView: (view) => set({ view, sheet: null }),
       setSheet: (sheet) => set({ sheet }),
       setSelectedAreaId: (selectedAreaId) => set({ selectedAreaId, sheet: null }),
       setHorizon: (horizon, meta) =>
-        set({
+        set((s) => ({
           horizon,
           loading: meta.loading ?? false,
-          offline: meta.offline ?? false,
+          offline: meta.offline ?? s.offline,
           sample: meta.sample ?? horizon?.sample ?? false,
-          error: meta.error === undefined ? null : meta.error,
-          lastHorizon: horizon ?? undefined,
-        }),
+          error: meta.error === undefined ? s.error : meta.error,
+          lastHorizon: horizon && !horizon.sample ? horizon : s.lastHorizon,
+        })),
       setLoading: (loading) => set({ loading }),
       setOffline: (offline) => set({ offline }),
       setError: (error) => set({ error }),
@@ -310,6 +313,9 @@ export const useStore = create<Store>()(
         places: s.places,
         homeVoiv: s.homeVoiv,
       }),
+      onRehydrateStorage: () => (s) => {
+        if (s?.lastHorizon?.sample) s.cacheHorizon(null);
+      },
     }
   )
 );

@@ -3,7 +3,7 @@
   "short_name": "Zorya",
   "description": "Jeden poziom dla Twojej gminy z alertów RCB, IMGW, PSP, czujników syren, radia i zgłoszeń sąsiadów.",
   "lang": "pl",
-  "start_url": "/",
+  "start_url": "/app/mapa",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

@@ -163,28 +163,19 @@ async function getJson<T>(url: string): Promise<T> {
 export async function fetchStatus(): Promise<StatusPayload> {
   const sc = activeScenario();
   if (sc) return fixtureStatus(sc === "offline" ? "alarm" : sc);
-  try {
-    const live = await getJson<StatusPayload>("/api/status");
-    if (live?.sources) return { ...live, sample: false };
-  } catch {
-    /* fall through */
-  }
-  return fixtureStatus("obserwacja");
+  const live = await getJson<StatusPayload>("/api/status");
+  if (!live?.sources) throw new Error("status");
+  return { ...live, sample: Boolean(live.sample) };
 }
 
+/** Live civic feed only. Empty events are valid cisza — never substitute fixtures. */
 export async function fetchHorizon(areaId: string | null): Promise<HorizonPayload> {
   const sc = activeScenario();
   if (sc) return fixtureHorizon(areaId, sc === "offline" ? "alarm" : sc);
-  try {
-    const q = areaId ? `?area=${encodeURIComponent(areaId)}` : "";
-    const live = await getJson<HorizonPayload>(`/api/horizon${q}`);
-    if (live?.status) return { ...live, sample: false };
-  } catch {
-    /* fall through */
-  }
-  const cached = useStore.getState().lastHorizon;
-  if (cached) return cached;
-  return fixtureHorizon(areaId, "obserwacja");
+  const q = areaId ? `?area=${encodeURIComponent(areaId)}` : "";
+  const live = await getJson<HorizonPayload>(`/api/horizon${q}`);
+  if (!live?.status) throw new Error("horizon");
+  return { ...live, sample: Boolean(live.sample) };
 }
 
 export async function fetchEvent(id: string): Promise<EventItem | null> {

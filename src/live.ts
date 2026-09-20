@@ -1,16 +1,13 @@
 import { useEffect } from "react";
-import { fetchHorizon, fetchState, openStateSocket } from "./api";
-import { maybeNotify } from "./notify";
+import { fetchState, openStateSocket } from "./api";
 import { useStore } from "./store";
 
-/** Live fusion: GET /api/state then WS /api/ws. Also refreshes horizon so Horyzont stays in sync. */
+/** Live fusion for the map: GET /api/state then WS /api/ws. Horizon is a separate civic feed. */
 export function useLiveFusion() {
   const backendUrl = useStore((s) => s.backendUrl);
   const setLiveState = useStore((s) => s.setLiveState);
   const setConnecting = useStore((s) => s.setConnecting);
   const setOffline = useStore((s) => s.setOffline);
-  const setHorizon = useStore((s) => s.setHorizon);
-  const cacheHorizon = useStore((s) => s.cacheHorizon);
 
   useEffect(() => {
     let ws: WebSocket | null = null;
@@ -19,22 +16,8 @@ export function useLiveFusion() {
     let timer: number | undefined;
     setConnecting(true);
 
-    const refreshHorizon = () => {
-      void fetchHorizon(useStore.getState().selectedAreaId)
-        .then((h) => {
-          if (closed) return;
-          setHorizon(h, { sample: h.sample, offline: false, loading: false, error: null });
-          cacheHorizon(h);
-          maybeNotify(h);
-        })
-        .catch(() => {
-          /* keep last horizon; fusion map still updates */
-        });
-    };
-
     const apply = (s: Parameters<typeof setLiveState>[0]) => {
       setLiveState(s);
-      refreshHorizon();
     };
 
     const load = () =>
@@ -91,5 +74,5 @@ export function useLiveFusion() {
       document.removeEventListener("visibilitychange", wake);
       ws?.close();
     };
-  }, [backendUrl, cacheHorizon, setConnecting, setHorizon, setLiveState, setOffline]);
+  }, [backendUrl, setConnecting, setLiveState, setOffline]);
 }

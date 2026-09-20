@@ -33,7 +33,7 @@ export function SiteHeader() {
         <a href="/zrodla">{s("web.menu_sources")}</a>
         <a href="/prywatnosc">{s("web.menu_privacy")}</a>
         <a href="/status">{s("web.menu_status")}</a>
-        <a className="btn" href="/app" style={{ height: 40 }}>
+        <a className="btn" href="/app/mapa" style={{ height: 40 }}>
           {s("web.open_app")}
         </a>
       </nav>
@@ -107,7 +107,7 @@ export function Landing() {
   const sample = true;
 
   useEffect(() => {
-    void fetchStatus().then(setStatus);
+    void fetchStatus().then(setStatus).catch(() => undefined);
   }, []);
 
   const ev = hero.events[0];
@@ -121,7 +121,7 @@ export function Landing() {
           <h1 className="z-display">{s("web.hero_title")}</h1>
           <p>{s("web.hero_text")}</p>
           <div className="cta">
-            <a className="btn primary" href="/app">
+            <a className="btn primary" href="/app/mapa">
               {s("web.open_app")}
             </a>
             <a className="btn" href="#jak">
@@ -244,7 +244,7 @@ export function Landing() {
 export function SitePage({ title, children }: { title: string; children: ReactNode }) {
   const [status, setStatus] = useState<StatusPayload | null>(null);
   useEffect(() => {
-    void fetchStatus().then(setStatus);
+    void fetchStatus().then(setStatus).catch(() => undefined);
   }, []);
   return (
     <div className="site">
@@ -289,7 +289,7 @@ export function PrivacyPage() {
 export function StatusPage() {
   const [status, setStatus] = useState<StatusPayload | null>(null);
   useEffect(() => {
-    void fetchStatus().then(setStatus);
+    void fetchStatus().then(setStatus).catch(() => undefined);
   }, []);
   return (
     <SitePage title={s("pages.status_title")}>
@@ -317,7 +317,7 @@ export function StatusPage() {
 export function SourcesPage() {
   const [status, setStatus] = useState<StatusPayload | null>(null);
   useEffect(() => {
-    void fetchStatus().then(setStatus);
+    void fetchStatus().then(setStatus).catch(() => undefined);
   }, []);
   return (
     <SitePage title={s("pages.sources_title")}>

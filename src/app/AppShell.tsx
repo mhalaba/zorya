@@ -27,7 +27,6 @@ export function AppShell({ path }: { path: string }) {
   const lastHorizon = useStore((x) => x.lastHorizon);
   const cacheHorizon = useStore((x) => x.cacheHorizon);
   const error = useStore((x) => x.error);
-  const setError = useStore((x) => x.setError);
   const fusion = useStore((x) => x.state);
 
   useLiveFusion();
@@ -68,25 +67,28 @@ export function AppShell({ path }: { path: string }) {
         const h = await fetchHorizon(selectedAreaId);
         if (stop) return;
         const sc = activeScenario();
-        setHorizon(h, { sample: h.sample, offline: sc === "offline", loading: false, error: null });
-        cacheHorizon(h);
+        if (!sc && h.sample) return;
+        setHorizon(h, {
+          sample: Boolean(sc) || Boolean(h.sample),
+          offline: sc === "offline" ? true : undefined,
+          loading: false,
+          error: null,
+        });
+        if (!h.sample) cacheHorizon(h);
         maybeNotify(h);
       } catch {
         if (stop) return;
         const cached = useStore.getState().lastHorizon;
-        if (cached) {
-          setHorizon(cached, { offline: true, loading: false, sample: cached.sample, error: null });
-        } else {
-          setError("horizon");
-          setHorizon(null, { offline: true, loading: false, error: "horizon" });
+        if (cached && !cached.sample) {
+          setHorizon(cached, { loading: false, sample: false, error: null });
         }
+        // Empty/failed civic horizon is not app death; fusion owns map liveness.
       }
     };
     void load();
     const t = window.setInterval(() => void load(), 60_000);
     const onOffline = () => setOffline(true);
     const onOnline = () => {
-      setOffline(false);
       void load();
     };
     window.addEventListener("offline", onOffline);
@@ -98,17 +100,21 @@ export function AppShell({ path }: { path: string }) {
       window.removeEventListener("offline", onOffline);
       window.removeEventListener("online", onOnline);
     };
-  }, [selectedAreaId, cacheHorizon, setHorizon, setOffline, setError]);
+  }, [selectedAreaId, cacheHorizon, setHorizon, setOffline]);
 
-  const level = horizon?.status.level ?? lastHorizon?.status.level ?? "cisza";
-  const dataTime = horizon?.status.data_as_of ?? lastHorizon?.status.data_as_of;
+  const civic =
+    (horizon && (!horizon.sample || activeScenario()) ? horizon : null) ??
+    (lastHorizon && !lastHorizon.sample ? lastHorizon : null);
+  const level = civic?.status.level ?? "cisza";
+  const dataTime = fusion?.generated_at ?? civic?.status.data_as_of;
 
   if (!hydrated) {
     return <div className="app-root" />;
   }
 
   const liveReady = Boolean(fusion);
-  if (!onboardingDone && !liveReady && !activeScenario()) {
+  // Map monitoring must not wait on onboarding or civic horizon.
+  if (!onboardingDone && view !== "mapa" && !liveReady && !activeScenario()) {
     return (
       <div className="app-root">
         <Onboarding />
@@ -120,7 +126,7 @@ export function AppShell({ path }: { path: string }) {
     <div className={`app-root${view === "mapa" ? " map-view" : ""}`}>
       <AppHeader level={level} />
       {(offline || activeScenario() === "offline") && dataTime && <OfflineBar time={fmtTime(dataTime)} />}
-      {error && (
+      {error && view !== "mapa" && (
         <p className="offline-bar">
           {s("states.error", { thing: "horyzont", time: dataTime ? fmtTime(dataTime) : "—" })}{" "}
           <button type="button" className="linkish" onClick={() => window.location.reload()}>
