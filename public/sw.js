@@ -1,8 +1,9 @@
 /* Zorya service worker — shell, fonts, last state; Web Push */
-const CACHE = "zorya-v3";
+const CACHE = "zorya-v4";
 const PRECACHE = [
   "/",
   "/app",
+  "/app/mapa",
   "/manifest.webmanifest",
   "/css/tokens.css",
   "/icons/favicon.svg",
@@ -63,7 +64,7 @@ self.addEventListener("fetch", (event) => {
 self.addEventListener("push", (event) => {
   event.waitUntil(
     (async () => {
-      let data = { title: "Zorya", body: "", level: "obserwacja", tag: "zorya", url: "/app" };
+      let data = { title: "Zorya", body: "", level: "obserwacja", tag: "zorya", url: "/app/mapa" };
       try {
         data = { ...data, ...(event.data ? event.data.json() : {}) };
       } catch {
@@ -77,7 +78,7 @@ self.addEventListener("push", (event) => {
         tag: data.tag || "zorya",
         icon: "/icons/app-icon-192.png",
         badge: "/icons/app-icon-192.png",
-        data: { url: data.url || "/app" },
+        data: { url: data.url || "/app/mapa" },
       });
     })()
   );
@@ -85,7 +86,7 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = event.notification.data?.url || "/app";
+  const url = event.notification.data?.url || "/app/mapa";
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
       for (const c of clients) {

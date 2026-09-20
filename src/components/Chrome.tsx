@@ -1,77 +1,20 @@
-import type { Level, NavId } from "../model";
 import { s } from "../strings";
-import { go } from "../nav";
-import { areaChipName } from "../format";
 import { useStore } from "../store";
-import { MarkSvg, NAV_ICONS, PinIcon } from "./ui";
+import { MarkSvg } from "./ui";
 
-export function AppHeader({ level }: { level: Level }) {
-  const areas = useStore((s) => s.areas);
-  const selected = useStore((s) => s.selectedAreaId);
-  const setSheet = useStore((s) => s.setSheet);
-  const primary = areas.find((a) => a.area.id === selected) ?? areas.find((a) => a.primary) ?? areas[0];
-  const extra = Math.max(0, areas.length - 1);
-  const label = primary ? areaChipName(primary.area.name) : s("settings.areas");
-  const more = extra > 0 ? ` ${s("header.area_more", { n: extra })}` : "";
+/** Tiny brand + live diode. No tools, no layer toggles. */
+export function MapHud() {
+  const fusion = useStore((s) => s.state);
+  const connecting = useStore((s) => s.connecting);
+  const offline = useStore((s) => s.offline);
+  const mode = connecting && !fusion ? "wait" : fusion && !offline ? "on" : "off";
+  const label = mode === "on" ? "na żywo" : mode === "wait" ? "łączenie" : "offline";
 
   return (
-    <header className={`hdr lvl-${level}`}>
-      <a
-        className="brand"
-        href="/app"
-        aria-label={s("header.home_a11y")}
-        onClick={(e) => {
-          e.preventDefault();
-          go("/app");
-        }}
-      >
-        <MarkSvg />
-        <span className="wm">{s("brand.wordmark")}</span>
-      </a>
-      <button
-        type="button"
-        className="chip"
-        aria-haspopup="listbox"
-        aria-label={s("header.area_a11y", { area: label })}
-        onClick={() => setSheet({ kind: "areas" })}
-      >
-        <PinIcon />
-        {label}
-        {more}
-      </button>
-    </header>
+    <div className="map-hud">
+      <MarkSvg />
+      <span className="wm">{s("brand.wordmark")}</span>
+      <span className={`map-diode ${mode}`} title={label} aria-label={label} />
+    </div>
   );
-}
-
-export function BottomNav({ current }: { current: NavId }) {
-  const items: { id: NavId; href: string; label: string }[] = [
-    { id: "horyzont", href: "/app", label: s("nav.horyzont") },
-    { id: "mapa", href: "/app/mapa", label: s("nav.mapa") },
-    { id: "sygnaly", href: "/app/sygnaly", label: s("nav.sygnaly") },
-    { id: "zglos", href: "/app/zglos", label: s("nav.zglos") },
-    { id: "wiecej", href: "/app/wiecej", label: s("nav.wiecej") },
-  ];
-  return (
-    <nav className="nav" aria-label={s("nav.a11y")}>
-      {items.map((it) => (
-        <a
-          key={it.id}
-          href={it.href}
-          className={current === it.id ? "on" : ""}
-          aria-current={current === it.id ? "page" : undefined}
-          onClick={(e) => {
-            e.preventDefault();
-            go(it.href);
-          }}
-        >
-          {NAV_ICONS[it.id]}
-          {it.label}
-        </a>
-      ))}
-    </nav>
-  );
-}
-
-export function OfflineBar({ time }: { time: string }) {
-  return <div className="offline-bar">{s("states.offline", { time })}</div>;
 }

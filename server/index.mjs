@@ -12,6 +12,7 @@ import { addReport, horizonFromFusion, loadFixtures, statusFromFusion, withdrawR
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
 const PORT = Number(process.env.PORT || 8787);
+const HOST = process.env.HOST || "0.0.0.0";
 const isProd = process.env.NODE_ENV === "production";
 
 const app = express();
@@ -24,7 +25,7 @@ app.use((_, res, next) => {
   if (isProd) {
     res.setHeader(
       "Content-Security-Policy",
-      "default-src 'self'; img-src 'self' data:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; worker-src 'self'"
+      "default-src 'self'; img-src 'self' data: blob: https://tiles.openfreemap.org; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://tiles.openfreemap.org; worker-src 'self' blob:"
     );
   }
   next();
@@ -92,12 +93,7 @@ app.get("/api/status", (req, res) => {
     const fx = loadFixtures();
     return res.json({ ...fx.status, sources: fx.sources, sample: true });
   }
-  try {
-    res.json(statusFromFusion(state));
-  } catch {
-    const fx = loadFixtures();
-    res.json({ ...fx.status, sources: fx.sources, sample: true });
-  }
+  res.json(statusFromFusion(state));
 });
 
 app.get("/api/horizon", (req, res) => {
@@ -186,8 +182,8 @@ async function cycle() {
   }
 }
 
-server.listen(PORT, "127.0.0.1", () => {
-  console.log(`Zorya fusion live http://127.0.0.1:${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`Zorya fusion live http://${HOST}:${PORT}`);
   void cycle();
   setInterval(() => void cycle(), INGEST_EVERY_MS);
 });

@@ -18,7 +18,7 @@ npm run dev
 ```
 
 - Strona: [http://127.0.0.1:5173/](http://127.0.0.1:5173/)
-- Aplikacja: [http://127.0.0.1:5173/app](http://127.0.0.1:5173/app)
+- Aplikacja: [http://127.0.0.1:5173/app](http://127.0.0.1:5173/app) — mapa na żywo: [/app/mapa](http://127.0.0.1:5173/app/mapa)
 - Tryb makiety (dane z `brand/04-ux/sample-data/`): [http://127.0.0.1:5173/app?fixture=1](http://127.0.0.1:5173/app?fixture=1)
 
 Scenariusze makiety: `?fixture=1` (alarm), `?fixture=obserwacja`, `?fixture=ostrzezenie`, `?fixture=odwolanie`, `?fixture=cisza`, `?fixture=stale`, `?fixture=offline`. Motyw: Ustawienia → Dostępność, albo `data-theme` na `html` (`noc` / `dzien`).
@@ -36,7 +36,7 @@ API (nowe + zachowane):
 - `GET /api/state`, `GET /api/history/bundle?hours=12`, `WS /api/ws` (stara fuzja)
 - Push: `GET /api/push/key`, `POST /api/push/subscribe`
 
-Serwer od startu czyta źródła na żywo (co 60 s). UI mapuje fuzję na model horyzontu; makieta nie wymaga backendu.
+Serwer od startu czyta źródła na żywo (co 60 s). Nasłuch: `HOST` (domyślnie `0.0.0.0`) i `PORT` (8787). UI trzyma fuzję przez `GET /api/state` i `WS /api/ws` (mapa) oraz mapuje ją na horyzont. Makieta (`?fixture=`) nie zastępuje warstw live.
 
 W produkcji ustaw `VAPID_SUBJECT` (np. `mailto:ty@twojadomena.pl`).
 
