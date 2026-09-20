@@ -103,6 +103,10 @@ export function MoreView() {
         <h3>{t(lang, "privacy")}</h3>
         <p className="muted">{t(lang, "privacyBody")}</p>
 
+        <h3>{t(lang, "foundation")}</h3>
+        <p className="muted">{t(lang, "foundationBody")}</p>
+        <p className="tiny">{t(lang, "foundationUnofficial")}</p>
+
         <h3>{t(lang, "author")}</h3>
         <p>
           <a href={SUPPORT_URL} target="_blank" rel="noreferrer">

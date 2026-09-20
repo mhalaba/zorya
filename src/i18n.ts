@@ -5,9 +5,13 @@ const pl = {
   tagline: "nieoficjalna fuzja sygnałów",
   watch: "czuwanie świtu",
   disclaimerFull:
-    "To NIE jest oficjalny system ostrzegania. Nie zastępuje syren, Alertu RCB ani RSO. W razie realnego zagrożenia kieruj się kanałami oficjalnymi. Zorya może dać dodatkowy, wcześniejszy sygnał — albo nic nie dać.",
+    "To NIE jest oficjalny system ostrzegania. Nie zastępuje syren, Alertu RCB ani RSO. Publikacja jako projekt Fundacji Terra Incognita nic tu nie zmienia. W razie realnego zagrożenia kieruj się kanałami oficjalnymi. Zorya może dać dodatkowy, wcześniejszy sygnał — albo nic nie dać.",
   disclaimerCompact:
-    "NIEOFICJALNE · nie zastępuje syren / RCB / RSO · źródła: NEPTUN (OSINT, nie radar) · alarmy UA · ADS-B · RSS · RCB/RSO · PAŻP",
+    "NIEOFICJALNE · nie zastępuje syren / RCB / RSO · nie urząd · źródła: NEPTUN (OSINT, nie radar) · alarmy UA · ADS-B · RSS · RCB/RSO · PAŻP",
+  foundation: "Fundacja Terra Incognita",
+  foundationLine: "Projekt Fundacji Terra Incognita",
+  foundationBody: "Projekt Fundacji Terra Incognita. Wpis do KRS w toku.",
+  foundationUnofficial: "To nie czyni Zoryi urzędowym systemem ostrzegania.",
   fusionNote: "Żaden pojedynczy sygnał nie przesądza o zagrożeniu. Wynik to wskaźnik fuzji, nie prawdopodobieństwo uderzenia. Brak punktów ≠ brak zagrożenia.",
   tickerCalm: "Spokój w oknie 60 min · progi ≥2 uwaga, ≥4 priorytet",
   tickerNow: "TERAZ",
@@ -151,9 +155,13 @@ const en: typeof pl = {
   tagline: "unofficial signal fusion",
   watch: "dawn watch",
   disclaimerFull:
-    "This is NOT an official warning system. It does not replace sirens, RCB Alert or RSO. In a real threat, follow official channels. Zorya may give an extra, earlier signal — or none.",
+    "This is NOT an official warning system. It does not replace sirens, RCB Alert or RSO. Publishing it as a Fundacja Terra Incognita project does not change that. In a real threat, follow official channels. Zorya may give an extra, earlier signal — or none.",
   disclaimerCompact:
-    "UNOFFICIAL · does not replace sirens / RCB / RSO · sources: NEPTUN (OSINT, not radar) · UA alerts · ADS-B · RSS · RCB/RSO · PAŻP",
+    "UNOFFICIAL · does not replace sirens / RCB / RSO · not an authority · sources: NEPTUN (OSINT, not radar) · UA alerts · ADS-B · RSS · RCB/RSO · PAŻP",
+  foundation: "Fundacja Terra Incognita",
+  foundationLine: "A Fundacja Terra Incognita project",
+  foundationBody: "A Fundacja Terra Incognita project. National Court Register (KRS) filing is in progress.",
+  foundationUnofficial: "That does not make Zorya an official warning system.",
   fusionNote: "No single signal decides a threat. The score is a fusion index, not a strike probability. No points ≠ no threat.",
   tickerCalm: "Quiet in the 60 min window · thresholds ≥2 watch, ≥4 priority",
   tickerNow: "NOW",

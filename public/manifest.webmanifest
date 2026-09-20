@@ -1,7 +1,7 @@
 {
   "name": "Zorya",
   "short_name": "Zorya",
-  "description": "Nieoficjalna fuzja sygnałów o zagrożeniach powietrznych dla Polski. Nie zastępuje syren, Alertu RCB ani RSO.",
+  "description": "Nieoficjalna fuzja sygnałów o zagrożeniach powietrznych dla Polski. Projekt Fundacji Terra Incognita. Nie zastępuje syren, Alertu RCB ani RSO.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#070B12",

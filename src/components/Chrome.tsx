@@ -164,7 +164,12 @@ export function Ticker({ now }: { now: number }) {
 
 export function DisclaimerLine() {
   const lang = useStore((s) => s.lang);
-  return <div className="disclaimer">{t(lang, "disclaimerCompact")}</div>;
+  return (
+    <div className="disclaimer">
+      <div className="disclaimer-foundation">{t(lang, "foundationLine")}</div>
+      <div>{t(lang, "disclaimerCompact")}</div>
+    </div>
+  );
 }
 
 export function Dock() {

@@ -3,7 +3,6 @@ import { useStore } from "../store";
 import { t } from "../i18n";
 import { SOURCE_LABEL, OBJECT_LABEL, COLORS } from "../config";
 import { ageLabel, ageSeconds, fmtPts, nearestPlaceDist } from "../lib";
-import { StarMark } from "./StarMark";
 import type { Breakdown } from "../types";
 
 export function Drawers({ now }: { now: number }) {
@@ -58,7 +57,7 @@ export function Drawers({ now }: { now: number }) {
           <div className="stack">
             {["shahed", "drone", "cruise", "ballistic", "aircraft", "helicopter", "unknown"].map((k) => (
               <div key={k} className="icon-row">
-                <StarMark className="star" />
+                <span className="obj-glyph" aria-hidden />
                 <span>{OBJECT_LABEL[k]?.[lang] ?? k}</span>
               </div>
             ))}

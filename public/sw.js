@@ -1,5 +1,5 @@
 /* Zorya service worker — cache geo + shell, Web Push when the tab is closed */
-const CACHE = "zorya-v2";
+const CACHE = "zorya-v3";
 const PRECACHE = ["/", "/manifest.webmanifest", "/favicon.svg"];
 
 self.addEventListener("install", (event) => {

@@ -48,7 +48,7 @@ button { cursor: pointer; }
   background: transparent !important;
   color: var(--muted) !important;
   font-size: 10px !important;
-  margin: 0 8px 28px !important;
+  margin: 0 8px 8px !important;
 }
 .maplibregl-ctrl-attrib a { color: var(--muted) !important; }
 
@@ -104,12 +104,9 @@ button { cursor: pointer; }
 }
 
 .star {
-  width: 28px; height: 28px;
+  width: 34px; height: 34px;
   flex: 0 0 auto;
 }
-.star .core { fill: var(--ok); }
-.star[data-level="watch"] .core { fill: var(--amber); }
-.star[data-level="priority"] .core { fill: var(--crimson); }
 
 .diodes {
   display: flex;
@@ -239,7 +236,16 @@ button { cursor: pointer; }
   line-height: 1.35;
   pointer-events: none;
   text-shadow: 0 1px 2px #070b12;
-  max-width: 920px;
+  max-width: 640px;
+  padding: 4px 10px 6px 0;
+  background: linear-gradient(90deg, rgba(7, 11, 18, 0.78), rgba(7, 11, 18, 0.28) 78%, transparent);
+}
+.disclaimer-foundation {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #c4b4a4;
+  margin-bottom: 2px;
 }
 
 .dock {
@@ -458,6 +464,13 @@ input[type="range"] { width: 100%; accent-color: var(--amber); }
 }
 .swatch { width: 22px; height: 14px; border-radius: 3px; border: 1px solid var(--border); }
 .icon-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.obj-glyph {
+  width: 14px; height: 14px;
+  flex: 0 0 auto;
+  border: 1px solid #c4b4a4;
+  transform: rotate(45deg);
+  background: rgba(232, 216, 200, 0.12);
+}
 
 .cameras { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .cam-tile {
@@ -527,7 +540,7 @@ input[type="range"] { width: 100%; accent-color: var(--amber); }
   .side-nav {
     position: absolute;
     left: 12px;
-    bottom: 48px;
+    bottom: 72px;
     z-index: 22;
     display: flex;
     flex-direction: column;
