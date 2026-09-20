@@ -6,6 +6,8 @@ Nieoficjalna fuzja sygnałów o zagrożeniach powietrznych dla Polski. Czuwanie 
 
 **To NIE jest oficjalny system ostrzegania.** Nie zastępuje syren, Alertu RCB ani RSO. W razie realnego zagrożenia kieruj się kanałami oficjalnymi. Zorya może dać dodatkowy, wcześniejszy sygnał — albo nic nie dać.
 
+Projekt Fundacji Terra Incognita. Nadal nieoficjalne narzędzie fuzji - nie system ostrzegania.
+
 Nazwa pochodzi od Zorzy: w mitologii słowiańskiej strażniczek świtu i zmierzchu. Aplikacja nie udaje instytucji państwa.
 
 ## Uruchomienie
