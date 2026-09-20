@@ -36,7 +36,7 @@ export const CAMERA = {
     [8.5, 45.8],
     [40.5, 59.6],
   ] as [[number, number], [number, number]],
-  padding: { top: 120, bottom: 88, left: 12, right: 56 },
+  padding: { top: 40, bottom: 40, left: 8, right: 8 },
 };
 
 export const EAST_IDS = ["podlaskie", "lubelskie", "podkarpackie", "mazowieckie", "warminsko-mazurskie"];

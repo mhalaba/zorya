@@ -47,20 +47,10 @@ export function MapCanvas() {
   const state = useStore((s) => s.state);
   const hover = useStore((s) => s.hoverVoiv);
   const selected = useStore((s) => s.selectedVoiv);
-  const showPazp = useStore((s) => s.showPazp);
-  const showTracks = useStore((s) => s.showTracks);
-  const pitch3d = useStore((s) => s.pitch3d);
   const labelDensity = useStore((s) => s.labelDensity);
   const preset = useStore((s) => s.cameraPreset);
   const nonce = useStore((s) => s.cameraNonce);
-  const historyMode = useStore((s) => s.historyMode);
-  const history = useStore((s) => s.history);
-  const historyIdx = useStore((s) => s.historyIdx);
   const lang = useStore((s) => s.lang);
-  const showCivAdsb = useStore((s) => s.showCivAdsb);
-  const showMilAdsb = useStore((s) => s.showMilAdsb);
-  const showNeptun = useStore((s) => s.showNeptun);
-  const showUaAlerts = useStore((s) => s.showUaAlerts);
 
   useEffect(() => {
     if (!ref.current || mapRef.current) return;
@@ -239,7 +229,7 @@ export function MapCanvas() {
         id: "zones-fill",
         type: "fill",
         source: "zones",
-        layout: { visibility: initial.showPazp ? "visible" : "none" },
+        layout: { visibility: "none" },
         paint: {
           "fill-color": ["match", ["get", "kind"], "score", "#E0A100", "#9AA8B8"],
           "fill-opacity": 0.22,
@@ -249,7 +239,7 @@ export function MapCanvas() {
         id: "zones-line",
         type: "line",
         source: "zones",
-        layout: { visibility: initial.showPazp ? "visible" : "none" },
+        layout: { visibility: "none" },
         paint: {
           "line-color": ["match", ["get", "kind"], "score", COLORS.amber, "#9AA8B8"],
           "line-width": 1.2,
@@ -409,33 +399,8 @@ export function MapCanvas() {
       });
       map.on("click", "pl-fill", (e) => {
         const id = String(e.features?.[0]?.id ?? "");
-        const st = useStore.getState();
-        st.setSelectedVoiv(id);
-        st.setDrawer({ kind: "voiv", id });
+        useStore.getState().setSelectedVoiv(id);
       });
-      map.on("click", "obj-icon", (e) => {
-        const id = e.features?.[0]?.properties?.id;
-        if (id) useStore.getState().setDrawer({ kind: "object", id: String(id) });
-      });
-      const openAdsb = (e: { features?: { properties?: { id?: string } }[] }) => {
-        const id = e.features?.[0]?.properties?.id;
-        if (id) useStore.getState().setDrawer({ kind: "adsb", id: String(id) });
-      };
-      map.on("click", "adsb-civ", openAdsb);
-      map.on("click", "adsb-mil", openAdsb);
-      for (const layer of ["adsb-civ", "adsb-mil", "obj-icon"]) {
-        map.on("mouseenter", layer, () => {
-          map.getCanvas().style.cursor = "pointer";
-        });
-        map.on("mouseleave", layer, () => {
-          map.getCanvas().style.cursor = "";
-        });
-      }
-      map.on("click", "zones-fill", (e) => {
-        const id = e.features?.[0]?.properties?.id;
-        if (id) useStore.getState().setDrawer({ kind: "zone", id: String(id) });
-      });
-      map.on("click", "cam-icon", () => useStore.getState().setDrawer({ kind: "cameras" }));
       map.on("click", "cam-clusters", (e) => {
         const f = e.features?.[0];
         const src = map.getSource("cameras") as GeoJSONSource;
@@ -470,21 +435,14 @@ export function MapCanvas() {
   // Everything is read from the store, not from render props: the "load" handler keeps the
   // first render's closure, so props would be stale there.
   function applyData(map: MLMap) {
-    const {
-      state: st,
-      historyMode: histMode,
-      history: bundle,
-      historyIdx: idx,
-      showNeptun: neptunOn,
-      showUaAlerts: uaOn,
-      showCivAdsb: civOn,
-      showMilAdsb: milOn,
-      showTracks: tracksOn,
-    } = useStore.getState();
-    const histPts =
-      histMode && bundle
-        ? Object.fromEntries(Object.entries(bundle.voivodeships).map(([id, arr]) => [id, arr[idx] ?? 0]))
-        : null;
+    const st = useStore.getState().state;
+    const histMode = false;
+    const neptunOn = true;
+    const uaOn = true;
+    const civOn = true;
+    const milOn = true;
+    const tracksOn = true;
+    const histPts = null;
     const lookup = voivPaint(st, histPts);
 
     const pl = map.getSource("pl") as GeoJSONSource | undefined;
@@ -585,42 +543,20 @@ export function MapCanvas() {
     };
     (map.getSource("zones") as GeoJSONSource | undefined)?.setData(zFc);
 
-    const camFc: FeatureCollection = {
-      type: "FeatureCollection",
-      features: (st?.cameras ?? []).map((c) => ({
-        type: "Feature" as const,
-        properties: { id: c.id, name: c.name },
-        geometry: { type: "Point" as const, coordinates: [c.lon, c.lat] },
-      })),
-    };
-    (map.getSource("cameras") as GeoJSONSource | undefined)?.setData(camFc);
+    (map.getSource("cameras") as GeoJSONSource | undefined)?.setData(emptyFc());
   }
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready.current) return;
     applyData(map);
-  }, [state, showTracks, historyMode, history, historyIdx, showCivAdsb, showMilAdsb, showNeptun, showUaAlerts]);
+  }, [state]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready.current) return;
     applyFocus(map);
   }, [hover, selected]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !ready.current) return;
-    const vis = showPazp ? "visible" : "none";
-    if (map.getLayer("zones-fill")) map.setLayoutProperty("zones-fill", "visibility", vis);
-    if (map.getLayer("zones-line")) map.setLayoutProperty("zones-line", "visibility", vis);
-  }, [showPazp]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !ready.current) return;
-    map.easeTo({ pitch: pitch3d ? 48 : 0, bearing: pitch3d ? -8 : 0, duration: prefersReducedMotion() ? 0 : 420 });
-  }, [pitch3d]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -641,8 +577,8 @@ export function MapCanvas() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const { homeVoiv: home, selectedVoiv: sel, pitch3d: tilted } = useStore.getState();
-    const opt = { padding: CAMERA.padding, duration: prefersReducedMotion() ? 0 : 700, pitch: tilted ? 48 : 0 };
+    const { homeVoiv: home, selectedVoiv: sel } = useStore.getState();
+    const opt = { padding: CAMERA.padding, duration: prefersReducedMotion() ? 0 : 700, pitch: 0 };
     if (preset === "pl") map.fitBounds(CAMERA.wholePl, opt);
     else if (preset === "flank") map.fitBounds(CAMERA.flank, opt);
     else if (preset === "region") {

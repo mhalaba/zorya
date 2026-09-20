@@ -64,13 +64,18 @@ export function useLiveFusion() {
     void load();
     connect();
     const poll = window.setInterval(() => void load(), 60_000);
+    const onOffline = () => {
+      if (!closed) setOffline(true);
+    };
     window.addEventListener("online", wake);
+    window.addEventListener("offline", onOffline);
     document.addEventListener("visibilitychange", wake);
     return () => {
       closed = true;
       window.clearTimeout(timer);
       window.clearInterval(poll);
       window.removeEventListener("online", wake);
+      window.removeEventListener("offline", onOffline);
       document.removeEventListener("visibilitychange", wake);
       ws?.close();
     };

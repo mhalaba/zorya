@@ -1,9 +1,8 @@
-import { Component, useEffect, useState, type ReactNode } from "react";
+import { Component, type ReactNode } from "react";
 import { s } from "../strings";
 import { useStore } from "../store";
 import { MapCanvas } from "../map/MapCanvas";
-import { LiveMapTools } from "../components/Chrome";
-import { Drawers } from "../components/Drawers";
+import { MapHud } from "../components/Chrome";
 
 class MapErrorBoundary extends Component<{ children: ReactNode }, { err: string | null }> {
   state = { err: null as string | null };
@@ -19,28 +18,22 @@ class MapErrorBoundary extends Component<{ children: ReactNode }, { err: string 
 }
 
 export function Mapa() {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const t = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(t);
-  }, []);
-  const offline = useStore((x) => x.offline);
   const connecting = useStore((x) => x.connecting);
   const fusion = useStore((x) => x.state);
+  const ua = fusion ? fusion.ua_alerts.filter((a) => a.active).length : 0;
 
   return (
-    <main className={`map live-map${offline ? " greyed" : ""}`} aria-label={s("map.a11y")}>
+    <main className="map live-map" aria-label={s("map.a11y")}>
       <MapErrorBoundary>
         <MapCanvas />
       </MapErrorBoundary>
-      <LiveMapTools />
+      <MapHud />
       {connecting && !fusion && <div className="map-status">{s("home.loading")}</div>}
       {fusion && (
         <div className="map-attr">
-          NEPTUN {fusion.objects.length} · ADS-B {fusion.adsb.length} · UA {fusion.ua_alerts.filter((a) => a.active).length}
+          NEPTUN {fusion.objects.length} · ADS-B {fusion.adsb.length} · UA {ua}
         </div>
       )}
-      <Drawers now={now} />
     </main>
   );
 }

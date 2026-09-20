@@ -499,7 +499,50 @@ h1.screen { margin: 0; padding: var(--z-space-4) var(--z-space-4) var(--z-space-
 }
 .app-root.map-view {
   max-width: none;
+  width: 100%;
+  height: 100dvh;
 }
+.app-root.map-view > main.map {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.map-hud {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  left: max(10px, env(safe-area-inset-left));
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+  color: var(--z-text);
+}
+.map-hud .mark {
+  height: 16px;
+  width: auto;
+  opacity: 0.9;
+}
+.map-hud .wm {
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  font-size: 12px;
+  line-height: 1;
+  text-transform: uppercase;
+  opacity: 0.88;
+}
+.map-diode {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--z-text-2);
+  flex: none;
+}
+.map-diode.on { background: var(--z-status-obserwacja); }
+.map-diode.wait { background: var(--z-status-ostrzezenie); }
+.map-diode.off { background: var(--z-status-alarm); }
 
 .map-root {
   position: absolute;
@@ -549,13 +592,13 @@ h1.screen { margin: 0; padding: var(--z-space-4) var(--z-space-4) var(--z-space-
 .map-chips .chip { position: relative; }
 .map-status {
   position: absolute;
-  top: 52px;
+  top: max(48px, calc(env(safe-area-inset-top) + 36px));
   left: 50%;
   transform: translateX(-50%);
   z-index: 4;
   font-size: 13px;
   color: var(--z-text-2);
-  background: var(--z-bg-raised);
+  background: color-mix(in srgb, var(--z-bg-raised) 82%, transparent);
   border: 1px solid var(--z-line-strong);
   padding: 4px 10px;
 }

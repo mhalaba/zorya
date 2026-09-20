@@ -42,7 +42,7 @@ export function App() {
       {path === "/" || path === "" ? (
         <Landing />
       ) : path.startsWith("/app") ? (
-        <AppShell path={path} />
+        <AppShell />
       ) : path.startsWith("/jak-dziala") ? (
         <HowPage />
       ) : path.startsWith("/prywatnosc") ? (
