@@ -30,14 +30,16 @@ export function AppHeader({ level }: { level: Level }) {
       </a>
       <button
         type="button"
-        className="chip"
+        className="chip area-chip"
         aria-haspopup="listbox"
         aria-label={s("header.area_a11y", { area: label })}
         onClick={() => setSheet({ kind: "areas" })}
       >
         <PinIcon />
-        {label}
-        {more}
+        <span className="chip-txt">
+          {label}
+          {more}
+        </span>
       </button>
     </header>
   );

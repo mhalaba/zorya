@@ -81,24 +81,28 @@ export function Mapa() {
           </text>
         </g>
       </svg>
-      <div className="map-chips">
-        <button type="button" className={`chip${layers.events ? " on" : ""}`} onClick={() => setMapLayer("events", !layers.events)}>
-          {s("map.layer_events")}
-        </button>
-        <button type="button" className={`chip${layers.sensors ? " on" : ""}`} onClick={() => setMapLayer("sensors", !layers.sensors)}>
-          {s("map.layer_sensors")}
-        </button>
-        <button type="button" className={`chip${layers.areas ? " on" : ""}`} onClick={() => setMapLayer("areas", !layers.areas)}>
-          {s("map.layer_areas")}
-        </button>
+      <div className="map-tools map-tools-start">
+        <div className="map-chips">
+          <button type="button" className={`chip${layers.events ? " on" : ""}`} onClick={() => setMapLayer("events", !layers.events)}>
+            {s("map.layer_events")}
+          </button>
+          <button type="button" className={`chip${layers.sensors ? " on" : ""}`} onClick={() => setMapLayer("sensors", !layers.sensors)}>
+            {s("map.layer_sensors")}
+          </button>
+          <button type="button" className={`chip${layers.areas ? " on" : ""}`} onClick={() => setMapLayer("areas", !layers.areas)}>
+            {s("map.layer_areas")}
+          </button>
+        </div>
       </div>
-      <svg className="map-north" viewBox="0 0 14 32" aria-label={s("map.north")}>
-        <text x="7" y="9" textAnchor="middle" fontSize="9" fontWeight="700" fill="var(--z-text)" fontFamily="var(--z-font-ui)">
-          N
-        </text>
-        <path d="M7 12 L10 24 L4 24 Z" fill="var(--z-text)" />
-        <path d="M4 26 L10 26 L7 32 Z" fill="var(--z-text-2)" />
-      </svg>
+      <div className="map-tools map-tools-end">
+        <svg className="map-north" viewBox="0 0 14 32" aria-label={s("map.north")}>
+          <text x="7" y="9" textAnchor="middle" fontSize="9" fontWeight="700" fill="var(--z-text)" fontFamily="var(--z-font-ui)">
+            N
+          </text>
+          <path d="M7 12 L10 24 L4 24 Z" fill="var(--z-text)" />
+          <path d="M4 26 L10 26 L7 32 Z" fill="var(--z-text-2)" />
+        </svg>
+      </div>
       <div className="legend" aria-label={s("map.legend")}>
         <div>
           <i className="dot event" />
