@@ -1,0 +1,67 @@
+{
+ "mark": {
+  "unit": 20.0,
+  "rule": [
+   160.0,
+   10.0
+  ],
+  "star": {
+   "r": 20.0,
+   "cx": 120.0
+  },
+  "gap": 20.0,
+  "box": [
+   160.0,
+   70.0
+  ],
+  "clear_space": 20.0
+ },
+ "wordmark": {
+  "font": "Atkinson Hyperlegible Next",
+  "weight": 800,
+  "tracking": 80,
+  "cap_height_equals": "mark height",
+  "width_at_cap_70": 393.38
+ },
+ "descriptor": {
+  "font": "Atkinson Hyperlegible Mono",
+  "weight": 500,
+  "size": "0.36 × cap",
+  "tracking": 40
+ },
+ "files": [
+  "zorya-mark-night.svg",
+  "zorya-wordmark-night.svg",
+  "zorya-lockup-h-night.svg",
+  "zorya-lockup-h-tagline-night.svg",
+  "zorya-lockup-v-night.svg",
+  "zorya-mark-day.svg",
+  "zorya-wordmark-day.svg",
+  "zorya-lockup-h-day.svg",
+  "zorya-lockup-h-tagline-day.svg",
+  "zorya-lockup-v-day.svg",
+  "zorya-mark-mono.svg",
+  "zorya-wordmark-mono.svg",
+  "zorya-lockup-h-mono.svg",
+  "zorya-lockup-h-tagline-mono.svg",
+  "zorya-lockup-v-mono.svg",
+  "level-cisza.svg",
+  "level-obserwacja.svg",
+  "level-ostrzezenie.svg",
+  "level-alarm.svg",
+  "level-odwolanie.svg",
+  "app-icon.svg",
+  "app-icon-1024.png",
+  "app-icon-512.png",
+  "app-icon-192.png",
+  "app-icon-180.png",
+  "app-icon-maskable-512.png",
+  "favicon.svg",
+  "favicon-32.png",
+  "favicon-16.png",
+  "avatar-1000.png",
+  "og-image-1200x630.svg",
+  "og-image-1200x630.png",
+  "logo-sheet.png"
+ ]
+}

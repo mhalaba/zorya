@@ -1,0 +1,171 @@
+/* Zorya — design tokens. Generated from tokens.json by tools/build-tokens.py; edit tokens.json, not this file. */
+/* Fonts: Atkinson Hyperlegible Next + Mono, SIL OFL 1.1, variable weight 200–800. Both subsets are needed: latin-ext carries the Polish glyphs. Adjust the font paths to where you serve them. */
+@font-face { font-family: "Atkinson Hyperlegible Next"; font-style: normal; font-weight: 200 800; font-display: swap; src: url("/fonts/atkinson-hyperlegible-next-latin-wght-normal.woff2") format("woff2-variations"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Atkinson Hyperlegible Next"; font-style: normal; font-weight: 200 800; font-display: swap; src: url("/fonts/atkinson-hyperlegible-next-latin-ext-wght-normal.woff2") format("woff2-variations"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "Atkinson Hyperlegible Next"; font-style: italic; font-weight: 200 800; font-display: swap; src: url("/fonts/atkinson-hyperlegible-next-latin-wght-italic.woff2") format("woff2-variations"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Atkinson Hyperlegible Next"; font-style: italic; font-weight: 200 800; font-display: swap; src: url("/fonts/atkinson-hyperlegible-next-latin-ext-wght-italic.woff2") format("woff2-variations"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "Atkinson Hyperlegible Mono"; font-style: normal; font-weight: 200 800; font-display: swap; src: url("/fonts/atkinson-hyperlegible-mono-latin-wght-normal.woff2") format("woff2-variations"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Atkinson Hyperlegible Mono"; font-style: normal; font-weight: 200 800; font-display: swap; src: url("/fonts/atkinson-hyperlegible-mono-latin-ext-wght-normal.woff2") format("woff2-variations"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+
+:root {
+  --z-night: #0E1219;
+  --z-night-raised: #161C26;
+  --z-night-line: #2A3341;
+  --z-night-line-strong: #5C6878;
+  --z-ivory: #F3EDE0;
+  --z-ash: #A9B0BA;
+  --z-fog: #EEF1F5;
+  --z-fog-raised: #FFFFFF;
+  --z-fog-line: #CDD4DC;
+  --z-fog-line-strong: #7D8794;
+  --z-slate: #545E6B;
+  --z-dawn: #F2B544;
+  --z-dawn-deep: #7D4F00;
+  --z-ember: #F0783A;
+  --z-ember-deep: #A83A10;
+  --z-alarm: #FF6157;
+  --z-alarm-deep: #B5241C;
+  --z-calm: #8FC7EA;
+  --z-calm-deep: #1C5A83;
+
+  --z-font-ui: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", system-ui, sans-serif;
+  --z-font-mono: "Atkinson Hyperlegible Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --z-space-$description: 4px base. Use the steps; do not invent 10px or 18px.;
+  --z-space-1: 4px;
+  --z-space-2: 8px;
+  --z-space-3: 12px;
+  --z-space-4: 16px;
+  --z-space-5: 20px;
+  --z-space-6: 24px;
+  --z-space-8: 32px;
+  --z-space-10: 40px;
+  --z-space-12: 48px;
+  --z-space-16: 64px;
+  --z-space-20: 80px;
+  --z-size-app-column: 40rem;
+  --z-size-site-column: 72rem;
+  --z-size-text-measure: 64ch;
+  --z-size-touch-target: 44px;
+  --z-size-header: 56px;
+  --z-size-star-inline: 12px;
+  --z-size-star-header: 16px;
+  --z-size-star-hero: 40px;
+  --z-size-icon: 20px;
+  --z-size-logo-header: 20px;
+  --z-size-logo-min: 16px;
+  --z-radius-0: 0;
+  --z-radius-full: 9999px;
+  --z-border-hairline: 1px;
+  --z-border-horizon: 2px;
+  --z-border-focus: 2px;
+  --z-border-map-outline: 1.5px;
+  --z-duration-fast: 120ms;
+  --z-duration-base: 200ms;
+  --z-easing: cubic-bezier(0.2, 0, 0, 1);
+  --z-star-breath: 2000ms;
+  --z-shadow: none;
+}
+:root, [data-theme="noc"] {
+  color-scheme: dark;
+  --z-bg: #0E1219;
+  --z-bg-raised: #161C26;
+  --z-line: #2A3341;
+  --z-line-strong: #5C6878;
+  --z-text: #F3EDE0;
+  --z-text-2: #A9B0BA;
+  --z-on-status: #0E1219;
+  --z-link: #F3EDE0;
+  --z-link-underline: #F2B544;
+  --z-focus: #F2B544;
+  --z-status-cisza: #A9B0BA;
+  --z-status-obserwacja: #F2B544;
+  --z-status-ostrzezenie: #F0783A;
+  --z-status-alarm: #FF6157;
+  --z-status-odwolanie: #8FC7EA;
+  --z-fill-obserwacja: #F2B544;
+  --z-fill-ostrzezenie: #F0783A;
+  --z-fill-alarm: #FF6157;
+  --z-fill-odwolanie: #8FC7EA;
+  --z-map-water: #1A2A3A;
+  --z-map-land: #0E1219;
+  --z-map-roads: #2A3341;
+  --z-map-boundary: #5C6878;
+  --z-map-area-alpha: 0.18;
+}
+[data-theme="dzien"] {
+  color-scheme: light;
+  --z-bg: #EEF1F5;
+  --z-bg-raised: #FFFFFF;
+  --z-line: #CDD4DC;
+  --z-line-strong: #7D8794;
+  --z-text: #0E1219;
+  --z-text-2: #545E6B;
+  --z-on-status: #F3EDE0;
+  --z-link: #0E1219;
+  --z-link-underline: #7D4F00;
+  --z-focus: #7D4F00;
+  --z-status-cisza: #545E6B;
+  --z-status-obserwacja: #7D4F00;
+  --z-status-ostrzezenie: #A83A10;
+  --z-status-alarm: #B5241C;
+  --z-status-odwolanie: #1C5A83;
+  --z-fill-obserwacja: #7D4F00;
+  --z-fill-ostrzezenie: #A83A10;
+  --z-fill-alarm: #B5241C;
+  --z-fill-odwolanie: #1C5A83;
+  --z-map-water: #D7E3EC;
+  --z-map-land: #EEF1F5;
+  --z-map-roads: #CDD4DC;
+  --z-map-boundary: #7D8794;
+  --z-map-area-alpha: 0.22;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="noc"]):not([data-theme="dzien"]) {
+    color-scheme: light;
+    --z-bg: #EEF1F5;
+    --z-bg-raised: #FFFFFF;
+    --z-line: #CDD4DC;
+    --z-line-strong: #7D8794;
+    --z-text: #0E1219;
+    --z-text-2: #545E6B;
+    --z-on-status: #F3EDE0;
+    --z-link: #0E1219;
+    --z-link-underline: #7D4F00;
+    --z-focus: #7D4F00;
+    --z-status-cisza: #545E6B;
+    --z-status-obserwacja: #7D4F00;
+    --z-status-ostrzezenie: #A83A10;
+    --z-status-alarm: #B5241C;
+    --z-status-odwolanie: #1C5A83;
+    --z-fill-obserwacja: #7D4F00;
+    --z-fill-ostrzezenie: #A83A10;
+    --z-fill-alarm: #B5241C;
+    --z-fill-odwolanie: #1C5A83;
+    --z-map-water: #D7E3EC;
+    --z-map-land: #EEF1F5;
+    --z-map-roads: #CDD4DC;
+    --z-map-boundary: #7D8794;
+    --z-map-area-alpha: 0.22;
+  }
+}
+
+/* Type styles */
+.z-display { font-family: var(--z-font-ui); font-size: 40px; line-height: 44px; font-weight: 800; letter-spacing: -0.01em; }
+.z-h1 { font-family: var(--z-font-ui); font-size: 28px; line-height: 34px; font-weight: 700; letter-spacing: 0; }
+.z-h2 { font-family: var(--z-font-ui); font-size: 22px; line-height: 28px; font-weight: 700; letter-spacing: 0; }
+.z-h3 { font-family: var(--z-font-ui); font-size: 18px; line-height: 24px; font-weight: 700; letter-spacing: 0; }
+.z-body { font-family: var(--z-font-ui); font-size: 17px; line-height: 26px; font-weight: 400; letter-spacing: 0; }
+.z-body-strong { font-family: var(--z-font-ui); font-size: 17px; line-height: 26px; font-weight: 700; letter-spacing: 0; }
+.z-small { font-family: var(--z-font-ui); font-size: 14px; line-height: 20px; font-weight: 400; letter-spacing: 0; }
+.z-label { font-family: var(--z-font-ui); font-size: 13px; line-height: 18px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; }
+.z-mono { font-family: var(--z-font-mono); font-size: 15px; line-height: 22px; font-weight: 500; letter-spacing: 0; }
+.z-mono-small { font-family: var(--z-font-mono); font-size: 13px; line-height: 18px; font-weight: 500; letter-spacing: 0.02em; }
+.z-wordmark { font-family: var(--z-font-ui); font-size: 1em; line-height: 1; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+@media (min-width: 900px) { .z-display { font-size: 56px; line-height: 60px; } }
+
+/* Base */
+html { background: var(--z-bg); color: var(--z-text); font-family: var(--z-font-ui); font-size: 17px; line-height: 26px; -webkit-font-smoothing: antialiased; }
+body { margin: 0; }
+a { color: var(--z-link); text-decoration: underline; text-decoration-color: var(--z-link-underline); text-decoration-thickness: 1px; text-underline-offset: 0.16em; }
+:focus-visible { outline: var(--z-border-focus) solid var(--z-focus); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }

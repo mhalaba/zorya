@@ -1,0 +1,25 @@
+{
+ "$note": "Fictional TERYT-like ids and names for the mockups; replace with real TERYT data.",
+ "areas": [
+  {
+   "id": "2401011",
+   "name": "gmina Brzegowo",
+   "kind": "gmina"
+  },
+  {
+   "id": "2401",
+   "name": "powiat brzegowski",
+   "kind": "powiat"
+  },
+  {
+   "id": "2401022",
+   "name": "gmina Nadwiśle",
+   "kind": "gmina"
+  },
+  {
+   "id": "2401033",
+   "name": "gmina Zaborów",
+   "kind": "gmina"
+  }
+ ]
+}

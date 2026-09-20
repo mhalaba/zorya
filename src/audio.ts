@@ -1,7 +1,6 @@
-import { prefersReducedMotion } from "./lib";
+/** Notification tones. Alarm is a single tone, never a repeating siren. */
 
 let ctx: AudioContext | null = null;
-let sirenTimer: number | null = null;
 
 function audio() {
   if (!ctx) ctx = new AudioContext();
@@ -25,36 +24,20 @@ function beep(freq: number, dur: number, gain = 0.07, type: OscillatorType = "si
   o.stop(t + dur + 0.02);
 }
 
+export function playAlarm() {
+  beep(880, 0.28, 0.09, "triangle");
+  window.setTimeout(() => beep(660, 0.35, 0.08, "triangle"), 160);
+}
+
+export function playOstrzezenie() {
+  beep(520, 0.16, 0.06);
+  window.setTimeout(() => beep(620, 0.18, 0.05), 140);
+}
+
+export function playOdwolanie() {
+  beep(392, 0.22, 0.05);
+}
+
 export function playWatch() {
-  if (prefersReducedMotion()) {
-    beep(440, 0.12, 0.04);
-    return;
-  }
-  beep(494, 0.11, 0.06);
-  window.setTimeout(() => beep(622, 0.14, 0.05), 140);
-}
-
-export function startSiren() {
-  stopSiren();
-  const pulse = () => {
-    beep(680, 0.42, 0.08, "triangle");
-    window.setTimeout(() => beep(510, 0.42, 0.08, "triangle"), 430);
-  };
-  pulse();
-  sirenTimer = window.setInterval(pulse, 900);
-}
-
-export function stopSiren() {
-  if (sirenTimer != null) {
-    clearInterval(sirenTimer);
-    sirenTimer = null;
-  }
-}
-
-export function playTest(kind: "watch" | "siren") {
-  if (kind === "watch") playWatch();
-  else {
-    startSiren();
-    window.setTimeout(stopSiren, 2600);
-  }
+  playOstrzezenie();
 }

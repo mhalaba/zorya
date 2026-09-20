@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="pl" data-theme="noc">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Horyzont — alarm — Zorya (makieta)</title>
+<link rel="stylesheet" href="../../02-tokens/tokens.css">
+<link rel="stylesheet" href="mock.css">
+<style>body { background: var(--z-bg); } </style>
+</head>
+<body>
+<div class="phone">
+<div class="status-bar" aria-hidden="true"><span>05:41</span><span>LTE · 4/4</span></div>
+<header class="hdr lvl-alarm">
+  <a class="brand" href="#" aria-label="Zorya, strona główna"><svg class="" viewBox="0 0 200.00 110.00" fill="currentColor" aria-hidden="true"><circle cx="140.00" cy="40.00" r="20.00" fill="currentColor"/>
+  <rect x="20.00" y="80.00" width="160.00" height="10.00" fill="currentColor"/></svg><span class="wm">Zorya</span></a>
+  <button class="chip" aria-haspopup="listbox" aria-label="Obszar: Brzegowo"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 21s-6-5.5-6-11a6 6 0 0 1 12 0c0 5.5-6 11-6 11z"/></svg>Brzegowo</button>
+</header>
+<main>
+  <section class="status" aria-live="assertive">
+    <span class="lvl-alarm"><svg class="star" viewBox="0 0 32.00 14.00" fill="currentColor" aria-hidden="true"><g transform="scale(0.2)"><circle cx="120.00" cy="20.00" r="20.00" fill="currentColor"/>
+  <rect x="0.00" y="50.00" width="160.00" height="5.00" fill="currentColor"/>
+  <rect x="0.00" y="65.00" width="160.00" height="5.00" fill="currentColor"/></g></svg></span>
+    <div>
+      <div class="word lvl-alarm">Alarm</div>
+      <div class="meta">Alarm RCB dla Twojego obszaru · od <span class="mono">05:37</span><br>Syrena potwierdzona przez czujnik nr 3</div>
+    </div>
+  </section>
+  <div class="eyebrow"><span class="z-label">Zdarzenia</span></div>
+  <a class="card lvl-alarm" href="#">
+  <div class="top"><svg class="lv" viewBox="0 0 32.00 14.00" fill="currentColor" aria-hidden="true"><g transform="scale(0.2)"><circle cx="120.00" cy="20.00" r="20.00" fill="currentColor"/>
+  <rect x="0.00" y="50.00" width="160.00" height="5.00" fill="currentColor"/>
+  <rect x="0.00" y="65.00" width="160.00" height="5.00" fill="currentColor"/></g></svg><span class="badge">alarm</span><span class="when">05:37</span></div>
+  <h3>Alert RCB: zagrożenie powietrzne. Udaj się do schronu</h3>
+  <div class="where">gmina Brzegowo · trwa</div>
+  <div class="src"><span class="s">RCB</span><span class="s">syreny</span><span class="s">SDR</span></div>
+  <div class="conf potwierdzone"><i></i>potwierdzone · RCB + czujnik</div>
+</a>
+  <div class="row"><a class="btn primary block" href="#">Co robić teraz</a></div>
+  <div style="height:12px"></div>
+  <a class="card lvl-obserwacja" href="#">
+  <div class="top"><svg class="lv" viewBox="0 0 32.00 14.00" fill="currentColor" aria-hidden="true"><g transform="scale(0.2)"><circle cx="120.00" cy="20.00" r="20.00" fill="currentColor"/>
+  <rect x="0.00" y="60.00" width="160.00" height="10.00" fill="currentColor"/></g></svg><span class="badge">obserwacja</span><span class="when">04:52</span></div>
+  <h3>Ostrzeżenie IMGW: silny wiatr, 2. stopnia</h3>
+  <div class="where">powiat brzegowski · do 21.09, 06:00</div>
+  <div class="src"><span class="s">IMGW</span></div>
+  <div class="conf prawdopodobne"><i></i>prawdopodobne · 1 źródło oficjalne</div>
+</a>
+  <div class="horizon" data-label="Horyzont"></div>
+  <div class="sig"><span class="t">ADS-B: 3 statki powietrzne bez identyfikatora</span><span class="m">05:36</span><span class="k">SDR · kurs zachodni · wysokość 200–400 m AGL</span></div>
+  <div class="sig"><span class="t">Zgłoszenia: 14 w ciągu 6 min</span><span class="m">05:38</span><span class="k">zgłoszenia · Brzegowo, Zaborów · „syrena", „huk"</span></div>
+</main>
+<nav class="nav" aria-label="Główna nawigacja"><a href="#" class="on" aria-current=page><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 15h18M15 8a2.5 2.5 0 1 1-.01 0"/></svg>Horyzont</a><a href="#" class="" ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5l6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16M15 5v16"/></svg>Mapa</a><a href="#" class="" ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18v-5M9 18V6M14 18v-8M19 18V3"/></svg>Sygnały</a><a href="#" class="" ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Zgłoś</a><a href="#" class="" ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>Więcej</a></nav>
+</div>
+</body>
+</html>

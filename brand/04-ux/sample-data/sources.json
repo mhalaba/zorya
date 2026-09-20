@@ -1,0 +1,95 @@
+{
+ "sources": [
+  {
+   "id": "rcb",
+   "kind": "official",
+   "name": "RCB — Alert RCB",
+   "short": "RCB",
+   "description": "komunikaty cell broadcast · region: 2 powiaty",
+   "freshness_s": 900,
+   "enabled": true,
+   "locked": true,
+   "health": "fresh",
+   "last_update": "2026-09-20T05:40:00+02:00",
+   "attribution": "Rządowe Centrum Bezpieczeństwa, Alert RCB — informacja publiczna"
+  },
+  {
+   "id": "imgw",
+   "kind": "official",
+   "name": "IMGW — ostrzeżenia meteo",
+   "short": "IMGW",
+   "description": "ostrzeżenia 1–3 stopnia · hydro i meteo",
+   "freshness_s": 900,
+   "enabled": true,
+   "locked": false,
+   "health": "fresh",
+   "last_update": "2026-09-20T05:30:00+02:00",
+   "attribution": "Źródło: IMGW-PIB, ostrzeżenia meteorologiczne i hydrologiczne"
+  },
+  {
+   "id": "psp",
+   "kind": "official",
+   "name": "PSP — komunikaty",
+   "short": "PSP",
+   "description": "straż pożarna · próby syren, zdarzenia",
+   "freshness_s": 21600,
+   "enabled": true,
+   "locked": false,
+   "health": "fresh",
+   "last_update": "2026-09-20T04:00:00+02:00",
+   "attribution": "Państwowa Straż Pożarna, komunikaty publiczne"
+  },
+  {
+   "id": "syreny",
+   "kind": "sensor",
+   "name": "Syreny — czujniki akustyczne",
+   "short": "syreny",
+   "description": "3 czujniki · Nadwiśle, Zaborów, Brzegowo",
+   "freshness_s": 900,
+   "enabled": true,
+   "locked": false,
+   "health": "fresh",
+   "last_update": "2026-09-20T05:41:00+02:00",
+   "attribution": "Pomiar własny Zoryi, czujniki akustyczne, nieskalibrowane"
+  },
+  {
+   "id": "sdr",
+   "kind": "radio",
+   "name": "SDR / ADS-B",
+   "short": "SDR",
+   "description": "odbiornik 1090 MHz + skaner 433 i 868 MHz",
+   "freshness_s": 900,
+   "enabled": true,
+   "locked": false,
+   "health": "fresh",
+   "last_update": "2026-09-20T05:41:00+02:00",
+   "attribution": "Odbiór własny, ADS-B 1090 MHz; bez identyfikacji statków powietrznych"
+  },
+  {
+   "id": "zgloszenia",
+   "kind": "reports",
+   "name": "Zgłoszenia użytkowników",
+   "short": "zgłoszenia",
+   "description": "14 w ostatniej godzinie · 0 zweryfikowanych",
+   "freshness_s": 900,
+   "enabled": true,
+   "locked": false,
+   "health": "stale",
+   "last_update": "2026-09-20T05:38:00+02:00",
+   "attribution": "Zgłoszenia anonimowe, lokalizacja zaokrąglona do 500 m"
+  },
+  {
+   "id": "radio_ews",
+   "kind": "radio",
+   "name": "Radio publiczne (RDS/EWS)",
+   "short": "radio",
+   "description": "wymaga odbiornika",
+   "freshness_s": 900,
+   "enabled": false,
+   "locked": false,
+   "health": "disabled",
+   "last_update": null,
+   "attribution": ""
+  }
+ ]
+}

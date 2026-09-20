@@ -1,0 +1,438 @@
+{
+ "method": "WCAG 2.1 relative luminance, computed by tools/build-tokens.py",
+ "pairs": [
+  {
+   "theme": "noc",
+   "text": "text",
+   "ground": "bg",
+   "ratio": 16.08,
+   "aa": true,
+   "aaa": true
+  },
+  {
+   "theme": "noc",
+   "text": "text-2",
+   "ground": "bg",
+   "ratio": 8.58,
+   "aa": true,
+   "aaa": true
+  },
+  {
+   "theme": "noc",
+   "text": "link",
+   "ground": "bg",
+   "ratio": 16.08,
+   "aa": true,
+   "aaa": true
+  },
+  {
+   "theme": "noc",
+   "text": "status-cisza",
+   "ground": "bg",
+   "ratio": 8.58,
+   "aa": true,
+   "aaa": true
+  },
+  {
+   "theme": "noc",
+   "text": "status-obserwacja",
+   "ground": "bg",
+   "ratio": 10.25,
+   "aa": true,
+   "aaa": true
+  },
+  {
+   "theme": "noc",
+   "text": "status-ostrzezenie",
+   "ground": "bg",
+   "ratio": 6.66,
+   "aa": true,
+   "aaa": false
+  },
+  {
+   "theme": "noc",
+   "text": "status-alarm",
+   "ground": "bg",
+   "ratio": 6.34,
+   "aa": true,
+   "aaa": false
+  },
+  {
+   "theme": "noc",
+   "text": "status-odwolanie",
+   "ground": "bg",
+   "ratio": 10.3,
+   "aa": true,
+   "aaa": true
+  },
+  {
+   "theme": "noc",
+   "text": "text",
+   "ground": "bg-raised",
+   "ratio": 14.66,
+   "aa": true,
+   "aaa": true
+  },
+  {
+   "theme": "noc",
+   "text": "text-2",
+   "ground": "bg-raised",
+   "ratio": 7.82,
+   "aa": true,
+   "aaa": true
+  },
+  {
+   "theme": "noc",
+   "text": "link",
+   "ground": "bg-raised",
+   "ratio": 14.66,
+   "aa": true,
+   "aaa": true
+  },
+  {
+   "theme": "noc",
+   "text": "status-cisza",
+   "ground": "bg-raised",
+   "ratio": 7.82,
+   "aa": true,
+   "aaa": true
+  },
+  {
+   "theme": "noc",
+   "text": "status-obserwacja",
+   "ground": "bg-raised",
+   "ratio": 9.34,
+   "aa": true,
+   "aaa": true
+  },
+  {
+   "theme": "noc",
+   "text": "status-ostrzezenie",
+   "ground": "bg-raised",
+   "ratio": 6.07,
+   "aa": true,
+   "aaa": false
+  },
+  {
+   "theme": "noc",
+   "text": "status-alarm",
+   "ground": "bg-raised",
+   "ratio": 5.78,
+   "aa": true,
+   "aaa": false
+  },
+  {
+   "theme": "noc",
+   "text": "status-odwolanie",
+   "ground": "bg-raised",
+   "ratio": 9.38,
+   "aa": true,
+   "aaa": true
+  },
+  {
+   "theme": "noc",
+   "text": "on-status",
+   "ground": "fill-obserwacja",
+   "ratio": 10.25,
+   "aa": true,
+   "aaa": true
+  },
+  {
+   "theme": "noc",
+   "text": "fill-obserwacja",
+   "ground": "bg",
+   "ratio": 10.25,
+   "graphic-3-1": true
+  },
+  {
+   "theme": "noc",
+   "text": "on-status",
+   "ground": "fill-ostrzezenie",
+   "ratio": 6.66,
+   "aa": true,
+   "aaa": false
+  },
+  {
+   "theme": "noc",
+   "text": "fill-ostrzezenie",
+   "ground": "bg",
+   "ratio": 6.66,
+   "graphic-3-1": true
+  },
+  {
+   "theme": "noc",
+   "text": "on-status",
+   "ground": "fill-alarm",
+   "ratio": 6.34,
+   "aa": true,
+   "aaa": false
+  },
+  {
+   "theme": "noc",
+   "text": "fill-alarm",
+   "ground": "bg",
+   "ratio": 6.34,
+   "graphic-3-1": true
+  },
+  {
+   "theme": "noc",
+   "text": "on-status",
+   "ground": "fill-odwolanie",
+   "ratio": 10.3,
+   "aa": true,
+   "aaa": true
+  },
+  {
+   "theme": "noc",
+   "text": "fill-odwolanie",
+   "ground": "bg",
+   "ratio": 10.3,
+   "graphic-3-1": true
+  },
+  {
+   "theme": "noc",
+   "text": "line-strong",
+   "ground": "bg",
+   "ratio": 3.31,
+   "graphic-3-1": true
+  },
+  {
+   "theme": "noc",
+   "text": "line-strong",
+   "ground": "bg-raised",
+   "ratio": 3.02,
+   "graphic-3-1": true
+  },
+  {
+   "theme": "noc",
+   "text": "focus",
+   "ground": "bg",
+   "ratio": 10.25,
+   "graphic-3-1": true
+  },
+  {
+   "theme": "noc",
+   "text": "focus",
+   "ground": "bg-raised",
+   "ratio": 9.34,
+   "graphic-3-1": true
+  },
+  {
+   "theme": "dzien",
+   "text": "text",
+   "ground": "bg",
+   "ratio": 16.56,
+   "aa": true,
+   "aaa": true
+  },
+  {
+   "theme": "dzien",
+   "text": "text-2",
+   "ground": "bg",
+   "ratio": 5.81,
+   "aa": true,
+   "aaa": false
+  },
+  {
+   "theme": "dzien",
+   "text": "link",
+   "ground": "bg",
+   "ratio": 16.56,
+   "aa": true,
+   "aaa": true
+  },
+  {
+   "theme": "dzien",
+   "text": "status-cisza",
+   "ground": "bg",
+   "ratio": 5.81,
+   "aa": true,
+   "aaa": false
+  },
+  {
+   "theme": "dzien",
+   "text": "status-obserwacja",
+   "ground": "bg",
+   "ratio": 6.2,
+   "aa": true,
+   "aaa": false
+  },
+  {
+   "theme": "dzien",
+   "text": "status-ostrzezenie",
+   "ground": "bg",
+   "ratio": 5.66,
+   "aa": true,
+   "aaa": false
+  },
+  {
+   "theme": "dzien",
+   "text": "status-alarm",
+   "ground": "bg",
+   "ratio": 5.73,
+   "aa": true,
+   "aaa": false
+  },
+  {
+   "theme": "dzien",
+   "text": "status-odwolanie",
+   "ground": "bg",
+   "ratio": 6.53,
+   "aa": true,
+   "aaa": false
+  },
+  {
+   "theme": "dzien",
+   "text": "text",
+   "ground": "bg-raised",
+   "ratio": 18.76,
+   "aa": true,
+   "aaa": true
+  },
+  {
+   "theme": "dzien",
+   "text": "text-2",
+   "ground": "bg-raised",
+   "ratio": 6.58,
+   "aa": true,
+   "aaa": false
+  },
+  {
+   "theme": "dzien",
+   "text": "link",
+   "ground": "bg-raised",
+   "ratio": 18.76,
+   "aa": true,
+   "aaa": true
+  },
+  {
+   "theme": "dzien",
+   "text": "status-cisza",
+   "ground": "bg-raised",
+   "ratio": 6.58,
+   "aa": true,
+   "aaa": false
+  },
+  {
+   "theme": "dzien",
+   "text": "status-obserwacja",
+   "ground": "bg-raised",
+   "ratio": 7.02,
+   "aa": true,
+   "aaa": true
+  },
+  {
+   "theme": "dzien",
+   "text": "status-ostrzezenie",
+   "ground": "bg-raised",
+   "ratio": 6.41,
+   "aa": true,
+   "aaa": false
+  },
+  {
+   "theme": "dzien",
+   "text": "status-alarm",
+   "ground": "bg-raised",
+   "ratio": 6.49,
+   "aa": true,
+   "aaa": false
+  },
+  {
+   "theme": "dzien",
+   "text": "status-odwolanie",
+   "ground": "bg-raised",
+   "ratio": 7.4,
+   "aa": true,
+   "aaa": true
+  },
+  {
+   "theme": "dzien",
+   "text": "on-status",
+   "ground": "fill-obserwacja",
+   "ratio": 6.02,
+   "aa": true,
+   "aaa": false
+  },
+  {
+   "theme": "dzien",
+   "text": "fill-obserwacja",
+   "ground": "bg",
+   "ratio": 6.2,
+   "graphic-3-1": true
+  },
+  {
+   "theme": "dzien",
+   "text": "on-status",
+   "ground": "fill-ostrzezenie",
+   "ratio": 5.49,
+   "aa": true,
+   "aaa": false
+  },
+  {
+   "theme": "dzien",
+   "text": "fill-ostrzezenie",
+   "ground": "bg",
+   "ratio": 5.66,
+   "graphic-3-1": true
+  },
+  {
+   "theme": "dzien",
+   "text": "on-status",
+   "ground": "fill-alarm",
+   "ratio": 5.57,
+   "aa": true,
+   "aaa": false
+  },
+  {
+   "theme": "dzien",
+   "text": "fill-alarm",
+   "ground": "bg",
+   "ratio": 5.73,
+   "graphic-3-1": true
+  },
+  {
+   "theme": "dzien",
+   "text": "on-status",
+   "ground": "fill-odwolanie",
+   "ratio": 6.34,
+   "aa": true,
+   "aaa": false
+  },
+  {
+   "theme": "dzien",
+   "text": "fill-odwolanie",
+   "ground": "bg",
+   "ratio": 6.53,
+   "graphic-3-1": true
+  },
+  {
+   "theme": "dzien",
+   "text": "line-strong",
+   "ground": "bg",
+   "ratio": 3.22,
+   "graphic-3-1": true
+  },
+  {
+   "theme": "dzien",
+   "text": "line-strong",
+   "ground": "bg-raised",
+   "ratio": 3.64,
+   "graphic-3-1": true
+  },
+  {
+   "theme": "dzien",
+   "text": "focus",
+   "ground": "bg",
+   "ratio": 6.2,
+   "graphic-3-1": true
+  },
+  {
+   "theme": "dzien",
+   "text": "focus",
+   "ground": "bg-raised",
+   "ratio": 7.02,
+   "graphic-3-1": true
+  }
+ ],
+ "fails": []
+}

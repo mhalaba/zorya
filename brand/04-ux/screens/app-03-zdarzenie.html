@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pl" data-theme="noc">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zdarzenie — Zorya (makieta)</title>
+<link rel="stylesheet" href="../../02-tokens/tokens.css">
+<link rel="stylesheet" href="mock.css">
+<style>body { background: var(--z-bg); } </style>
+</head>
+<body>
+<div class="phone">
+<div class="status-bar" aria-hidden="true"><span>05:41</span><span>LTE · 4/4</span></div>
+<header class="hdr lvl-alarm">
+  <a class="brand" href="#" aria-label="Zorya, strona główna"><svg class="" viewBox="0 0 200.00 110.00" fill="currentColor" aria-hidden="true"><circle cx="140.00" cy="40.00" r="20.00" fill="currentColor"/>
+  <rect x="20.00" y="80.00" width="160.00" height="10.00" fill="currentColor"/></svg><span class="wm">Zorya</span></a>
+  <button class="chip" aria-haspopup="listbox" aria-label="Obszar: Brzegowo"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 21s-6-5.5-6-11a6 6 0 0 1 12 0c0 5.5-6 11-6 11z"/></svg>Brzegowo</button>
+</header>
+<main class="detail">
+  <div class="top" style="display:flex;align-items:center;gap:8px"><span class="lvl-alarm" style="display:inline-flex"><svg class="lv" viewBox="0 0 32.00 14.00" fill="currentColor" aria-hidden="true"><g transform="scale(0.2)"><circle cx="120.00" cy="20.00" r="20.00" fill="currentColor"/>
+  <rect x="0.00" y="50.00" width="160.00" height="5.00" fill="currentColor"/>
+  <rect x="0.00" y="65.00" width="160.00" height="5.00" fill="currentColor"/></g></svg></span><span class="badge z-label lvl-alarm">alarm</span><span class="when" style="margin-left:auto;font-family:var(--z-font-mono);font-size:13px;color:var(--z-text-2)">ID 2026-0920-017</span></div>
+  <h1>Alert RCB: zagrożenie powietrzne</h1>
+  <dl class="kv">
+    <dt>Obszar</dt><dd>gmina Brzegowo, gmina Nadwiśle</dd>
+    <dt>Od</dt><dd class="mono">2026-09-20 05:37</dd>
+    <dt>Stan</dt><dd>trwa · ostatnia aktualizacja <span class="mono">05:40</span></dd>
+    <dt>Pewność</dt><dd><span class="conf potwierdzone" style="display:inline-flex;align-items:center;gap:8px"><i style="display:inline-block;width:40px;border-top:2px solid currentColor"></i>potwierdzone</span></dd>
+  </dl>
+  <section class="box">
+    <h2>Co robić</h2>
+    <ol>
+      <li>Wejdź do budynku, najlepiej do piwnicy albo pomieszczenia bez okien.</li>
+      <li>Trzymaj się z dala od okien. Nie wychodź, dopóki nie zobaczysz odwołania.</li>
+      <li>Telefon w trybie oszczędzania energii. Zorya powiadomi o odwołaniu.</li>
+    </ol>
+  </section>
+  <section class="box">
+    <h2>Skąd to wiemy</h2>
+    <ul class="tl" style="padding:0;margin:0">
+      <li><span class="t">05:37:04</span><span>Alert RCB dla powiatu brzegowskiego<br><span class="s">RCB · SMS cell broadcast · treść oryginalna w źródle</span></span></li>
+      <li><span class="t">05:37:31</span><span>Syrena: sygnał modulowany 3 min<br><span class="s">czujnik akustyczny nr 3, Nadwiśle · 96 dB · nie jest próbą planową</span></span></li>
+      <li><span class="t">05:36:10</span><span>3 statki powietrzne bez identyfikatora<br><span class="s">SDR/ADS-B · 200–400 m AGL · kurs 270°</span></span></li>
+      <li><span class="t">05:38–05:44</span><span>14 zgłoszeń użytkowników<br><span class="s">zgłoszenia · „syrena" ×9, „huk" ×5 · niezweryfikowane, nie liczone do poziomu</span></span></li>
+    </ul>
+  </section>
+  <div class="row" style="padding:0"><a class="btn" href="#" style="flex:1">Udostępnij</a><a class="btn" href="#" style="flex:1">Wycisz na 1 h</a></div>
+  <p class="note">Poziom alarm nie podlega cichym godzinom. Wyciszenie dotyczy tylko powtórzeń tego zdarzenia.</p>
+</main>
+<nav class="nav" aria-label="Główna nawigacja"><a href="#" class="on" aria-current=page><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 15h18M15 8a2.5 2.5 0 1 1-.01 0"/></svg>Horyzont</a><a href="#" class="" ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5l6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16M15 5v16"/></svg>Mapa</a><a href="#" class="" ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18v-5M9 18V6M14 18v-8M19 18V3"/></svg>Sygnały</a><a href="#" class="" ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Zgłoś</a><a href="#" class="" ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>Więcej</a></nav>
+</div>
+</body>
+</html>

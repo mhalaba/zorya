@@ -1,28 +1,41 @@
 <!doctype html>
-<html lang="pl">
+<html lang="pl" data-theme="noc">
   <head>
-    <meta charset="UTF-8" />
+    <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#070B12" />
-    <meta name="color-scheme" content="dark" />
+    <title>Zorya — czuwanie świtu</title>
+    <meta
+      name="description"
+      content="Zorya łączy alerty RCB, ostrzeżenia IMGW, komunikaty straży, czujniki syren, radio i zgłoszenia sąsiadów w jeden poziom dla Twojej gminy. Bez konta, bez śledzenia."
+    />
+    <meta name="theme-color" content="#0E1219" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#EEF1F5" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0E1219" />
+    <meta name="color-scheme" content="dark light" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Zorya" />
+    <meta property="og:title" content="Zorya — czuwanie świtu" />
+    <meta
+      property="og:description"
+      content="Jeden poziom dla Twojej gminy z alertów RCB, IMGW, PSP, czujników syren, radia i zgłoszeń sąsiadów."
+    />
+    <meta property="og:image" content="https://zorya.website/og-image-1200x630.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="pl_PL" />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="application-name" content="Zorya" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Zorya" />
-    <meta
-      name="description"
-      content="Zorya — nieoficjalna fuzja sygnałów o zagrożeniach powietrznych dla Polski. Projekt Fundacji Terra Incognita. Nie zastępuje syren, Alertu RCB ani RSO."
-    />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="icon" href="/icons/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/icons/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="/icons/app-icon-180.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap"
-      rel="stylesheet"
-    />
-    <title>Zorya — czuwanie świtu</title>
+    <link rel="preload" href="/fonts/atkinson-hyperlegible-next-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/atkinson-hyperlegible-next-latin-ext-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/css/tokens.css" />
+    <!-- CSP is set by the production server: default-src 'self'; img-src 'self' data:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' -->
   </head>
   <body>
     <div id="root"></div>
