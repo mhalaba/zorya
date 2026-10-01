@@ -1,0 +1,12 @@
+node_modules
+dist
+.git
+.vite
+.claude
+logs
+*.log
+.env
+*.local
+server/vapid.json
+server/push-subs.json
+brand/04-ux/screens/png

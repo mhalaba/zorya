@@ -8,7 +8,9 @@ import { fileURLToPath } from "node:url";
 const require = createRequire(import.meta.url);
 const webpush = require("web-push");
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
+// ZORYA_DATA_DIR keeps VAPID keys and subscriptions outside the code (e.g. a Docker volume).
+const root = path.resolve(process.env.ZORYA_DATA_DIR || path.dirname(fileURLToPath(import.meta.url)));
+fs.mkdirSync(root, { recursive: true });
 const vapidPath = path.join(root, "vapid.json");
 const subsPath = path.join(root, "push-subs.json");
 const COOLDOWN_MS = 10 * 60 * 1000;

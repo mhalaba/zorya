@@ -1,0 +1,14 @@
+services:
+  zorya:
+    build: .
+    image: zorya:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8787:8787"
+    environment:
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:zorya-watch@localhost}
+    volumes:
+      - zorya-data:/data
+
+volumes:
+  zorya-data:

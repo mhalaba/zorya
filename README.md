@@ -40,6 +40,16 @@ Serwer od startu czyta źródła na żywo (co 60 s). Nasłuch: `HOST` (domyślni
 
 W produkcji ustaw `VAPID_SUBJECT` (np. `mailto:ty@twojadomena.pl`).
 
+## Docker
+
+```bash
+docker compose up -d --build
+```
+
+- Aplikacja: [http://127.0.0.1:8787/](http://127.0.0.1:8787/) (port wystawiony tylko na `127.0.0.1`, pod tunel / reverse proxy).
+- Klucze VAPID i subskrypcje push leżą w wolumenie `zorya-data` (`/data`, zmienna `ZORYA_DATA_DIR`) — przetrwają rebuild i restart.
+- `VAPID_SUBJECT` przekaż przez zmienną środowiskową lub plik `.env` obok `docker-compose.yml`.
+
 ## Publikacja (Oracle / Caddy — wariant)
 
 Live **zorya.website** idzie tunelem Cloudflare na Node (`npm start`, port 8787). Skrypty w `deploy/` zostają jako wariant Caddy + Let's Encrypt.
