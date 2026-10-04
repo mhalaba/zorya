@@ -8,6 +8,7 @@ import { buildState, emptyHistory, stampHistory, VOIV } from "./fusion.mjs";
 import { ingestLive, emptyInput, INGEST_EVERY_MS } from "./ingest.mjs";
 import { notifyFromState, pushPublicKey, upsertPushSub, removePushSub } from "./push.mjs";
 import { addReport, horizonFromFusion, loadFixtures, statusFromFusion, withdrawReport } from "./horizon.mjs";
+import { archiveReport, archiveState, archiveStats, markReportWithdrawn, openArchive, queryArchive, startPruneTimer, toCsv } from "./archive.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
@@ -33,6 +34,61 @@ app.use((_, res, next) => {
 
 let state = buildState(Date.now(), emptyInput(), null);
 let historyBundle = emptyHistory(12);
+
+// Drone archive (180 days, SQLite in ZORYA_DATA_DIR). A broken archive must never take the site down.
+let archiveOn = false;
+try {
+  openArchive();
+  startPruneTimer();
+  archiveOn = true;
+} catch (err) {
+  console.error("Zorya archive disabled", err.message || err);
+}
+
+/** Archive endpoints are LAN-only: no auth exists, so anything via the Cloudflare tunnel / zorya.website is refused. */
+function archiveAllowed(req) {
+  const h = req.headers;
+  if (h["cf-connecting-ip"] || h["cf-ray"] || h["cdn-loop"] || h["x-forwarded-for"] || h["x-forwarded-host"]) return false;
+  const host = String(h.host || "").toLowerCase().replace(/:\d+$/, "");
+  if (!host || host.endsWith("zorya.website") || host.endsWith("halaba.online")) return false;
+  const ip = String(req.socket.remoteAddress || "").replace(/^::ffff:/, "");
+  return /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|f[cd][0-9a-f]{2}:|fe80:)/i.test(ip);
+}
+
+function archiveGuard(req, res) {
+  res.removeHeader("Access-Control-Allow-Origin");
+  res.setHeader("Cache-Control", "no-store");
+  if (!archiveAllowed(req)) {
+    res.status(403).json({ error: "archive is LAN-only" });
+    return false;
+  }
+  if (!archiveOn) {
+    res.status(503).json({ error: "archive disabled" });
+    return false;
+  }
+  return true;
+}
+
+app.get("/api/archive/stats", (req, res) => {
+  if (!archiveGuard(req, res)) return;
+  res.json(archiveStats());
+});
+
+app.get(["/api/archive", "/api/archive.csv"], (req, res) => {
+  if (!archiveGuard(req, res)) return;
+  try {
+    const out = queryArchive(req.query);
+    if (req.path.endsWith(".csv")) {
+      const stamp = out.to.slice(0, 10);
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="zorya-drones-${out.what}-${stamp}.csv"`);
+      return res.send(toCsv(out.rows));
+    }
+    res.json(out);
+  } catch (err) {
+    res.status(400).json({ error: err.message || "archive" });
+  }
+});
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, name: "zorya", live: !state.demo, generated_at: state.generated_at });
@@ -129,7 +185,13 @@ app.get("/api/areas", (_req, res) => {
 
 app.post("/api/reports", (req, res) => {
   try {
-    res.json(addReport(req.body || {}));
+    const out = addReport(req.body || {});
+    try {
+      archiveReport(out.id, req.body || {});
+    } catch (err) {
+      console.error("Zorya archive report", err.message || err);
+    }
+    res.json(out);
   } catch (err) {
     res.status(400).json({ error: err.message || "report" });
   }
@@ -137,6 +199,13 @@ app.post("/api/reports", (req, res) => {
 
 app.delete("/api/reports/:id", (req, res) => {
   const ok = withdrawReport(req.params.id);
+  if (ok) {
+    try {
+      markReportWithdrawn(req.params.id);
+    } catch {
+      /* archive is best effort */
+    }
+  }
   res.status(ok ? 200 : 404).json({ ok });
 });
 
@@ -176,6 +245,13 @@ async function cycle() {
     const live = await ingestLive();
     state = buildState(Date.now(), live.input, live.sources);
     stampHistory(historyBundle, state);
+    if (archiveOn) {
+      try {
+        archiveState(state);
+      } catch (err) {
+        console.error("Zorya archive", err.message || err);
+      }
+    }
     broadcast({ type: "state", state });
     void notifyFromState(state);
   } catch (err) {

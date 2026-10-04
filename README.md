@@ -54,3 +54,16 @@ Aktualizacja: `sudo bash /opt/zorya/deploy/update.sh`. Kluczy VAPID w `/opt/zory
 ## Prywatność
 
 Brak kont, reklam, ciasteczek i skryptów trzecich. Fonty Atkinson Hyperlegible są self-hostowane (`public/fonts/`). Serwer dostaje nazwy subskrybowanych gmin, token push i zgłoszenia (miejsce zaokrąglone do 500 m).
+
+## Archiwum dronów (180 dni)
+
+Serwer zapisuje każdy dron do SQLite `data/drones.sqlite` (`ZORYA_DATA_DIR`, w Dockerze wolumen `./data:/app/data`):
+
+- `drone_tracks` — jeden wiersz na ślad NEPTUN typu `drone`/`shahed` (`ZORYA_ARCHIVE_TYPES`): pierwsze/ostatnie wykrycie, pozycje, maksima pewności/potwierdzeń, województwa, koniec śladu;
+- `drone_points` — pierwsze wykrycie + każda zmiana pozycji ≥ 0,3 km lub typu/tytułu/cyklu życia/jakości lokalizacji/pewności/potwierdzeń (wszystkie pola obiektu + JSON);
+- `drone_reports` — zgłoszenia użytkowników `dron_samolot` (`ZORYA_ARCHIVE_REPORT_KINDS`), wycofane zostają ze stanem `withdrawn`.
+
+Retencja `ZORYA_ARCHIVE_DAYS` (domyślnie 180), czyszczenie przy starcie i co 24 h. Klucze VAPID i subskrypcje push też leżą w `data/` (`vapid.json`, `push-subs.json`).
+
+Odczyt tylko z LAN (brak logowania w aplikacji; żądania przez tunel Cloudflare / zorya.website dostają 403):
+`GET /api/archive?what=tracks|points|reports&from=&to=&limit=`, `GET /api/archive.csv?...`, `GET /api/archive/stats`. Test: `node --test server/archive.test.mjs`.

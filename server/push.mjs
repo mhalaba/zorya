@@ -9,8 +9,11 @@ const require = createRequire(import.meta.url);
 const webpush = require("web-push");
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
-const vapidPath = path.join(root, "vapid.json");
-const subsPath = path.join(root, "push-subs.json");
+// Persistent dir (docker volume) when ZORYA_DATA_DIR is set; server/ otherwise (dev, old layout).
+const dataDir = process.env.ZORYA_DATA_DIR || root;
+fs.mkdirSync(dataDir, { recursive: true });
+const vapidPath = path.join(dataDir, "vapid.json");
+const subsPath = path.join(dataDir, "push-subs.json");
 const COOLDOWN_MS = 10 * 60 * 1000;
 const MAX_SUBS = 10_000;
 // Browser push services only — the server POSTs to this URL, so an arbitrary endpoint would be an SSRF hole.

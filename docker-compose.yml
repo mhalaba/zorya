@@ -10,6 +10,10 @@ services:
       PORT: "8787"
       HOST: "0.0.0.0"
       VAPID_SUBJECT: mailto:admin@sietch.lan
+      ZORYA_DATA_DIR: /app/data
+      ZORYA_ARCHIVE_DAYS: "180"
+    volumes:
+      - ./data:/app/data
 
   zorya-tunnel:
     image: cloudflare/cloudflared:latest
