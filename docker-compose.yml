@@ -1,0 +1,26 @@
+services:
+  zorya:
+    build: .
+    container_name: zorya
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    environment:
+      NODE_ENV: production
+      PORT: "8787"
+      HOST: "0.0.0.0"
+      VAPID_SUBJECT: mailto:admin@sietch.lan
+
+  zorya-tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: zorya-tunnel
+    restart: unless-stopped
+    network_mode: host
+    env_file:
+      - .env
+    environment:
+      TUNNEL_TOKEN: ${CF_TUNNEL_TOKEN}
+    # token only via env — not argv
+    command: tunnel --no-autoupdate run
+    depends_on:
+      - zorya

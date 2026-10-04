@@ -144,6 +144,9 @@ if (isProd) {
   const dist = path.join(root, "dist");
   if (fs.existsSync(dist)) {
     app.use(express.static(dist));
+  app.get(["/bron", "/bron/"], (_req, res) => {
+    res.sendFile(path.join(dist, "bron", "index.html"));
+  });
     app.get("*", (req, res, next) => {
       if (req.path.startsWith("/api") || req.path.startsWith("/ws")) return next();
       res.sendFile(path.join(dist, "index.html"));
