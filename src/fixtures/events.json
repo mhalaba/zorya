@@ -1,51 +1,20 @@
 {
+ "$note": "Sample data (przykład).",
  "events": [
   {
    "id": "2026-0920-017",
    "level": "alarm",
    "confidence": "potwierdzone",
-   "confidence_reason": "RCB + czujnik",
+   "confidence_reason": "RSO + NEPTUN",
    "kind": "air",
-   "title": "Alert RCB: zagrożenie powietrzne. Udaj się do schronu",
+   "title": "RSO: zagrożenie z powietrza — województwo lubelskie",
    "areas": [
     {
-     "id": "2401011",
-     "name": "gmina Brzegowo",
-     "kind": "gmina"
-    },
-    {
-     "id": "2401022",
-     "name": "gmina Nadwiśle",
-     "kind": "gmina"
+     "id": "lubelskie",
+     "name": "województwo lubelskie",
+     "kind": "wojewodztwo"
     }
    ],
-   "geometry": {
-    "type": "Polygon",
-    "coordinates": [
-     [
-      [
-       18.6,
-       50.28
-      ],
-      [
-       18.75,
-       50.28
-      ],
-      [
-       18.75,
-       50.36
-      ],
-      [
-       18.6,
-       50.36
-      ],
-      [
-       18.6,
-       50.28
-      ]
-     ]
-    ]
-   },
    "started_at": "2026-09-20T05:37:04+02:00",
    "updated_at": "2026-09-20T05:40:00+02:00",
    "valid_until": null,
@@ -53,46 +22,37 @@
    "cancelled_at": null,
    "sources": [
     "rcb",
-    "syreny",
-    "sdr"
+    "neptun"
    ],
    "instructions": {
-    "official": "Udaj się do najbliższego schronu lub miejsca ukrycia. Zachowaj spokój i słuchaj komunikatów.",
+    "official": "Treść oryginalna komunikatu jest zawsze w źródle (RSO / Alert RCB).",
     "steps": [
      "Wejdź do budynku, najlepiej do piwnicy albo pomieszczenia bez okien.",
      "Trzymaj się z dala od okien. Nie wychodź, dopóki nie zobaczysz odwołania.",
-     "Telefon w trybie oszczędzania energii. Zorya powiadomi o odwołaniu."
+     "Sprawdzaj Alert RCB i RSO — Zorya nie zastępuje oficjalnych komunikatów."
     ]
    },
    "signals": [
     {
-     "id": "s-0920-040",
-     "source": "sdr",
-     "kind": "aircraft_unidentified",
+     "id": "s-0920-042",
+     "source": "neptun",
+     "kind": "air",
      "observed_at": "2026-09-20T05:36:10+02:00",
-     "received_at": "2026-09-20T05:36:12+02:00",
+     "received_at": "2026-09-20T05:36:10+02:00",
      "areas": [
       {
-       "id": "2401011",
-       "name": "gmina Brzegowo",
-       "kind": "gmina"
+       "id": "volyn",
+       "name": "obwód wołyński (UA)",
+       "kind": "wojewodztwo"
       },
       {
-       "id": "2401022",
-       "name": "gmina Nadwiśle",
-       "kind": "gmina"
+       "id": "lubelskie",
+       "name": "województwo lubelskie",
+       "kind": "wojewodztwo"
       }
      ],
-     "text": "3 statki powietrzne bez identyfikatora",
-     "meta": "SDR/ADS-B · 200–400 m AGL · kurs 270°",
-     "measurements": {
-      "count": 3,
-      "altitude_m_agl": [
-       200,
-       400
-      ],
-      "heading_deg": 270
-     },
+     "text": "2 drony typu Shahed, ok. 35 km od granicy, kurs na zachód",
+     "meta": "NEPTUN · OSINT, nie radar · ±12 km",
      "event_id": "2026-0920-017",
      "counted": true
     },
@@ -101,131 +61,105 @@
      "source": "rcb",
      "kind": "air",
      "observed_at": "2026-09-20T05:37:04+02:00",
-     "received_at": "2026-09-20T05:37:06+02:00",
+     "received_at": "2026-09-20T05:37:04+02:00",
      "areas": [
       {
-       "id": "2401",
-       "name": "powiat brzegowski",
-       "kind": "powiat"
+       "id": "lubelskie",
+       "name": "województwo lubelskie",
+       "kind": "wojewodztwo"
       }
      ],
-     "text": "Alert RCB dla powiatu brzegowskiego",
-     "meta": "RCB · SMS cell broadcast · treść oryginalna w źródle",
-     "original_text": "UWAGA! Zagrożenie powietrzne. Udaj się do najbliższego schronu lub miejsca ukrycia. Zachowaj spokój i słuchaj komunikatów.",
-     "original_url": "https://example.invalid/rcb/2026-09-20-0537",
+     "text": "Komunikat RSO: zagrożenie z powietrza dla województwa lubelskiego",
+     "meta": "RSO · komunikaty.tvp.pl · treść oryginalna w źródle",
      "event_id": "2026-0920-017",
-     "counted": true
+     "counted": true,
+     "original_url": "https://komunikaty.tvp.pl/"
     },
     {
-     "id": "s-0920-042",
-     "source": "syreny",
-     "kind": "siren_unscheduled",
-     "observed_at": "2026-09-20T05:37:31+02:00",
-     "received_at": "2026-09-20T05:37:33+02:00",
+     "id": "s-0920-040",
+     "source": "ua",
+     "kind": "air",
+     "observed_at": "2026-09-20T05:30:00+02:00",
+     "received_at": "2026-09-20T05:30:00+02:00",
      "areas": [
       {
-       "id": "2401022",
-       "name": "gmina Nadwiśle",
-       "kind": "gmina"
+       "id": "volyn",
+       "name": "obwód wołyński (UA)",
+       "kind": "wojewodztwo"
       }
      ],
-     "geometry": {
-      "type": "Point",
-      "coordinates": [
-       18.71,
-       50.31
-      ]
-     },
-     "text": "Syrena: sygnał modulowany 3 min",
-     "meta": "czujnik akustyczny nr 3, Nadwiśle · 96 dB · nie jest próbą planową",
-     "measurements": {
-      "duration_s": 180,
-      "spl_db": 96,
-      "pattern": "modulated"
-     },
-     "scheduled": false,
+     "text": "Alarm powietrzny: obwód wołyński",
+     "meta": "alarmy UA · przez neptun.in.ua",
      "event_id": "2026-0920-017",
      "counted": true
     },
     {
      "id": "s-0920-043",
-     "source": "zgloszenia",
-     "kind": "siren_unscheduled",
+     "source": "media",
+     "kind": "other",
      "observed_at": "2026-09-20T05:38:00+02:00",
-     "received_at": "2026-09-20T05:44:00+02:00",
+     "received_at": "2026-09-20T05:38:00+02:00",
      "areas": [
       {
-       "id": "2401011",
-       "name": "gmina Brzegowo",
-       "kind": "gmina"
-      },
-      {
-       "id": "2401033",
-       "name": "gmina Zaborów",
-       "kind": "gmina"
+       "id": "lubelskie",
+       "name": "województwo lubelskie",
+       "kind": "wojewodztwo"
       }
      ],
-     "text": "14 zgłoszeń użytkowników",
-     "meta": "zgłoszenia · „syrena” ×9, „huk” ×5 · niezweryfikowane, nie liczone do poziomu",
-     "measurements": {
-      "count": 14,
-      "window_min": 6
-     },
+     "text": "RMF24: doniesienia o dronach nad obwodem wołyńskim",
+     "meta": "media · RMF24 · niepotwierdzone, samo nie podnosi poziomu",
      "event_id": "2026-0920-017",
      "counted": false
     }
    ],
-   "report_count": 14
+   "report_count": 0
   },
   {
    "id": "2026-0920-016",
    "level": "obserwacja",
    "confidence": "prawdopodobne",
-   "confidence_reason": "1 źródło oficjalne",
-   "kind": "weather",
-   "title": "Ostrzeżenie IMGW: silny wiatr, 2. stopnia",
+   "confidence_reason": "1 źródło: alarmy UA",
+   "kind": "air",
+   "title": "Alarm powietrzny w obwodzie wołyńskim, przy granicy",
    "areas": [
     {
-     "id": "2401",
-     "name": "powiat brzegowski",
-     "kind": "powiat"
+     "id": "lubelskie",
+     "name": "województwo lubelskie",
+     "kind": "wojewodztwo"
     }
    ],
    "started_at": "2026-09-20T04:52:00+02:00",
    "updated_at": "2026-09-20T04:52:20+02:00",
-   "valid_until": "2026-09-21T06:00:00+02:00",
+   "valid_until": null,
    "state": "active",
    "cancelled_at": null,
    "sources": [
-    "imgw"
+    "ua"
    ],
    "instructions": {
     "official": "",
     "steps": [
-     "Zabezpiecz rzeczy na balkonie i w ogrodzie.",
-     "Nie parkuj pod drzewami.",
-     "Zorya powiadomi, jeśli ostrzeżenie zmieni stopień."
+     "Sprawdzaj oficjalne komunikaty RSO i Alert RCB.",
+     "Miej naładowany telefon.",
+     "Stan wraca do spokoju, gdy alarm się skończy."
     ]
    },
    "signals": [
     {
      "id": "s-0920-031",
-     "source": "imgw",
-     "kind": "weather",
+     "source": "ua",
+     "kind": "air",
      "observed_at": "2026-09-20T04:52:00+02:00",
-     "received_at": "2026-09-20T04:52:20+02:00",
-     "valid_until": "2026-09-21T06:00:00+02:00",
+     "received_at": "2026-09-20T04:52:00+02:00",
      "areas": [
       {
-       "id": "2401",
-       "name": "powiat brzegowski",
-       "kind": "powiat"
+       "id": "volyn",
+       "name": "obwód wołyński (UA)",
+       "kind": "wojewodztwo"
       }
      ],
-     "text": "Ostrzeżenie IMGW: silny wiatr, 2. stopnia",
-     "meta": "IMGW · powiat brzegowski · do 21.09, 06:00",
-     "original_text": "Prognozuje się wystąpienie silnego wiatru o średniej prędkości od 45 km/h do 60 km/h, w porywach do 90 km/h, z zachodu i północnego zachodu.",
-     "original_url": "https://example.invalid/imgw/2026-09-20-0452",
+     "text": "Alarm powietrzny: obwód wołyński",
+     "meta": "alarmy UA · przez neptun.in.ua · obwód przy granicy z lubelskim",
      "event_id": "2026-0920-016",
      "counted": true
     }

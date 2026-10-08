@@ -10,8 +10,8 @@
    "level": "alarm",
    "since": "2026-09-20T05:37:04+02:00",
    "active_events": 1,
-   "sources_active": 6,
-   "sources_total": 6,
+   "sources_active": 5,
+   "sources_total": 5,
    "data_as_of": "2026-09-20T05:41:00+02:00",
    "stale": false
   },
@@ -24,8 +24,8 @@
    "level": "obserwacja",
    "since": "2026-09-20T04:52:00+02:00",
    "active_events": 1,
-   "sources_active": 6,
-   "sources_total": 6,
+   "sources_active": 5,
+   "sources_total": 5,
    "data_as_of": "2026-09-20T05:41:00+02:00",
    "stale": false
   }

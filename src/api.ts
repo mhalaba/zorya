@@ -128,8 +128,8 @@ export function fixtureHorizon(areaId: string | null, scenario: Scenario = "alar
     level,
     since,
     active_events: outEvents.length || active,
-    sources_active: activeSources || 6,
-    sources_total: 6,
+    sources_active: activeSources || sourcesView.length,
+    sources_total: sourcesView.length,
     data_as_of: dataAsOf,
     stale,
   };
@@ -262,20 +262,18 @@ export function searchAreas(q: string): AreaRef[] {
 
 export function sourceChip(id: string): string {
   const map: Record<string, string> = {
-    rcb: "RCB",
-    imgw: "IMGW",
-    psp: "PSP",
-    syreny: "syreny",
-    sdr: "SDR",
-    adsb: "SDR",
-    radio_ews: "radio",
+    rcb: "RSO/RCB",
+    neptun: "NEPTUN",
+    ua: "alarmy UA",
+    adsb: "ADS-B",
+    media: "media",
     zgloszenia: "zgłoszenia",
   };
   return map[id] ?? id;
 }
 
 export function signalKindGroup(source: string): string {
-  return SOURCE_KIND[source as keyof typeof SOURCE_KIND] ?? "radio";
+  return SOURCE_KIND[source as keyof typeof SOURCE_KIND] ?? "osint";
 }
 
 export { eventsAll, signalsAll, sourcesAll, statusAll };

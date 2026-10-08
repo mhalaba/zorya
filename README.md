@@ -1,6 +1,6 @@
 # Zorya
 
-**czuwanie świtu** — jeden poziom dla Twojej gminy z alertów RCB, ostrzeżeń IMGW, komunikatów PSP, czujników syren, radia i zgłoszeń sąsiadów.
+**czuwanie świtu** — niekomercyjna mapa zagrożeń z powietrza dla Polski z otwartych źródeł: NEPTUN (OSINT z Ukrainy, nie radar), alarmy powietrzne UA, ADS-B (adsb.lol), RSO / Alert RCB (komunikaty.tvp.pl) i media RSS (RMF24, PAP). Ocena co minutę dla każdego województwa. Strona „O projekcie”: `/o-projekcie` (EN: `/en/about`).
 
 **Produkcja:** [https://zorya.website](https://zorya.website) — HTTPS, PWA. Krawędź: Cloudflare Tunnel na `http://127.0.0.1:8787`.
 

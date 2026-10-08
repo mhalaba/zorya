@@ -61,13 +61,11 @@ export function ConfidenceRule({
 
 export function SourceChips({ ids, alarm }: { ids: string[]; alarm?: boolean }) {
   const names: Record<string, string> = {
-    rcb: "RCB",
-    imgw: "IMGW",
-    psp: "PSP",
-    syreny: "syreny",
-    sdr: "SDR",
-    adsb: "SDR",
-    radio_ews: "radio",
+    rcb: "RSO/RCB",
+    neptun: "NEPTUN",
+    ua: "alarmy UA",
+    adsb: "ADS-B",
+    media: "media",
     zgloszenia: "zgłoszenia",
   };
   return (

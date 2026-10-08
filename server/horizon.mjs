@@ -28,16 +28,48 @@ function mapFusionLevel(v) {
   return "cisza";
 }
 
+/** Truthful labels for the live sources. PAŻP has no public feed, so it is not listed as a source. */
+const SOURCE_META = {
+  neptun: {
+    id: "neptun",
+    kind: "osint",
+    name: "NEPTUN — zagrożenia nad Ukrainą (OSINT)",
+    short: "NEPTUN",
+    attribution: "neptun.in.ua — śledzenie dronów, pocisków i lotnictwa nad Ukrainą na podstawie OSINT. To nie są dane radarowe; pozycje są przybliżone.",
+  },
+  ua: {
+    id: "ua",
+    kind: "osint",
+    name: "Alarmy powietrzne w Ukrainie",
+    short: "alarmy UA",
+    attribution: "Obwody Ukrainy z aktywnym alarmem powietrznym, pobierane przez neptun.in.ua.",
+  },
+  adsb: {
+    id: "adsb",
+    kind: "radio",
+    name: "ADS-B — ruch lotniczy (adsb.lol)",
+    short: "ADS-B",
+    attribution: "adsb.lol — otwarte dane ADS-B. Tylko statki powietrzne, które same nadają swoją pozycję.",
+  },
+  rss: {
+    id: "media",
+    kind: "media",
+    name: "Media — RMF24 i PAP (RSS)",
+    short: "media",
+    attribution: "Kanały RSS rmf24.pl i pap.pl oraz komunikaty RSO, filtrowane pod kątem zagrożeń z powietrza. Same nie podnoszą poziomu.",
+  },
+  rcb: {
+    id: "rcb",
+    kind: "official",
+    name: "RSO / Alert RCB (komunikaty.tvp.pl)",
+    short: "RSO/RCB",
+    attribution: "Regionalny System Ostrzegania i Alert RCB, komunikaty.tvp.pl — informacja publiczna. Treść oryginalna zawsze w źródle.",
+  },
+};
+
 function sourceFromFusion(src) {
-  const map = {
-    rcb: { id: "rcb", kind: "official", name: "RCB — Alert RCB", short: "RCB" },
-    rss: { id: "imgw", kind: "official", name: "IMGW — ostrzeżenia meteo", short: "IMGW" },
-    adsb: { id: "sdr", kind: "radio", name: "SDR / ADS-B", short: "SDR" },
-    neptun: { id: "sdr", kind: "radio", name: "SDR / ADS-B", short: "SDR" },
-    ua: { id: "sdr", kind: "radio", name: "SDR / ADS-B", short: "SDR" },
-    pazp: { id: "psp", kind: "official", name: "PSP — komunikaty", short: "PSP" },
-  };
-  const base = map[src.id] || { id: src.id, kind: "radio", name: src.id, short: src.id };
+  const base = SOURCE_META[src.id];
+  if (!base) return null;
   const health = src.diode === "ok" ? "fresh" : src.diode === "off" ? "disabled" : src.diode === "dead" ? "down" : "stale";
   const last = new Date(Date.now() - (src.age_s || 0) * 1000).toISOString();
   return {
@@ -48,7 +80,6 @@ function sourceFromFusion(src) {
     locked: src.id === "rcb",
     health,
     last_update: last,
-    attribution: "",
   };
 }
 
@@ -69,10 +100,10 @@ export function horizonFromFusion(state, areaId) {
       const lv = mapFusionLevel(v);
       const sources = [];
       if (v.breakdown?.rcb) sources.push("rcb");
-      if (v.breakdown?.neptun) sources.push("sdr");
-      if (v.breakdown?.media) sources.push("imgw");
-      if (v.breakdown?.pazp) sources.push("psp");
-      if (!sources.length) sources.push("sdr");
+      if (v.breakdown?.neptun) sources.push("neptun");
+      if (v.breakdown?.ua) sources.push("ua");
+      if (v.breakdown?.media) sources.push("media");
+      if (!sources.length) sources.push("neptun");
       return {
         id: `live-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${String(i + 1).padStart(3, "0")}`.replace(
           /(\d{4})(\d{2})(\d{2})/,
@@ -96,7 +127,7 @@ export function horizonFromFusion(state, areaId) {
             ? [
                 "Wejdź do budynku, najlepiej do piwnicy albo pomieszczenia bez okien.",
                 "Trzymaj się z dala od okien. Nie wychodź, dopóki nie zobaczysz odwołania.",
-                "Telefon w trybie oszczędzania energii. Zorya powiadomi o odwołaniu.",
+                "Sprawdzaj Alert RCB i RSO — Zorya nie zastępuje oficjalnych komunikatów.",
               ]
             : [],
         },
@@ -107,7 +138,7 @@ export function horizonFromFusion(state, areaId) {
 
   const signals = (state.signals || []).slice(0, 20).map((sg) => ({
     id: sg.id,
-    source: sg.source === "rcb" ? "rcb" : sg.source === "rss" ? "imgw" : "sdr",
+    source: sg.source === "rss" ? "media" : ["rcb", "neptun", "ua", "adsb"].includes(sg.source) ? sg.source : "neptun",
     kind: "other",
     observed_at: sg.ts,
     received_at: sg.ts,
@@ -121,35 +152,13 @@ export function horizonFromFusion(state, areaId) {
     counted: false,
   }));
 
-  const fusionSources = (state.sources || []).map(sourceFromFusion);
+  const fusionSources = (state.sources || []).map(sourceFromFusion).filter(Boolean);
   const seen = new Set();
   const sources = [];
   for (const src of fusionSources) {
     if (seen.has(src.id)) continue;
     seen.add(src.id);
     sources.push(src);
-  }
-  while (sources.length < 6) {
-    const extras = [
-      { id: "psp", kind: "official", name: "PSP — komunikaty", short: "PSP", health: "disabled", enabled: false },
-      { id: "syreny", kind: "sensor", name: "Syreny — czujniki akustyczne", short: "syreny", health: "disabled", enabled: false },
-      { id: "zgloszenia", kind: "reports", name: "Zgłoszenia użytkowników", short: "zgłoszenia", health: "fresh", enabled: true },
-      { id: "radio_ews", kind: "radio", name: "Radio publiczne (RDS/EWS)", short: "radio", health: "disabled", enabled: false },
-    ];
-    for (const e of extras) {
-      if (!seen.has(e.id)) {
-        seen.add(e.id);
-        sources.push({
-          ...e,
-          description: "",
-          freshness_s: 900,
-          locked: false,
-          last_update: null,
-          attribution: "",
-        });
-      }
-    }
-    break;
   }
 
   const activeSources = sources.filter((s) => s.enabled && s.health === "fresh").length;

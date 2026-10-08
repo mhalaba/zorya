@@ -15,6 +15,9 @@ export function MapHud() {
       <MarkSvg />
       <span className="wm">{s("brand.wordmark")}</span>
       <span className={`map-diode ${mode}`} title={label} aria-label={label} />
+      <a className="map-info" href="/o-projekcie" title="O projekcie" aria-label="O projekcie">
+        i
+      </a>
     </div>
   );
 }

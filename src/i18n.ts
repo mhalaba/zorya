@@ -7,7 +7,7 @@ const pl = {
   disclaimerFull:
     "To NIE jest oficjalny system ostrzegania. Nie zastępuje syren, Alertu RCB ani RSO. Publikacja jako projekt Fundacji Terra Incognita nic tu nie zmienia. W razie realnego zagrożenia kieruj się kanałami oficjalnymi. Zorya może dać dodatkowy, wcześniejszy sygnał — albo nic nie dać.",
   disclaimerCompact:
-    "NIEOFICJALNE · nie zastępuje syren / RCB / RSO · nie urząd · źródła: NEPTUN (OSINT, nie radar) · alarmy UA · ADS-B · RSS · RCB/RSO · PAŻP",
+    "NIEOFICJALNE · nie zastępuje syren / RCB / RSO · nie urząd · źródła: NEPTUN (OSINT, nie radar) · alarmy UA · ADS-B · media RSS · RSO / Alert RCB",
   foundation: "Fundacja Terra Incognita",
   foundationLine: "Projekt Fundacji Terra Incognita",
   foundationBody: "Projekt Fundacji Terra Incognita. Wpis do KRS w toku.",
@@ -127,7 +127,7 @@ const pl = {
   privacyBody:
     "Brak konta. Brak inwazyjnej analityki. Moje miejsca i próg dzwonka zostają w przeglądarce. Lokalizacja GPS — tylko jeśli sam ją zapiszesz, jeden raz, lokalnie. Dzwonek w tle to anonimowy endpoint Web Push plus województwa z Moich miejsc.",
   sourcesBody:
-    "NEPTUN (OSINT, nie radar) — neptun.in.ua · alarmy powietrzne UA · ADS-B (adsb.lol) · media RSS (treść, nie sam tytuł) · RSO / Alert RCB (komunikaty.tvp.pl) · PAŻP gdy jest publiczny AUP. Mapa: OpenFreeMap / OpenStreetMap. Granice UA: GADM.",
+    "NEPTUN (OSINT, nie radar) — neptun.in.ua · alarmy powietrzne UA · ADS-B (adsb.lol) · media RSS (treść, nie sam tytuł) · RSO / Alert RCB (komunikaty.tvp.pl). Mapa: OpenFreeMap / OpenStreetMap. Granice UA: GADM.",
   scoringIntro: "Liczenie per województwo, okno 60 min. 0–30 min waga 1.0, potem liniowo do 0. Limity per klasa, żeby 20 artykułów nie zapalało mapy.",
   installHint: "Zorya jako PWA — na telefonie: udostępnij → dodaj do ekranu głównego.",
   camerasNote: "Piny to punkty obserwacji. Brak żywego wideo — i nie udajemy, że jest.",
@@ -157,7 +157,7 @@ const en: typeof pl = {
   disclaimerFull:
     "This is NOT an official warning system. It does not replace sirens, RCB Alert or RSO. Publishing it as a Fundacja Terra Incognita project does not change that. In a real threat, follow official channels. Zorya may give an extra, earlier signal — or none.",
   disclaimerCompact:
-    "UNOFFICIAL · does not replace sirens / RCB / RSO · not an authority · sources: NEPTUN (OSINT, not radar) · UA alerts · ADS-B · RSS · RCB/RSO · PAŻP",
+    "UNOFFICIAL · does not replace sirens / RCB / RSO · not an authority · sources: NEPTUN (OSINT, not radar) · UA alerts · ADS-B · RSS media · RSO / RCB Alert",
   foundation: "Fundacja Terra Incognita",
   foundationLine: "A Fundacja Terra Incognita project",
   foundationBody: "A Fundacja Terra Incognita project. National Court Register (KRS) filing is in progress.",
@@ -277,7 +277,7 @@ const en: typeof pl = {
   privacyBody:
     "No account. No invasive analytics. Your places and bell threshold stay in the browser. GPS is stored only if you save it, once, locally. Background bell is an anonymous Web Push endpoint plus voivodeships from My places.",
   sourcesBody:
-    "NEPTUN (OSINT, not radar) — neptun.in.ua · UA air alerts · ADS-B (adsb.lol) · RSS media (body, not title alone) · RSO / RCB Alert (komunikaty.tvp.pl) · PAŻP when a public AUP exists. Map: OpenFreeMap / OpenStreetMap. UA borders: GADM.",
+    "NEPTUN (OSINT, not radar) — neptun.in.ua · UA air alerts · ADS-B (adsb.lol) · RSS media (body, not title alone) · RSO / RCB Alert (komunikaty.tvp.pl). Map: OpenFreeMap / OpenStreetMap. UA borders: GADM.",
   scoringIntro: "Per voivodeship, 60 min window. 0–30 min weight 1.0, then linearly to 0. Caps per source class so 20 articles cannot light the map.",
   installHint: "Zorya as a PWA — on a phone: share → add to home screen.",
   camerasNote: "Pins are observation points. There is no live video — and we do not pretend there is.",

@@ -86,11 +86,6 @@ export function Wiecej() {
           <span className="d">{s("settings.s_reports_desc")}</span>
           <Toggle on={sourceOn.zgloszenia !== false} onChange={(v) => setSourceOn("zgloszenia", v)} label={s("settings.s_reports")} />
         </div>
-        <div className="li">
-          <span className="t">{s("settings.s_radio")}</span>
-          <span className="d">{s("settings.s_radio_desc")}</span>
-          <Toggle on={sourceOn.radio_ews === true} onChange={(v) => setSourceOn("radio_ews", v)} label={s("settings.s_radio")} />
-        </div>
       </div>
       <div className="eyebrow">
         <span className="z-label">{s("settings.a11y")}</span>

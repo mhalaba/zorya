@@ -1,7 +1,8 @@
 export type Level = "cisza" | "obserwacja" | "ostrzezenie" | "alarm" | "odwolanie";
 export type Confidence = "potwierdzone" | "prawdopodobne" | "pojedynczy" | "niezweryfikowane";
-export type SourceKind = "official" | "sensor" | "radio" | "reports";
-export type SourceId = "rcb" | "imgw" | "psp" | "syreny" | "sdr" | "adsb" | "radio_ews" | "zgloszenia";
+export type SourceKind = "official" | "osint" | "media" | "sensor" | "radio" | "reports";
+// Live sources: neptun, ua, adsb, media, rcb. The others are legacy ids of the old civic-horizon mockups.
+export type SourceId = "rcb" | "neptun" | "ua" | "media" | "adsb" | "imgw" | "psp" | "syreny" | "sdr" | "radio_ews" | "zgloszenia";
 export type EventKind =
   | "air"
   | "weather"
@@ -143,6 +144,9 @@ export const LEVEL_ORDER: Record<Level, number> = {
 
 export const SOURCE_KIND: Record<SourceId, SourceKind> = {
   rcb: "official",
+  neptun: "osint",
+  ua: "osint",
+  media: "media",
   imgw: "official",
   psp: "official",
   syreny: "sensor",

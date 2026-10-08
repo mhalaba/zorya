@@ -1,7 +1,7 @@
 {
   "name": "Zorya — czuwanie świtu",
   "short_name": "Zorya",
-  "description": "Jeden poziom dla Twojej gminy z alertów RCB, IMGW, PSP, czujników syren, radia i zgłoszeń sąsiadów.",
+  "description": "Mapa zagrożeń z powietrza dla Polski z otwartych źródeł: NEPTUN (OSINT), alarmy UA, ADS-B, RSO / Alert RCB, media.",
   "lang": "pl",
   "start_url": "/app/mapa",
   "scope": "/",

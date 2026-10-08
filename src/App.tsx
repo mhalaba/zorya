@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { usePath } from "./nav";
 import { ThemeSync } from "./theme";
 import { AppShell } from "./app/AppShell";
-import { ContactPage, HowPage, Landing, PrivacyPage, SourcesPage, StatusPage } from "./site/Site";
+import { AboutPage, ContactPage, HowPage, Landing, PrivacyPage, SourcesPage, StatusPage } from "./site/Site";
 import { syncPushSubscription } from "./push";
 import { useStore } from "./store";
 
@@ -53,6 +53,10 @@ export function App() {
         <SourcesPage />
       ) : path.startsWith("/kontakt") ? (
         <ContactPage />
+      ) : path.startsWith("/o-projekcie") ? (
+        <AboutPage lang="pl" />
+      ) : path.startsWith("/en/about") || path.startsWith("/about") ? (
+        <AboutPage lang="en" />
       ) : (
         <Landing />
       )}
