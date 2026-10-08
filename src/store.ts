@@ -79,7 +79,7 @@ interface Live {
   drawer: Drawer;
   selectedVoiv: string | null;
   hoverVoiv: string | null;
-  cameraPreset: "default" | "region" | "pl" | "flank";
+  cameraPreset: "default" | "region" | "pl" | "flank" | "all";
   cameraNonce: number;
   historyMode: boolean;
   history: HistoryBundle | null;

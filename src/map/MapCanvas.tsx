@@ -68,6 +68,7 @@ export function MapCanvas() {
         fadeDuration: prefersReducedMotion() ? 0 : 180,
         pitchWithRotate: false,
         dragRotate: false,
+        renderWorldCopies: false,
       });
     } catch (err) {
       console.error("Zorya map init", err);
@@ -76,6 +77,8 @@ export function MapCanvas() {
     mapRef.current = map;
     map.on("error", (e) => console.error("Zorya map", e.error || e));
     map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+    map.addControl(new FitAllControl(), "top-right");
 
     map.on("load", () => {
       // Settings may have been restored from storage (or changed) before the style loaded; the
@@ -579,7 +582,8 @@ export function MapCanvas() {
     if (!map) return;
     const { homeVoiv: home, selectedVoiv: sel } = useStore.getState();
     const opt = { padding: CAMERA.padding, duration: prefersReducedMotion() ? 0 : 700, pitch: 0 };
-    if (preset === "pl") map.fitBounds(CAMERA.wholePl, opt);
+    if (preset === "all") map.fitBounds(CAMERA.all, { ...opt, padding: CAMERA.allPadding });
+    else if (preset === "pl") map.fitBounds(CAMERA.wholePl, opt);
     else if (preset === "flank") map.fitBounds(CAMERA.flank, opt);
     else if (preset === "region") {
       const id = home || sel;
@@ -610,6 +614,33 @@ export function MapCanvas() {
   }, []);
 
   return <div ref={ref} className="map-root" aria-label="Zorya map" />;
+}
+
+/** "Show everything" button under the zoom buttons: frames Poland, Ukraine and the Baltics. */
+class FitAllControl implements maplibregl.IControl {
+  private el: HTMLDivElement | null = null;
+  onAdd(map: MLMap) {
+    const el = document.createElement("div");
+    el.className = "maplibregl-ctrl maplibregl-ctrl-group";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "zorya-fit-all";
+    const label = useStore.getState().lang === "en" ? "Show the whole map" : "Pokaż całą mapę";
+    btn.title = label;
+    btn.setAttribute("aria-label", label);
+    btn.innerHTML =
+      '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
+    btn.addEventListener("click", () => {
+      map.fitBounds(CAMERA.all, { padding: CAMERA.allPadding, duration: prefersReducedMotion() ? 0 : 700, pitch: 0 });
+    });
+    el.appendChild(btn);
+    this.el = el;
+    return el;
+  }
+  onRemove() {
+    this.el?.remove();
+    this.el = null;
+  }
 }
 
 function emptyFc(): FeatureCollection {

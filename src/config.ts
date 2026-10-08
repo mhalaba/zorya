@@ -18,7 +18,8 @@ export const COLORS = {
 };
 
 export const CAMERA = {
-  minZoom: 4.5,
+  // Low enough that a portrait phone can still fit Poland plus Ukraine and the Baltics.
+  minZoom: 2.5,
   maxZoom: 12.5,
   defaultBounds: [
     [14.07, 48.55],
@@ -28,15 +29,25 @@ export const CAMERA = {
     [14.07, 44.35],
     [40.15, 55.15],
   ] as [[number, number], [number, number]],
+  /** Everything Zorya draws: Poland, all of Ukraine (incl. Crimea) and the Baltic states. */
+  all: [
+    [13.8, 44.2],
+    [40.4, 60.0],
+  ] as [[number, number], [number, number]],
   flank: [
     [21.15, 48.85],
     [26.55, 53.65],
   ] as [[number, number], [number, number]],
+  // Only a loose guard against panning off into the ocean. It must stay well outside `all`,
+  // because maplibre never lets the viewport exceed maxBounds (that used to force a higher
+  // zoom on phones and cut Poland/Ukraine off).
   maxBounds: [
-    [8.5, 45.8],
-    [40.5, 59.6],
+    [-15, 30],
+    [60, 72],
   ] as [[number, number], [number, number]],
-  padding: { top: 40, bottom: 40, left: 8, right: 8 },
+  padding: { top: 40, bottom: 40, left: 16, right: 16 },
+  /** Extra room so the HUD, zoom buttons and counters don't sit on top of the frame. */
+  allPadding: { top: 56, bottom: 44, left: 20, right: 20 },
 };
 
 export const EAST_IDS = ["podlaskie", "lubelskie", "podkarpackie", "mazowieckie", "warminsko-mazurskie"];

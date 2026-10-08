@@ -551,6 +551,26 @@ h1.screen { margin: 0; padding: var(--z-space-4) var(--z-space-4) var(--z-space-
   inset: 0;
 }
 .map-root .maplibregl-canvas { outline: none; }
+/* Zoom +/- and "show whole map": thumb-sized, clear of the notch and the HUD. Fixed dark
+   colours on purpose: the basemap is always the dark style, whatever the UI theme is. */
+.map-root .maplibregl-ctrl-top-right {
+  top: max(0px, env(safe-area-inset-top));
+  right: max(0px, env(safe-area-inset-right));
+}
+.map-root .maplibregl-ctrl-group {
+  background: rgba(7, 11, 18, 0.82);
+  border: 1px solid #3A4656;
+  box-shadow: none;
+}
+.map-root .maplibregl-ctrl-group button {
+  width: 40px;
+  height: 40px;
+  color: #E8EEF7;
+}
+.map-root .maplibregl-ctrl-group button + button { border-top: 1px solid #3A4656; }
+.map-root .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1); }
+.map-root .maplibregl-ctrl-group button:hover { background-color: rgba(232, 238, 247, 0.1); }
+.map-root .zorya-fit-all { display: flex; align-items: center; justify-content: center; }
 .maplibregl-ctrl-attrib {
   background: transparent !important;
   color: var(--z-text-2) !important;
