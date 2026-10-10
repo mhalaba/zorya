@@ -8,7 +8,7 @@
     "dev": "concurrently -k -n server,web -c cyan,magenta \"npm:dev:server\" \"npm:dev:web\"",
     "dev:web": "vite",
     "dev:server": "node server/index.mjs",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && vite build --ssr src/seo/prerender-entry.tsx --outDir dist-ssr && node scripts/prerender.mjs",
     "preview": "vite preview",
     "start": "NODE_ENV=production node server/index.mjs"
   },

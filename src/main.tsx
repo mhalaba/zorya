@@ -1,6 +1,9 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
+// maplibre base CSS must load before our overrides (e.g. .map-root position), so keep it
+// in the eager bundle even though the map itself is lazy-loaded.
+import "maplibre-gl/dist/maplibre-gl.css";
 import "./styles.css";
 
 try {

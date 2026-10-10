@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import maplibregl, { type Map as MLMap, type GeoJSONSource } from "maplibre-gl";
-import "maplibre-gl/dist/maplibre-gl.css";
 import { CAMERA, COLORS } from "../config";
 import { circlePoly, destPoint, prefersReducedMotion } from "../lib";
 import { iconForType, registerMapIcons } from "./icons";

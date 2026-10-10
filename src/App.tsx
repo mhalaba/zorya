@@ -1,10 +1,13 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { usePath } from "./nav";
 import { ThemeSync } from "./theme";
-import { AppShell } from "./app/AppShell";
-import { AboutPage, ContactPage, HowPage, Landing, PrivacyPage, SourcesPage, StatusPage } from "./site/Site";
+import { AboutPage, ContactPage, HowPage, Landing, PrivacyPage, SourcesPage, StatusPage, NotFoundPage } from "./site/Site";
 import { syncPushSubscription } from "./push";
 import { useStore } from "./store";
+import { syncHead } from "./seo/head";
+
+// The map (MapLibre, ~1 MB) loads only on /app: the public pages stay light.
+const AppShell = lazy(() => import("./app/AppShell").then((m) => ({ default: m.AppShell })));
 
 export function App() {
   const path = usePath();
@@ -12,9 +15,8 @@ export function App() {
   const areas = useStore((s) => s.areas);
 
   useEffect(() => {
-    document.documentElement.lang = "pl";
-    document.title = "Zorya — czuwanie świtu";
-  }, []);
+    syncHead(path);
+  }, [path]);
 
   useEffect(() => {
     void syncPushSubscription();
@@ -39,10 +41,12 @@ export function App() {
   return (
     <>
       <ThemeSync />
-      {path === "/" || path === "" ? (
+      {path === "/" || path === "" || path === "/index.html" ? (
         <Landing />
       ) : path.startsWith("/app") ? (
-        <AppShell />
+        <Suspense fallback={<div className="app-root map-view" />}>
+          <AppShell />
+        </Suspense>
       ) : path.startsWith("/jak-dziala") ? (
         <HowPage />
       ) : path.startsWith("/prywatnosc") ? (
@@ -58,7 +62,7 @@ export function App() {
       ) : path.startsWith("/en/about") || path.startsWith("/about") ? (
         <AboutPage lang="en" />
       ) : (
-        <Landing />
+        <NotFoundPage />
       )}
     </>
   );

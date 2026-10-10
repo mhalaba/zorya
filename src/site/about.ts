@@ -15,7 +15,7 @@ export interface AboutCopy {
 }
 
 export const ABOUT_PL: AboutCopy = {
-  title: "O projekcie",
+  title: "O projekcie Zorya",
   switchLabel: "English",
   switchHref: "/en/about",
   blocks: [
@@ -38,6 +38,7 @@ export const ABOUT_PL: AboutCopy = {
         "**ADS-B** (adsb.lol): samoloty nad Polską, które same nadają swoją pozycję, w tym statki powietrzne oznaczone w tym serwisie jako wojskowe w rejonie wschodniej flanki.",
         "**RSO / Alert RCB** (komunikaty.tvp.pl): oficjalne komunikaty dotyczące zagrożeń z powietrza.",
         "**Media**: kanały RSS RMF24 i PAP, filtrowane pod kątem treści o zagrożeniach powietrznych. Ćwiczenia, smog i informacje drogowe są odrzucane.",
+        "**MAPA.UA** (mapa.ua): szacunkowe pozycje rakiet, bomb KAB i dronów nad Ukrainą, odtwarzane z publicznych komunikatów. Pokazywane jako osobna warstwa „Rakiety (UA)”, nie wpływają na ocenę województw.",
       ],
     },
     { t: "p", text: "Każde źródło ma własny wskaźnik stanu. Dane starsze niż 15 minut nie są brane pod uwagę." },
@@ -51,7 +52,7 @@ export const ABOUT_PL: AboutCopy = {
     },
     {
       t: "p",
-      text: "**4. Archiwum.** Każdy ślad drona lub Shaheda z NEPTUN jest zapisywany w lokalnym archiwum przez 180 dni, a potem automatycznie usuwany. Archiwum nie jest publiczne i można je odczytać tylko z sieci lokalnej serwera. Służy do analizy wzorców, np. kiedy i gdzie zagrożenia najczęściej zbliżają się do granicy.",
+      text: "**4. Archiwum.** Każdy ślad drona lub Shaheda z NEPTUN jest zapisywany w lokalnym archiwum przez 180 dni, a potem automatycznie usuwany. Archiwum nie jest publiczne: w całości można je odczytać tylko z sieci lokalnej serwera, a na mapie widać jedynie trasę obiektu, który jest właśnie śledzony. Służy do analizy wzorców, np. kiedy i gdzie zagrożenia najczęściej zbliżają się do granicy.",
     },
     { t: "h2", text: "Dla kogo" },
     {
@@ -89,14 +90,14 @@ export const ABOUT_PL: AboutCopy = {
       ],
     },
     { t: "h2", text: "Autor i kontakt" },
-    { t: "p", text: "Projekt tworzy **Matthew Halaba**." },
+    { t: "p", text: "Projekt tworzy **Matthew Halaba**. Serwis prowadzi jednoosobowa działalność **Baiame Mateusz Halaba**." },
     { t: "p", text: "Kontakt: **m@zorya.website**" },
     { t: "p", text: "Kod: github.com/mhalaba/zorya" },
   ],
 };
 
 export const ABOUT_EN: AboutCopy = {
-  title: "About",
+  title: "About Zorya",
   switchLabel: "Polski",
   switchHref: "/o-projekcie",
   blocks: [
@@ -119,6 +120,7 @@ export const ABOUT_EN: AboutCopy = {
         "**ADS-B** (adsb.lol): aircraft over Poland that broadcast their own position, including aircraft that service flags as military near the eastern flank.",
         "**RSO / RCB Alert** (komunikaty.tvp.pl): Polish official notices about air threats.",
         "**Media**: RMF24 and PAP RSS feeds, filtered for air-threat content. Drills, smog and traffic news are discarded.",
+        "**MAPA.UA** (mapa.ua): estimated positions of missiles, KAB glide bombs and drones over Ukraine, reconstructed from public reports. Shown as a separate \"Missiles (UA)\" layer; they do not affect the voivodeship score.",
       ],
     },
     { t: "p", text: "Each source has its own health indicator. Data older than 15 minutes is ignored." },
@@ -132,7 +134,7 @@ export const ABOUT_EN: AboutCopy = {
     },
     {
       t: "p",
-      text: "**4. Archive.** Every NEPTUN drone or Shahed track is kept in a local archive for 180 days and then deleted automatically. The archive is not public and can be read only from the server's local network. It is used to analyse patterns, such as when and where threats most often approach the border.",
+      text: "**4. Archive.** Every NEPTUN drone or Shahed track is kept in a local archive for 180 days and then deleted automatically. The archive is not public: in full it can be read only from the server's local network; the map shows only the route of an object that is being tracked right now. It is used to analyse patterns, such as when and where threats most often approach the border.",
     },
     { t: "h2", text: "Who it is for" },
     {
@@ -170,7 +172,7 @@ export const ABOUT_EN: AboutCopy = {
       ],
     },
     { t: "h2", text: "Author and contact" },
-    { t: "p", text: "Built by **Matthew Halaba**." },
+    { t: "p", text: "Built by **Matthew Halaba**. Operated by the sole proprietorship **Baiame Mateusz Halaba**." },
     { t: "p", text: "Contact: **m@zorya.website**" },
     { t: "p", text: "Code: github.com/mhalaba/zorya" },
   ],

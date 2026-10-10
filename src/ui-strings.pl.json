@@ -162,7 +162,7 @@
   "web": {
     "menu_about": "O projekcie", "menu_how": "Jak działa", "menu_sources": "Źródła", "menu_privacy": "Prywatność", "menu_status": "Status", "open_app": "Otwórz aplikację",
     "hero_title": "Zorya czuwa, kiedy Ty śpisz.",
-    "hero_text": "Zorya zbiera w jednym miejscu otwarte dane o zagrożeniach z powietrza: śledzenie dronów i pocisków nad Ukrainą (NEPTUN, OSINT), alarmy w obwodach ukraińskich, ruch lotniczy ADS-B oraz komunikaty RSO / Alert RCB i media. Co minutę ocenia każde województwo i pokazuje wynik na mapie. Bez konta, bez reklam, bez śledzenia.",
+    "hero_text": "Zorya zbiera w jednym miejscu otwarte dane o zagrożeniach z powietrza: śledzenie dronów i pocisków nad Ukrainą (NEPTUN, OSINT), alarmy w obwodach ukraińskich, ruch lotniczy ADS-B oraz komunikaty RSO / Alert RCB i media. Co minutę ocenia każde województwo i pokazuje wynik na mapie, razem z warstwą rakiet nad Ukrainą z MAPA.UA. Bez konta, bez reklam, bez śledzenia.",
     "hero_secondary": "Jak liczymy poziom",
     "sample": "przykład",
     "footer_line": "Zorya · czuwanie świtu · wersja {v} · stan na {date}",

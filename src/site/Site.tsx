@@ -123,7 +123,10 @@ export function Landing() {
       <SiteHeader />
       <section className="hero">
         <div>
-          <h1 className="z-display">{s("web.hero_title")}</h1>
+          <h1 className="z-display">
+            <span className="hero-eyebrow">Mapa zagrożeń z powietrza dla Polski</span>
+            {s("web.hero_title")}
+          </h1>
           <p>{s("web.hero_text")}</p>
           <div className="cta">
             <a className="btn primary" href="/app/mapa">
@@ -179,6 +182,21 @@ export function Landing() {
           </div>
         </div>
       </section>
+      <section className="band" id="wojewodztwa">
+        <h2>Alerty dronów dla każdego województwa</h2>
+        <p>
+          Zorya ocenia osobno wszystkie 16 województw: dolnośląskie, kujawsko-pomorskie, lubelskie, lubuskie, łódzkie,
+          małopolskie, mazowieckie, opolskie, podkarpackie, podlaskie, pomorskie, śląskie, świętokrzyskie,
+          warmińsko-mazurskie, wielkopolskie i zachodniopomorskie. Po kliknięciu województwa na mapie widać, jakie alerty
+          są w nim aktywne i z jakiego powodu: drony nad Ukrainą blisko granicy, alarm lotniczy w sąsiednim obwodzie,
+          komunikat RSO albo doniesienie medialne.
+        </p>
+        <p>
+          Najczęściej drony nad Polską i w jej pobliżu dotyczą województw wschodnich (lubelskie, podkarpackie, podlaskie),
+          ale komunikat RSO o zagrożeniu z powietrza może objąć każde województwo.{" "}
+          <a href="/app/mapa">Otwórz mapę na żywo</a>.
+        </p>
+      </section>
       <section className="band">
         <h2>Trzy stany na mapie</h2>
         <div className="levels">
@@ -217,6 +235,10 @@ export function Landing() {
           <div>
             <b>Media</b>
             <span>RSS RMF24 i PAP, tylko treści o zagrożeniach z powietrza. Same nie wystarczą, żeby podnieść poziom.</span>
+          </div>
+          <div>
+            <b>Rakiety nad Ukrainą</b>
+            <span>MAPA.UA: szacunkowe pozycje rakiet, bomb KAB i dronów z publicznych komunikatów. Osobna warstwa na mapie, nie wpływa na poziom województwa.</span>
           </div>
         </div>
       </section>
@@ -366,14 +388,6 @@ function renderInline(text: string): ReactNode[] {
 
 export function AboutPage({ lang }: { lang: "pl" | "en" }) {
   const copy: AboutCopy = lang === "en" ? ABOUT_EN : ABOUT_PL;
-  useEffect(() => {
-    document.title = lang === "en" ? "About — Zorya" : "O projekcie — Zorya";
-    document.documentElement.lang = lang;
-    return () => {
-      document.title = "Zorya — czuwanie świtu";
-      document.documentElement.lang = "pl";
-    };
-  }, [lang]);
   return (
     <SitePage title={copy.title}>
       <p className="about-switch">
@@ -396,5 +410,20 @@ export function AboutPage({ lang }: { lang: "pl" | "en" }) {
         return <p key={i}>{renderInline(b.text)}</p>;
       })}
     </SitePage>
+  );
+}
+
+export function NotFoundPage() {
+  return (
+    <div className="site">
+      <SiteHeader />
+      <article className="page">
+        <h1 className="z-h1">Nie ma takiej strony</h1>
+        <p>
+          <a href="/">Strona główna</a> · <a href="/app/mapa">Mapa na żywo</a>
+        </p>
+      </article>
+      <SiteFooter />
+    </div>
   );
 }

@@ -20,7 +20,8 @@ const isProd = process.env.NODE_ENV === "production";
 const app = express();
 app.disable("x-powered-by");
 app.use(express.json({ limit: "32kb" }));
-app.use((_, res, next) => {
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api")) res.setHeader("X-Robots-Tag", "noindex, nofollow");
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS");
@@ -235,13 +236,60 @@ app.delete("/api/reports/:id", (req, res) => {
 if (isProd) {
   const dist = path.join(root, "dist");
   if (fs.existsSync(dist)) {
-    app.use(express.static(dist));
-  app.get(["/bron", "/bron/"], (_req, res) => {
-    res.sendFile(path.join(dist, "bron", "index.html"));
-  });
+    // Prerendered public pages (scripts/prerender.mjs): route-specific <head> + static text for crawlers.
+    const seoDir = path.join(dist, "seo");
+    let seoRoutes = {};
+    try {
+      seoRoutes = JSON.parse(fs.readFileSync(path.join(seoDir, "routes.json"), "utf8"));
+    } catch {
+      console.error("Zorya: no dist/seo/routes.json, serving plain index.html");
+    }
+    const sendHtml = (res, file, status = 200) => {
+      res.status(status);
+      res.setHeader("Cache-Control", "no-cache");
+      res.sendFile(file);
+    };
+    const pageFor = (p) => {
+      const clean = p.length > 1 ? p.replace(/\/+$/, "") : p;
+      if (clean === "/about") return seoRoutes["/en/about"];
+      if (clean === "/app" || clean.startsWith("/app/")) return seoRoutes["/app/mapa"];
+      return seoRoutes[clean];
+    };
+    app.get(["/about", "/about/"], (_req, res) => res.redirect(301, "/en/about"));
+    app.get(["/", "/index.html"], (_req, res, next) => {
+      const f = seoRoutes["/"];
+      if (!f) return next();
+      sendHtml(res, path.join(seoDir, f));
+    });
+    app.use(
+      express.static(dist, {
+        index: false,
+        setHeaders(res, file) {
+          const rel = path.relative(dist, file).split(path.sep).join("/");
+          if (rel.startsWith("assets/")) res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          else if (rel.startsWith("fonts/") || rel.startsWith("icons/") || rel.startsWith("geo/") || rel.endsWith(".png") || rel === "favicon.ico")
+            res.setHeader("Cache-Control", "public, max-age=604800");
+          else if (rel === "sw.js" || rel.endsWith(".html") || rel.endsWith(".webmanifest")) res.setHeader("Cache-Control", "no-cache");
+          else if (rel === "robots.txt" || rel === "sitemap.xml") res.setHeader("Cache-Control", "public, max-age=3600");
+          if (rel.startsWith("seo/")) res.setHeader("X-Robots-Tag", "noindex");
+        },
+      })
+    );
+    app.get(["/bron", "/bron/"], (_req, res) => {
+      res.sendFile(path.join(dist, "bron", "index.html"));
+    });
     app.get("*", (req, res, next) => {
       if (req.path.startsWith("/api") || req.path.startsWith("/ws")) return next();
-      res.sendFile(path.join(dist, "index.html"));
+      const f = pageFor(req.path);
+      if (f) {
+        // Sub-routes of the app (e.g. /app/sygnaly) share the map page but are not separate pages.
+        if (req.path.startsWith("/app") && req.path !== "/app/mapa") res.setHeader("X-Robots-Tag", "noindex, follow");
+        return sendHtml(res, path.join(seoDir, f));
+      }
+      // Unknown path: real 404 (no soft-404), still the SPA so links keep working.
+      res.setHeader("X-Robots-Tag", "noindex");
+      if (seoRoutes["/404"]) return sendHtml(res, path.join(seoDir, seoRoutes["/404"]), 404);
+      sendHtml(res, path.join(dist, "index.html"), 404);
     });
   }
 }

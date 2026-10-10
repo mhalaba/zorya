@@ -1,7 +1,7 @@
 {
   "name": "Zorya — czuwanie świtu",
   "short_name": "Zorya",
-  "description": "Mapa zagrożeń z powietrza dla Polski z otwartych źródeł: NEPTUN (OSINT), alarmy UA, ADS-B, RSO / Alert RCB, media.",
+  "description": "Mapa zagrożeń z powietrza dla Polski: alerty dla 16 województw z otwartych źródeł (NEPTUN, alarmy UA, RSO / Alert RCB, ADS-B, media) i warstwa rakiet z MAPA.UA.",
   "lang": "pl",
   "start_url": "/app/mapa",
   "scope": "/",
@@ -26,5 +26,11 @@
       "type": "image/png",
       "purpose": "maskable"
     }
+  ],
+  "id": "/app/mapa",
+  "categories": [
+    "news",
+    "utilities",
+    "navigation"
   ]
 }

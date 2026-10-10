@@ -1085,3 +1085,15 @@ footer.site-foot .lk a { text-decoration: none; }
 .ua-attr a { color: var(--z-text); text-decoration-color: var(--z-link-underline); }
 .ua-note { display: block; }
 .md-warn { margin: 0; font-size: 13px; line-height: 18px; color: var(--z-status-obserwacja); }
+
+.hero-eyebrow {
+  display: block;
+  margin-bottom: var(--z-space-3);
+  font-size: 15px;
+  line-height: 22px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--z-text-2);
+}
+#wojewodztwa p { max-width: 72ch; font-size: 17px; line-height: 26px; color: var(--z-text-2); }
