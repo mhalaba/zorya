@@ -917,3 +917,119 @@ footer.site-foot .lk a { text-decoration: none; }
   padding: 8px 12px;
   background: color-mix(in srgb, var(--z-status-alarm, #D7263D) 8%, transparent);
 }
+
+/* Map detail panel: tap a voivodeship (alerts + why) or a drone (NEPTUN data + archived route). */
+.map-detail {
+  position: absolute;
+  z-index: 30;
+  top: max(56px, calc(env(safe-area-inset-top) + 48px));
+  left: max(10px, env(safe-area-inset-left));
+  width: min(380px, calc(100% - 20px));
+  max-height: calc(100% - 120px);
+  display: flex;
+  flex-direction: column;
+  background: var(--z-bg-raised);
+  border: 1px solid var(--z-line-strong);
+  color: var(--z-text);
+}
+.md-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 8px 8px 16px;
+  border-bottom: 1px solid var(--z-line);
+}
+.md-titles { flex: 1; min-width: 0; }
+.md-head h2 { margin: 0; font-size: 18px; line-height: 24px; font-weight: 700; }
+.md-sub { font-size: 13px; line-height: 18px; color: var(--z-text-2); font-variant-numeric: tabular-nums; }
+.md-level {
+  flex: none;
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 18px;
+  padding: 1px 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  border: 1px solid var(--z-line-strong);
+  color: var(--z-text-2);
+}
+.md-level.lv-watch { background: var(--z-fill-obserwacja); border-color: var(--z-fill-obserwacja); color: var(--z-on-status); }
+.md-level.lv-priority { background: var(--z-fill-alarm); border-color: var(--z-fill-alarm); color: var(--z-on-status); }
+.md-close {
+  flex: none;
+  width: var(--z-size-touch-target);
+  height: var(--z-size-touch-target);
+  margin: -8px 0 -8px 0;
+  border: 0;
+  background: transparent;
+  color: var(--z-text);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+.md-body {
+  overflow: auto;
+  padding: 12px 16px 16px;
+  display: grid;
+  gap: 10px;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.md-why { margin: 0; font-size: 14px; line-height: 20px; }
+.md-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.md-chips .s { font-size: 12px; line-height: 18px; padding: 1px 6px; border: 1px solid var(--z-line-strong); color: var(--z-text-2); font-variant-numeric: tabular-nums; }
+.md-h {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 18px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--z-text-2);
+}
+.md-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.md-item { border: 1px solid var(--z-line); padding: 10px 12px; display: grid; gap: 4px; }
+.md-item-top { display: flex; align-items: baseline; gap: 8px; font-size: 13px; }
+.md-src { color: var(--z-text-2); font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+.md-src a, .md-dl a { color: var(--z-link); text-decoration-color: var(--z-link-underline); }
+.md-pts { margin-left: auto; font-family: var(--z-font-mono); font-size: 13px; color: var(--z-text-2); white-space: nowrap; }
+.md-title { font-size: 15px; line-height: 21px; font-weight: 700; overflow-wrap: anywhere; }
+.md-reason { font-size: 13px; line-height: 18px; color: var(--z-text-2); }
+.md-meta { font-size: 13px; line-height: 18px; color: var(--z-text-2); font-variant-numeric: tabular-nums; }
+.md-state.on { color: var(--z-status-obserwacja); font-weight: 700; }
+.md-state.off { color: var(--z-text-2); }
+.md-link {
+  justify-self: start;
+  border: 0;
+  padding: 4px 0;
+  background: transparent;
+  color: var(--z-link);
+  text-decoration: underline;
+  text-decoration-color: var(--z-link-underline);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.md-empty { margin: 0; font-size: 14px; line-height: 20px; color: var(--z-text-2); }
+.md-foot { margin: 4px 0 0; font-size: 12px; line-height: 16px; color: var(--z-text-2); }
+.md-dl { margin: 0; display: grid; gap: 6px; }
+.md-dl > div { display: grid; grid-template-columns: 9.5em 1fr; gap: 8px; font-size: 14px; line-height: 20px; }
+.md-dl dt { color: var(--z-text-2); }
+.md-dl dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.md-dl code { font-family: var(--z-font-mono); font-size: 12px; }
+
+/* Phones: bottom sheet so the tapped region stays visible above it. */
+@media (max-width: 640px) {
+  .map-detail {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-height: 58dvh;
+    border-width: 2px 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .md-dl > div { grid-template-columns: 8em 1fr; font-size: 13px; }
+}

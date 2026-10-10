@@ -272,3 +272,31 @@ export function archiveStats() {
     reports: one("SELECT count(*) n FROM drone_reports").n,
   };
 }
+
+/** One NEPTUN track (summary + up to 2000 archived positions), for the map's drone panel. */
+export function trackById(objectId, limit = 2000) {
+  if (!db) throw new Error("archive not open");
+  const id = `neptun:${String(objectId).slice(0, 120)}`;
+  const t = db
+    .prepare(
+      `SELECT track_id, source, type, title, first_seen, last_seen, ended_at, max_confidence, max_confirmations,
+        min_dist_pl_km, voivodeships, points FROM drone_tracks WHERE track_id = ?`
+    )
+    .get(id);
+  if (!t) return null;
+  let voivodeships = [];
+  try {
+    voivodeships = JSON.parse(t.voivodeships || "[]");
+  } catch {
+    /* keep [] */
+  }
+  const lim = Math.min(5000, Math.max(1, Number(limit) || 2000));
+  const pts = db
+    .prepare(
+      `SELECT seen_at, src_ts, lat, lon, course, speed, confidence FROM drone_points
+       WHERE track_id = ? ORDER BY seen_at DESC LIMIT ${lim}`
+    )
+    .all(id)
+    .reverse();
+  return { ...t, voivodeships, retention_days: RETENTION_DAYS, points_returned: pts.length, path: pts };
+}

@@ -8,7 +8,7 @@ import { buildState, emptyHistory, stampHistory, VOIV } from "./fusion.mjs";
 import { ingestLive, emptyInput, INGEST_EVERY_MS } from "./ingest.mjs";
 import { notifyFromState, pushPublicKey, upsertPushSub, removePushSub } from "./push.mjs";
 import { addReport, horizonFromFusion, loadFixtures, statusFromFusion, withdrawReport } from "./horizon.mjs";
-import { archiveReport, archiveState, archiveStats, markReportWithdrawn, openArchive, queryArchive, startPruneTimer, toCsv } from "./archive.mjs";
+import { archiveReport, archiveState, archiveStats, markReportWithdrawn, openArchive, queryArchive, startPruneTimer, toCsv, trackById } from "./archive.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
@@ -87,6 +87,22 @@ app.get(["/api/archive", "/api/archive.csv"], (req, res) => {
     res.json(out);
   } catch (err) {
     res.status(400).json({ error: err.message || "archive" });
+  }
+});
+
+/** Archived route of one drone. Public only for objects on the live map now; older tracks stay LAN-only like /api/archive. */
+app.get("/api/track/:id", (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  const id = String(req.params.id || "");
+  const live = (state.objects || []).some((o) => String(o.id) === id);
+  if (!live && !archiveAllowed(req)) return res.status(403).json({ error: "only live objects are public" });
+  if (!archiveOn) return res.status(503).json({ error: "archive disabled" });
+  try {
+    const t = trackById(id);
+    if (!t) return res.status(404).json({ error: "track not in archive" });
+    res.json(t);
+  } catch (err) {
+    res.status(500).json({ error: err.message || "archive" });
   }
 });
 

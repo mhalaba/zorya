@@ -3,6 +3,7 @@ import { s } from "../strings";
 import { useStore } from "../store";
 import { MapCanvas } from "../map/MapCanvas";
 import { MapHud } from "../components/Chrome";
+import { MapDetail } from "../components/MapDetail";
 
 class MapErrorBoundary extends Component<{ children: ReactNode }, { err: string | null }> {
   state = { err: null as string | null };
@@ -28,6 +29,7 @@ export function Mapa() {
         <MapCanvas />
       </MapErrorBoundary>
       <MapHud />
+      <MapDetail />
       {connecting && !fusion && <div className="map-status">{s("home.loading")}</div>}
       {fusion && (
         <div className="map-attr">

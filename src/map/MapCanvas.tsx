@@ -47,6 +47,8 @@ export function MapCanvas() {
   const state = useStore((s) => s.state);
   const hover = useStore((s) => s.hoverVoiv);
   const selected = useStore((s) => s.selectedVoiv);
+  const selectedObj = useStore((s) => s.selectedObj);
+  const objTrack = useStore((s) => s.objTrack);
   const labelDensity = useStore((s) => s.labelDensity);
   const preset = useStore((s) => s.cameraPreset);
   const nonce = useStore((s) => s.cameraNonce);
@@ -97,6 +99,7 @@ export function MapCanvas() {
       map.addSource("objects", { type: "geojson", data: emptyFc() });
       map.addSource("unc", { type: "geojson", data: emptyFc() });
       map.addSource("tracks", { type: "geojson", data: emptyFc() });
+      map.addSource("track-hl", { type: "geojson", data: emptyFc() });
       map.addSource("adsb", { type: "geojson", data: emptyFc() });
       map.addSource("zones", { type: "geojson", data: emptyFc() });
       map.addSource("cameras", {
@@ -271,6 +274,33 @@ export function MapCanvas() {
           "line-dasharray": [3, 3],
         },
       });
+      // Archived route of the drone opened in the panel (180-day archive), drawn above the live trails.
+      map.addLayer({
+        id: "track-hl-casing",
+        type: "line",
+        source: "track-hl",
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": "#070B12", "line-opacity": 0.8, "line-width": 6 },
+      });
+      map.addLayer({
+        id: "track-hl-line",
+        type: "line",
+        source: "track-hl",
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": COLORS.amber, "line-opacity": 0.95, "line-width": 3 },
+      });
+      map.addLayer({
+        id: "track-hl-ends",
+        type: "circle",
+        source: "track-hl",
+        filter: ["==", ["geometry-type"], "Point"],
+        paint: {
+          "circle-radius": 4,
+          "circle-color": ["case", ["==", ["get", "end"], "first"], "#E8EEF7", COLORS.amber],
+          "circle-stroke-color": "#070B12",
+          "circle-stroke-width": 1.5,
+        },
+      });
       map.addLayer({
         id: "obj-pulse",
         type: "circle",
@@ -400,9 +430,43 @@ export function MapCanvas() {
         map.getCanvas().style.cursor = "";
         useStore.getState().setHoverVoiv(null);
       });
-      map.on("click", "pl-fill", (e) => {
-        const id = String(e.features?.[0]?.id ?? "");
-        useStore.getState().setSelectedVoiv(id);
+      // Drone markers win over the region underneath; a tap on empty map closes the panel.
+      const OBJ_LAYERS = ["obj-icon", "obj-pulse"];
+      const objAt = (pt: maplibregl.PointLike) => {
+        const layers = OBJ_LAYERS.filter((l) => map.getLayer(l));
+        if (!layers.length) return null;
+        // A small box makes the tiny icons easier to hit with a finger.
+        const p = pt as { x: number; y: number };
+        const box: [maplibregl.PointLike, maplibregl.PointLike] = [
+          [p.x - 10, p.y - 10],
+          [p.x + 10, p.y + 10],
+        ];
+        const f = map.queryRenderedFeatures(box, { layers })[0];
+        return f ? String(f.properties?.id ?? f.id ?? "") : null;
+      };
+      for (const l of OBJ_LAYERS) {
+        map.on("mouseenter", l, () => {
+          map.getCanvas().style.cursor = "pointer";
+        });
+        map.on("mouseleave", l, () => {
+          map.getCanvas().style.cursor = "";
+        });
+      }
+      map.on("click", (e) => {
+        const store = useStore.getState();
+        const obj = objAt(e.point);
+        if (obj) {
+          store.setSelectedObj(obj);
+          return;
+        }
+        const reg = map.getLayer("pl-fill") ? map.queryRenderedFeatures(e.point, { layers: ["pl-fill"] })[0] : null;
+        if (reg) {
+          store.setSelectedVoiv(String(reg.id ?? ""));
+          return;
+        }
+        if (store.selectedVoiv || store.selectedObj) {
+          store.setSelectedVoiv(null);
+        }
       });
       map.on("click", "cam-clusters", (e) => {
         const f = e.features?.[0];
@@ -560,6 +624,26 @@ export function MapCanvas() {
     if (!map || !ready.current) return;
     applyFocus(map);
   }, [hover, selected]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready.current) return;
+    const src = map.getSource("track-hl") as GeoJSONSource | undefined;
+    if (!src) return;
+    const line = selectedObj && objTrack && objTrack.length >= 2 ? objTrack : null;
+    src.setData(
+      line
+        ? {
+            type: "FeatureCollection",
+            features: [
+              { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: line } },
+              { type: "Feature", properties: { end: "first" }, geometry: { type: "Point", coordinates: line[0] } },
+              { type: "Feature", properties: { end: "last" }, geometry: { type: "Point", coordinates: line[line.length - 1] } },
+            ],
+          }
+        : emptyFc()
+    );
+  }, [selectedObj, objTrack]);
 
   useEffect(() => {
     const map = mapRef.current;

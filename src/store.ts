@@ -78,6 +78,9 @@ interface Live {
   connecting: boolean;
   drawer: Drawer;
   selectedVoiv: string | null;
+  selectedObj: string | null;
+  /** Archived route of the selected drone, [lon, lat] pairs, drawn as a highlight. */
+  objTrack: [number, number][] | null;
   hoverVoiv: string | null;
   cameraPreset: "default" | "region" | "pl" | "flank" | "all";
   cameraNonce: number;
@@ -129,6 +132,8 @@ interface Actions {
   setHomeVoiv: (id: string | null) => void;
   setDrawer: (d: Drawer) => void;
   setSelectedVoiv: (id: string | null) => void;
+  setSelectedObj: (id: string | null) => void;
+  setObjTrack: (t: [number, number][] | null) => void;
   setHoverVoiv: (id: string | null) => void;
   setCameraPreset: (p: Live["cameraPreset"]) => void;
   bumpCamera: () => void;
@@ -189,6 +194,8 @@ export const useStore = create<Store>()(
       connecting: true,
       drawer: null,
       selectedVoiv: null,
+      selectedObj: null,
+      objTrack: null,
       hoverVoiv: null,
       cameraPreset: "default",
       cameraNonce: 0,
@@ -268,7 +275,9 @@ export const useStore = create<Store>()(
       setPlaces: (places) => set({ places }),
       setHomeVoiv: (homeVoiv) => set({ homeVoiv }),
       setDrawer: (drawer) => set({ drawer }),
-      setSelectedVoiv: (selectedVoiv) => set({ selectedVoiv }),
+      setSelectedVoiv: (selectedVoiv) => set({ selectedVoiv, selectedObj: null, objTrack: null }),
+      setObjTrack: (objTrack) => set({ objTrack }),
+      setSelectedObj: (selectedObj) => set((s) => ({ selectedObj, objTrack: null, selectedVoiv: selectedObj ? null : s.selectedVoiv })),
       setHoverVoiv: (hoverVoiv) => set({ hoverVoiv }),
       setCameraPreset: (cameraPreset) => set({ cameraPreset, cameraNonce: Date.now() }),
       bumpCamera: () => set({ cameraNonce: Date.now() }),
