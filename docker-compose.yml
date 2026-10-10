@@ -12,6 +12,8 @@ services:
       VAPID_SUBJECT: mailto:admin@sietch.lan
       ZORYA_DATA_DIR: /app/data
       ZORYA_ARCHIVE_DAYS: "180"
+      # MAPA.UA missile layer; set MAPAUA_ENABLED=0 in .env and `docker compose up -d` to switch it off.
+      MAPAUA_ENABLED: ${MAPAUA_ENABLED:-1}
     volumes:
       - ./data:/app/data
 

@@ -10,7 +10,7 @@ import type {
   UserReport,
   WatchedArea,
 } from "./model";
-import type { FusionState, HistoryBundle, Lang, Place } from "./types";
+import type { FusionState, HistoryBundle, Lang, Place, UaThreatsSnapshot } from "./types";
 
 export type Sheet =
   | { kind: "areas" }
@@ -79,6 +79,12 @@ interface Live {
   drawer: Drawer;
   selectedVoiv: string | null;
   selectedObj: string | null;
+  /** MAPA.UA object opened in the detail panel. */
+  selectedUa: string | null;
+  uaThreats: UaThreatsSnapshot | null;
+  uaMissilesOn: boolean;
+  uaBombsOn: boolean;
+  uaDronesOn: boolean;
   /** Archived route of the selected drone, [lon, lat] pairs, drawn as a highlight. */
   objTrack: [number, number][] | null;
   hoverVoiv: string | null;
@@ -133,6 +139,9 @@ interface Actions {
   setDrawer: (d: Drawer) => void;
   setSelectedVoiv: (id: string | null) => void;
   setSelectedObj: (id: string | null) => void;
+  setSelectedUa: (id: string | null) => void;
+  setUaThreats: (t: UaThreatsSnapshot | null) => void;
+  setUaLayer: (k: "uaMissilesOn" | "uaBombsOn" | "uaDronesOn", v: boolean) => void;
   setObjTrack: (t: [number, number][] | null) => void;
   setHoverVoiv: (id: string | null) => void;
   setCameraPreset: (p: Live["cameraPreset"]) => void;
@@ -195,6 +204,11 @@ export const useStore = create<Store>()(
       drawer: null,
       selectedVoiv: null,
       selectedObj: null,
+      selectedUa: null,
+      uaThreats: null,
+      uaMissilesOn: true,
+      uaBombsOn: false,
+      uaDronesOn: false,
       objTrack: null,
       hoverVoiv: null,
       cameraPreset: "default",
@@ -275,9 +289,12 @@ export const useStore = create<Store>()(
       setPlaces: (places) => set({ places }),
       setHomeVoiv: (homeVoiv) => set({ homeVoiv }),
       setDrawer: (drawer) => set({ drawer }),
-      setSelectedVoiv: (selectedVoiv) => set({ selectedVoiv, selectedObj: null, objTrack: null }),
+      setSelectedVoiv: (selectedVoiv) => set({ selectedVoiv, selectedObj: null, selectedUa: null, objTrack: null }),
+      setSelectedUa: (selectedUa) => set((s) => ({ selectedUa, selectedObj: null, objTrack: null, selectedVoiv: selectedUa ? null : s.selectedVoiv })),
+      setUaThreats: (uaThreats) => set({ uaThreats }),
+      setUaLayer: (k, v) => set({ [k]: v } as Pick<Store, typeof k>),
       setObjTrack: (objTrack) => set({ objTrack }),
-      setSelectedObj: (selectedObj) => set((s) => ({ selectedObj, objTrack: null, selectedVoiv: selectedObj ? null : s.selectedVoiv })),
+      setSelectedObj: (selectedObj) => set((s) => ({ selectedObj, selectedUa: null, objTrack: null, selectedVoiv: selectedObj ? null : s.selectedVoiv })),
       setHoverVoiv: (hoverVoiv) => set({ hoverVoiv }),
       setCameraPreset: (cameraPreset) => set({ cameraPreset, cameraNonce: Date.now() }),
       bumpCamera: () => set({ cameraNonce: Date.now() }),
@@ -313,6 +330,9 @@ export const useStore = create<Store>()(
         muted: s.muted,
         pitch3d: s.pitch3d,
         showPazp: s.showPazp,
+        uaMissilesOn: s.uaMissilesOn,
+        uaBombsOn: s.uaBombsOn,
+        uaDronesOn: s.uaDronesOn,
         showTracks: s.showTracks,
         showCivAdsb: s.showCivAdsb,
         showMilAdsb: s.showMilAdsb,

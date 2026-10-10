@@ -4,6 +4,7 @@ import { useStore } from "../store";
 import { MapCanvas } from "../map/MapCanvas";
 import { MapHud } from "../components/Chrome";
 import { MapDetail } from "../components/MapDetail";
+import { UaLayers, useUaThreats } from "../components/UaLayers";
 
 class MapErrorBoundary extends Component<{ children: ReactNode }, { err: string | null }> {
   state = { err: null as string | null };
@@ -21,6 +22,7 @@ class MapErrorBoundary extends Component<{ children: ReactNode }, { err: string 
 export function Mapa() {
   const connecting = useStore((x) => x.connecting);
   const fusion = useStore((x) => x.state);
+  useUaThreats();
   const ua = fusion ? fusion.ua_alerts.filter((a) => a.active).length : 0;
 
   return (
@@ -29,6 +31,7 @@ export function Mapa() {
         <MapCanvas />
       </MapErrorBoundary>
       <MapHud />
+      <UaLayers />
       <MapDetail />
       {connecting && !fusion && <div className="map-status">{s("home.loading")}</div>}
       {fusion && (

@@ -67,3 +67,7 @@ Retencja `ZORYA_ARCHIVE_DAYS` (domyślnie 180), czyszczenie przy starcie i co 24
 
 Odczyt tylko z LAN (brak logowania w aplikacji; żądania przez tunel Cloudflare / zorya.website dostają 403):
 `GET /api/archive?what=tracks|points|reports&from=&to=&limit=`, `GET /api/archive.csv?...`, `GET /api/archive/stats`. Test: `node --test server/archive.test.mjs`.
+
+## Warstwa rakiet MAPA.UA
+
+Serwer co 30 s (nigdy częściej, z backoffem przy błędach) pobiera `https://mapa.ua/api/v1/current` i podaje przycięte dane pod `GET /api/ua-threats` (obiekty starsze niż 60 min są odrzucane). Nazwy miejscowości z `/api/v1/geo/cities` (cache 1 dzień), liczba naruszeń przestrzeni PL z `/api/v1/countries?hours=12` (co 5 min). Na mapie: warstwa „Rakiety (UA)” (domyślnie włączona) oraz opcjonalnie KAB i drony. Wyłączenie: `MAPAUA_ENABLED=0` w `.env`, potem `docker compose up -d`. Uwaga: robots.txt MAPA.UA ma `Disallow: /api/`; jeśli MAPA.UA zgłosi sprzeciw, wyłączyć flagą.

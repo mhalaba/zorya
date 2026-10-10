@@ -8,6 +8,7 @@ import { buildState, emptyHistory, stampHistory, VOIV } from "./fusion.mjs";
 import { ingestLive, emptyInput, INGEST_EVERY_MS } from "./ingest.mjs";
 import { notifyFromState, pushPublicKey, upsertPushSub, removePushSub } from "./push.mjs";
 import { addReport, horizonFromFusion, loadFixtures, statusFromFusion, withdrawReport } from "./horizon.mjs";
+import { mapaUaSnapshot, startMapaUa } from "./mapaua.mjs";
 import { archiveReport, archiveState, archiveStats, markReportWithdrawn, openArchive, queryArchive, startPruneTimer, toCsv, trackById } from "./archive.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -104,6 +105,12 @@ app.get("/api/track/:id", (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message || "archive" });
   }
+});
+
+/** MAPA.UA missiles / KAB / drones over Ukraine, trimmed (see server/mapaua.mjs). */
+app.get("/api/ua-threats", (_req, res) => {
+  res.setHeader("Cache-Control", "public, max-age=15");
+  res.json(mapaUaSnapshot());
 });
 
 app.get("/api/health", (_req, res) => {
@@ -281,4 +288,5 @@ server.listen(PORT, HOST, () => {
   console.log(`Zorya fusion live http://${HOST}:${PORT}`);
   void cycle();
   setInterval(() => void cycle(), INGEST_EVERY_MS);
+  startMapaUa();
 });

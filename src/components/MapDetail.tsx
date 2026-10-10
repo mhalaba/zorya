@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useStore } from "../store";
 import { fmtDateTime, fmtDayTime } from "../format";
-import type { FusionState, PazpZone, Signal, TrackedObject, VoivodeshipState } from "../types";
+import type { FusionState, PazpZone, Signal, TrackedObject, UaThreat, UaThreatsSnapshot, VoivodeshipState } from "../types";
+import { MAPAUA_URL, uaDead, uaStatusLabel, uaTypeLabel } from "../mapaua";
 
 /**
  * Tap a voivodeship → which alerts count there and why. Tap a drone → what NEPTUN says about it,
@@ -87,20 +88,23 @@ export function MapDetail() {
   const st = useStore((s) => s.state);
   const voiv = useStore((s) => s.selectedVoiv);
   const obj = useStore((s) => s.selectedObj);
+  const ua = useStore((s) => s.selectedUa);
+  const uaSnap = useStore((s) => s.uaThreats);
   const close = () => useStore.getState().setSelectedVoiv(null);
 
   useEffect(() => {
-    if (!voiv && !obj) return;
+    if (!voiv && !obj && !ua) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [voiv, obj]);
+  }, [voiv, obj, ua]);
 
+  if (ua) return <UaPanel snap={uaSnap} id={ua} onClose={close} />;
   if (!st || (!voiv && !obj)) return null;
   if (obj) return <ObjectPanel st={st} id={obj} onClose={close} />;
   const v = st.voivodeships.find((x) => x.id === voiv);
   if (!v) return null;
-  return <VoivPanel st={st} v={v} onClose={close} />;
+  return <VoivPanel st={st} v={v} pl={uaSnap?.enabled ? uaSnap.pl_violations : null} onClose={close} />;
 }
 
 function Shell({ title, sub, level, onClose, children }: {
@@ -141,7 +145,17 @@ function SourceLink({ source, url }: { source: string; url?: string | null }) {
   );
 }
 
-function VoivPanel({ st, v, onClose }: { st: FusionState; v: VoivodeshipState; onClose: () => void }) {
+function VoivPanel({
+  st,
+  v,
+  pl,
+  onClose,
+}: {
+  st: FusionState;
+  v: VoivodeshipState;
+  pl: UaThreatsSnapshot["pl_violations"] | null;
+  onClose: () => void;
+}) {
   const signals = st.signals
     .filter((s) => s.voivodeships?.includes(v.id))
     .sort((a, b) => (b.points ?? 0) - (a.points ?? 0));
@@ -227,6 +241,20 @@ function VoivPanel({ st, v, onClose }: { st: FusionState; v: VoivodeshipState; o
               </ul>
             </>
           )}
+        </>
+      )}
+      {pl && (
+        <>
+          <h3 className="md-h">Naruszenia przestrzeni PL (MAPA.UA)</h3>
+          <p className={pl.count > 0 ? "md-warn" : "md-empty"}>
+            {pl.count > 0
+              ? `${pl.count} w ostatnich ${pl.hours} h (cała Polska, bez podziału na województwa).`
+              : `Brak w ostatnich ${pl.hours} h (cała Polska).`}{" "}
+            <a href={MAPAUA_URL} target="_blank" rel="noopener noreferrer">
+              MAPA.UA
+            </a>
+            , sprawdzono {fmtDayTime(pl.checked_at)}. Nie wpływa na poziom województwa.
+          </p>
         </>
       )}
       <p className="md-foot">Czasy: Europa/Warszawa. Alert liczy się przez 60 minut od ostatniej aktualizacji, z malejącą wagą.</p>
@@ -391,6 +419,53 @@ function ObjectPanel({ st, id, onClose }: { st: FusionState; id: string; onClose
         <p className="md-empty">{archMsg}</p>
       )}
       <p className="md-foot">NEPTUN to OSINT, nie radar. Czasy: Europa/Warszawa.</p>
+    </Shell>
+  );
+}
+
+function UaPanel({ snap, id, onClose }: { snap: UaThreatsSnapshot | null; id: string; onClose: () => void }) {
+  const o: UaThreat | undefined = snap?.objects.find((x) => x.id === id);
+  if (!o) {
+    return (
+      <Shell title="MAPA.UA" onClose={onClose}>
+        <p className="md-empty">Tego obiektu nie ma już w danych MAPA.UA (brak aktualizacji od ponad 60 minut).</p>
+      </Shell>
+    );
+  }
+  const dead = uaDead(o);
+  const from = o.from_name || o.from_zone;
+  const to = o.to_name || o.to_city;
+  const rows: [string, React.ReactNode][] = [["Typ", uaTypeLabel(o)]];
+  if (o.amount > 1) rows.push(["Liczba", String(o.amount)]);
+  if (from || to) rows.push(["Skąd → dokąd", `${from ?? "?"} → ${to ?? "?"}`]);
+  rows.push(["Status", uaStatusLabel(o.status)]);
+  if (o.speed_kmh != null) rows.push(["Prędkość", `${n(o.speed_kmh)} km/h (szacunek)`]);
+  if (o.heading != null) rows.push(["Kurs", `${n(o.heading)}° (${compass(o.heading)})`]);
+  rows.push(["Pozycja", `${n(o.lat, 4)}, ${n(o.lon, 4)}`]);
+  if (o.predicted && !dead) rows.push(["Przewidywana", `${n(o.predicted[1], 4)}, ${n(o.predicted[0], 4)} (linia przerywana)`]);
+  if (o.first_seen) rows.push(["Pierwszy raz", `${fmtDateTime(new Date(o.first_seen).toISOString())}`]);
+  rows.push(["Ostatnio", `${fmtDateTime(new Date(o.last_seen).toISOString())} (${ago(o.last_seen)})`]);
+  if (o.title) rows.push(["Komunikat", o.title]);
+  rows.push([
+    "Źródło",
+    <a key="s" href={MAPAUA_URL} target="_blank" rel="noopener noreferrer">
+      MAPA.UA
+    </a>,
+  ]);
+  return (
+    <Shell title={uaTypeLabel(o)} sub={`MAPA.UA · ${when(o.last_seen)}${dead ? " · " + uaStatusLabel(o.status) : ""}`} onClose={onClose}>
+      <dl className="md-dl">
+        {rows.map(([k, val]) => (
+          <div key={k}>
+            <dt>{k}</dt>
+            <dd>{val}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="md-foot">
+        Szacunkowe pozycje z komunikatów, to nie jest oficjalne ostrzeżenie. {snap?.ok === false ? "MAPA.UA nie odpowiada, dane mogą być nieaktualne. " : ""}
+        Czasy: Europa/Warszawa.
+      </p>
     </Shell>
   );
 }

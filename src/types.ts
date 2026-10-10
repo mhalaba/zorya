@@ -159,3 +159,36 @@ export interface Place {
   notifyWatch: boolean;
   notifyPriority: boolean;
 }
+
+/** MAPA.UA object, trimmed by server/mapaua.mjs. Times in ms since epoch. */
+export interface UaThreat {
+  id: string;
+  kind: string;
+  subkind: string | null;
+  amount: number;
+  title: string;
+  status: string;
+  heading: number | null;
+  speed_kmh: number | null;
+  lat: number;
+  lon: number;
+  predicted: [number, number] | null;
+  trail: [number, number][];
+  first_seen: number | null;
+  last_seen: number;
+  from_zone: string | null;
+  from_name: string | null;
+  to_city: string | null;
+  to_name: string | null;
+}
+
+export interface UaThreatsSnapshot {
+  enabled: boolean;
+  ok: boolean;
+  fetched_at: string | null;
+  source_ts: string | null;
+  error: string | null;
+  attack: { id: number; status: string; started_at: number | null } | null;
+  objects: UaThreat[];
+  pl_violations: { count: number; hours: number; checked_at: string } | null;
+}

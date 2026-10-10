@@ -17,7 +17,91 @@ function add(map: MLMap, name: string, canvas: HTMLCanvasElement) {
   map.addImage(name, ctx.getImageData(0, 0, canvas.width, canvas.height), { pixelRatio: 2 });
 }
 
+
+/** MAPA.UA icons (pointing up = north, rotated by heading on the map); "-dead" = eliminated/lost/hit. */
+function registerMapaUaIcons(map: MLMap) {
+  const variants: [string, string, string][] = [
+    ["", "", ""],
+    ["-dead", "#6B7480", "#3A414B"],
+  ];
+  for (const [suf, grey, greyDark] of variants) {
+    add(
+      map,
+      `mua-cruise${suf}`,
+      drawIcon((g, s) => {
+        g.translate(s / 2, s / 2);
+        g.fillStyle = grey || "#FF3B30";
+        g.strokeStyle = "#070B12";
+        g.lineWidth = 2;
+        g.beginPath();
+        g.moveTo(0, -18);
+        g.lineTo(4, -8);
+        g.lineTo(4, 8);
+        g.lineTo(11, 15);
+        g.lineTo(-11, 15);
+        g.lineTo(-4, 8);
+        g.lineTo(-4, -8);
+        g.closePath();
+        g.stroke();
+        g.fill();
+      })
+    );
+    add(
+      map,
+      `mua-ballistic${suf}`,
+      drawIcon((g, s) => {
+        g.translate(s / 2, s / 2);
+        g.fillStyle = greyDark || "#8E0E1B";
+        g.strokeStyle = grey ? "#070B12" : "#FF8A80";
+        g.lineWidth = 2;
+        g.beginPath();
+        g.moveTo(0, -20);
+        g.lineTo(7, 12);
+        g.lineTo(0, 7);
+        g.lineTo(-7, 12);
+        g.closePath();
+        g.fill();
+        g.stroke();
+      })
+    );
+    add(
+      map,
+      `mua-bomb${suf}`,
+      drawIcon((g, s) => {
+        g.translate(s / 2, s / 2);
+        g.fillStyle = grey || "#F0783A";
+        g.strokeStyle = "#070B12";
+        g.lineWidth = 2;
+        g.beginPath();
+        g.ellipse(0, 0, 6, 13, 0, 0, Math.PI * 2);
+        g.fill();
+        g.stroke();
+        g.fillRect(-8, 10, 16, 3);
+      })
+    );
+    add(
+      map,
+      `mua-drone${suf}`,
+      drawIcon((g, s) => {
+        g.translate(s / 2, s / 2);
+        g.fillStyle = grey || "#F2B544";
+        g.strokeStyle = "#070B12";
+        g.lineWidth = 2;
+        g.beginPath();
+        g.moveTo(0, -14);
+        g.lineTo(13, 8);
+        g.lineTo(0, 3);
+        g.lineTo(-13, 8);
+        g.closePath();
+        g.fill();
+        g.stroke();
+      })
+    );
+  }
+}
+
 export function registerMapIcons(map: MLMap) {
+  registerMapaUaIcons(map);
   add(
     map,
     "obj-shahed",

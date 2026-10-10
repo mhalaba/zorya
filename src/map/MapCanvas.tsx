@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import maplibregl, { type Map as MLMap, type GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { CAMERA, COLORS } from "../config";
 import { circlePoly, destPoint, prefersReducedMotion } from "../lib";
 import { iconForType, registerMapIcons } from "./icons";
+import { uaDead, uaGroup, uaIcon } from "../mapaua";
 import { useStore } from "../store";
 import type { FusionState, VoivodeshipState } from "../types";
 import type { FeatureCollection } from "geojson";
@@ -49,6 +50,12 @@ export function MapCanvas() {
   const selected = useStore((s) => s.selectedVoiv);
   const selectedObj = useStore((s) => s.selectedObj);
   const objTrack = useStore((s) => s.objTrack);
+  const uaThreats = useStore((s) => s.uaThreats);
+  const [mapReadyTick, setMapReadyTick] = useState(0);
+  const uaMissilesOn = useStore((s) => s.uaMissilesOn);
+  const uaBombsOn = useStore((s) => s.uaBombsOn);
+  const uaDronesOn = useStore((s) => s.uaDronesOn);
+  const selectedUa = useStore((s) => s.selectedUa);
   const labelDensity = useStore((s) => s.labelDensity);
   const preset = useStore((s) => s.cameraPreset);
   const nonce = useStore((s) => s.cameraNonce);
@@ -100,6 +107,8 @@ export function MapCanvas() {
       map.addSource("unc", { type: "geojson", data: emptyFc() });
       map.addSource("tracks", { type: "geojson", data: emptyFc() });
       map.addSource("track-hl", { type: "geojson", data: emptyFc() });
+      map.addSource("mua", { type: "geojson", data: emptyFc() });
+      map.addSource("mua-lines", { type: "geojson", data: emptyFc() });
       map.addSource("adsb", { type: "geojson", data: emptyFc() });
       map.addSource("zones", { type: "geojson", data: emptyFc() });
       map.addSource("cameras", {
@@ -335,6 +344,46 @@ export function MapCanvas() {
           "text-halo-width": 1.3,
         },
       });
+      // MAPA.UA (missiles / KAB / drones over Ukraine): trail, dashed line to the predicted position, icon.
+      map.addLayer({
+        id: "mua-trail",
+        type: "line",
+        source: "mua-lines",
+        filter: ["==", ["get", "role"], "trail"],
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: {
+          "line-color": ["case", ["get", "dead"], "#6B7480", ["get", "color"]],
+          "line-opacity": ["case", ["get", "sel"], 1, ["get", "dead"], 0.45, 0.8],
+          "line-width": ["case", ["get", "sel"], 3.2, 1.6],
+        },
+      });
+      map.addLayer({
+        id: "mua-pred",
+        type: "line",
+        source: "mua-lines",
+        filter: ["==", ["get", "role"], "pred"],
+        paint: {
+          "line-color": ["get", "color"],
+          "line-opacity": 0.9,
+          "line-width": ["case", ["get", "sel"], 2.4, 1.4],
+          "line-dasharray": [2, 2],
+        },
+      });
+      map.addLayer({
+        id: "mua-icon",
+        type: "symbol",
+        source: "mua",
+        layout: {
+          "icon-image": ["get", "icon"],
+          "icon-size": ["case", ["get", "sel"], 0.95, 0.75],
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+          "icon-rotate": ["get", "heading"],
+          "icon-rotation-alignment": "map",
+          "symbol-sort-key": ["case", ["get", "dead"], 0, 1],
+        },
+        paint: { "icon-opacity": ["case", ["get", "dead"], 0.6, 1] },
+      });
       map.addLayer({
         id: "adsb-civ",
         type: "symbol",
@@ -431,7 +480,7 @@ export function MapCanvas() {
         useStore.getState().setHoverVoiv(null);
       });
       // Drone markers win over the region underneath; a tap on empty map closes the panel.
-      const OBJ_LAYERS = ["obj-icon", "obj-pulse"];
+      const OBJ_LAYERS = ["mua-icon", "obj-icon", "obj-pulse"];
       const objAt = (pt: maplibregl.PointLike) => {
         const layers = OBJ_LAYERS.filter((l) => map.getLayer(l));
         if (!layers.length) return null;
@@ -441,8 +490,12 @@ export function MapCanvas() {
           [p.x - 10, p.y - 10],
           [p.x + 10, p.y + 10],
         ];
-        const f = map.queryRenderedFeatures(box, { layers })[0];
-        return f ? String(f.properties?.id ?? f.id ?? "") : null;
+        const fs = map.queryRenderedFeatures(box, { layers });
+        // MAPA.UA missiles first (they are the rarer, more urgent marker), then NEPTUN objects.
+        const f = fs.find((x) => x.layer.id === "mua-icon") ?? fs[0];
+        if (!f) return null;
+        const id = String(f.properties?.id ?? f.id ?? "");
+        return f.layer.id === "mua-icon" ? `ua:${id}` : id;
       };
       for (const l of OBJ_LAYERS) {
         map.on("mouseenter", l, () => {
@@ -456,7 +509,8 @@ export function MapCanvas() {
         const store = useStore.getState();
         const obj = objAt(e.point);
         if (obj) {
-          store.setSelectedObj(obj);
+          if (obj.startsWith("ua:")) store.setSelectedUa(obj.slice(3));
+          else store.setSelectedObj(obj);
           return;
         }
         const reg = map.getLayer("pl-fill") ? map.queryRenderedFeatures(e.point, { layers: ["pl-fill"] })[0] : null;
@@ -464,7 +518,7 @@ export function MapCanvas() {
           store.setSelectedVoiv(String(reg.id ?? ""));
           return;
         }
-        if (store.selectedVoiv || store.selectedObj) {
+        if (store.selectedVoiv || store.selectedObj || store.selectedUa) {
           store.setSelectedVoiv(null);
         }
       });
@@ -479,6 +533,7 @@ export function MapCanvas() {
       });
 
       ready.current = true;
+      setMapReadyTick((t) => t + 1);
       applyData(map);
     });
 
@@ -624,6 +679,52 @@ export function MapCanvas() {
     if (!map || !ready.current) return;
     applyFocus(map);
   }, [hover, selected]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready.current) return;
+    const on = { missile: uaMissilesOn, bomb: uaBombsOn, drone: uaDronesOn };
+    const list = (uaThreats?.objects ?? []).filter((o) => on[uaGroup(o.kind)]);
+    const color = (kind: string) =>
+      kind === "missile_ballistic" ? "#B3122A" : kind.startsWith("missile") ? "#FF3B30" : kind === "bomb" ? "#F0783A" : "#F2B544";
+    const pts: FeatureCollection = {
+      type: "FeatureCollection",
+      features: list.map((o) => ({
+        type: "Feature" as const,
+        id: o.id,
+        properties: {
+          id: o.id,
+          icon: uaIcon(o),
+          heading: o.heading ?? 0,
+          dead: uaDead(o),
+          sel: o.id === selectedUa,
+        },
+        geometry: { type: "Point" as const, coordinates: [o.lon, o.lat] },
+      })),
+    };
+    const lines: FeatureCollection = {
+      type: "FeatureCollection",
+      features: list.flatMap((o) => {
+        const dead = uaDead(o);
+        const base = { id: o.id, dead, sel: o.id === selectedUa, color: color(o.kind) };
+        const out: FeatureCollection["features"] = [];
+        const tr = [...o.trail];
+        const last = tr[tr.length - 1];
+        if (!last || last[0] !== o.lon || last[1] !== o.lat) tr.push([o.lon, o.lat]);
+        if (tr.length >= 2)
+          out.push({ type: "Feature", properties: { ...base, role: "trail" }, geometry: { type: "LineString", coordinates: tr } });
+        if (o.predicted && !dead)
+          out.push({
+            type: "Feature",
+            properties: { ...base, role: "pred" },
+            geometry: { type: "LineString", coordinates: [[o.lon, o.lat], o.predicted] },
+          });
+        return out;
+      }),
+    };
+    (map.getSource("mua") as GeoJSONSource | undefined)?.setData(pts);
+    (map.getSource("mua-lines") as GeoJSONSource | undefined)?.setData(lines);
+  }, [uaThreats, uaMissilesOn, uaBombsOn, uaDronesOn, selectedUa, mapReadyTick]);
 
   useEffect(() => {
     const map = mapRef.current;
