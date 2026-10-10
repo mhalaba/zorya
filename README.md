@@ -40,6 +40,17 @@ Serwer od startu czyta źródła na żywo (co 60 s). Nasłuch: `HOST` (domyślni
 
 W produkcji ustaw `VAPID_SUBJECT` (np. `mailto:ty@twojadomena.pl`).
 
+## Docker
+
+```bash
+docker compose up -d --build
+```
+
+- Aplikacja: [http://127.0.0.1:8787/](http://127.0.0.1:8787/); produkcja (Sietch) wystawia ją przez kontener `zorya-tunnel` (Cloudflare, `CF_TUNNEL_TOKEN` tylko w `.env`).
+- Dane (archiwum dronów SQLite, klucze VAPID, subskrypcje push) leżą w `./data` montowanym jako `/app/data` (`ZORYA_DATA_DIR`) — przetrwają rebuild i restart.
+- `VAPID_SUBJECT`, `MAPAUA_ENABLED` i token tunelu przekaż przez zmienne środowiskowe lub plik `.env` obok `docker-compose.yml` (nie commitować).
+- Pliki Docker z PR #4 (wieloetapowy obraz alpine, użytkownik `node`, healthcheck, wolumen `zorya-data`) są w historii (19183f6); produkcja zostaje przy wersji z `./data` i tunelem, przejście wymaga migracji danych.
+
 ## Publikacja (Oracle / Caddy — wariant)
 
 Live **zorya.website** idzie tunelem Cloudflare na Node (`npm start`, port 8787). Skrypty w `deploy/` zostają jako wariant Caddy + Let's Encrypt.
