@@ -297,7 +297,7 @@ function VoivPanel({
         </p>
       )}
 
-      <h3 className="md-h">NOTAM nad województwem ({notamsHere.length})</h3>
+      <h3 className="md-h">NOTAM i strefy AUP nad województwem ({notamsHere.length})</h3>
       {notamsHere.length ? (
         <ul className="md-list">
           {notamsHere.map((n) => (
@@ -306,7 +306,7 @@ function VoivPanel({
         </ul>
       ) : (
         <p className="md-empty">
-          {!air ? "Ładuję NOTAM…" : air.notam.ok ? "Brak NOTAM z obszarem nad tym województwem." : `NOTAM niedostępne (${air.notam.error ?? "?"}).`}
+          {!air ? "Ładuję NOTAM…" : air.notam.ok ? "Brak NOTAM ani rezerwacji AUP z obszarem nad tym województwem." : `NOTAM niedostępne (${air.notam.error ?? "?"}).`}
         </p>
       )}
 
@@ -552,10 +552,10 @@ function NotamCard({ n, st, compact = false }: { n: Notam; st: FusionState | nul
     <li className="md-item ov-item" style={{ borderLeftColor: meta?.color }}>
       <div className="md-item-top">
         <span className="md-src">
-          NOTAM <b>{n.id}</b>
+          {n.geometry_source === "aup" ? "PAŻP AUP/UUP" : "NOTAM"} <b>{n.id}</b>
           {n.location ? ` · ${n.location}` : ""}
         </span>
-        <span className={`md-state ${active ? "on" : "off"}`}>{active ? "obowiązuje" : "zapowiedziany"}</span>
+        <span className={`md-state ${active ? "on" : "off"}`}>{active ? (n.geometry_source === "aup" ? "zarezerwowana" : "obowiązuje") : n.geometry_source === "aup" ? "zaplanowana" : "zapowiedziany"}</span>
       </div>
       <div className="md-title">
         {n.label}
@@ -580,10 +580,12 @@ function NotamCard({ n, st, compact = false }: { n: Notam; st: FusionState | nul
       ) : (
         <>
           <pre className="notam-text">{n.text || n.raw}</pre>
-          <details className="ov-more">
-            <summary>Pełny komunikat (ICAO)</summary>
-            <pre className="notam-text">{n.raw}</pre>
-          </details>
+          {n.raw && n.raw !== n.text && (
+            <details className="ov-more">
+              <summary>Pełny komunikat (ICAO)</summary>
+              <pre className="notam-text">{n.raw}</pre>
+            </details>
+          )}
         </>
       )}
       {n.bbox && n.map && (
@@ -622,7 +624,7 @@ function AreasPanel({ air, st, keys, onClose }: { air: AirspaceSnapshot | null; 
   const at = notams[0]?.voivodeships[0] ?? zones[0]?.voivodeships[0];
   return (
     <Shell
-      title={total === 1 && notams.length ? `NOTAM ${notams[0].id}` : `Strefy w tym miejscu (${total})`}
+      title={total === 1 && notams.length ? `${notams[0].geometry_source === "aup" ? "AUP" : "NOTAM"} ${notams[0].id}` : `Strefy w tym miejscu (${total})`}
       sub={air?.notam.fetched_at ? `NOTAM pobrane ${fmtDayTime(air.notam.fetched_at)}` : undefined}
       onClose={onClose}
     >
@@ -648,11 +650,12 @@ function AreasPanel({ air, st, keys, onClose }: { air: AirspaceSnapshot | null; 
 function NotamFoot({ air }: { air: AirspaceSnapshot | null }) {
   return (
     <p className="md-foot">
-      Źródło NOTAM: {air?.notam.source ?? "FAA NOTAM Search"} (FIR {air?.notam.locations.join(", ") || "EPWW"})
+      Źródło: {air?.notam.source ?? "FAA NOTAM Search"} (FIR {air?.notam.locations.join(", ") || "EPWW"})
       {air?.notam.fetched_at ? `, pobrano ${fmtDayTime(air.notam.fetched_at)}` : ""}
       {air && !air.notam.ok && air.notam.enabled ? ` — brak świeżych danych: ${air.notam.error}` : ""}.
       {air?.notam.skipped ? ` Pominięto ${air.notam.skipped} NOTAM o przeszkodach, oświetleniu i lotniskach.` : ""}
       {air?.notam.truncated ? " Źródło ma więcej NOTAM, niż zostało odczytane — lista może być niepełna." : ""}
+      {air?.notam.aup?.enabled ? " AUP/UUP: plan użycia przestrzeni (rezerwacje TSA/TRA/D/R na dziś i jutro) z airspace.pansa.pl." : ""}
       {air?.zones.enabled ? ` Strefy stałe: ${air.zones.source}.` : ""} Czasy: Europa/Warszawa. Do planowania lotu używaj
       oficjalnego briefingu (AIS PAŻP), nie tej mapy.
     </p>
@@ -666,7 +669,7 @@ function NotamListPanel({ air, st, onClose }: { air: AirspaceSnapshot | null; st
   const list = all.filter((n) => (!onlyMap || n.map) && (!onlyNow || n.state === "active"));
   const zones = air?.zones.enabled ? air.zones.items : [];
   return (
-    <Shell title="NOTAM — przestrzeń powietrzna" sub={`${all.length} NOTAM · ${all.filter((n) => n.map).length} z obszarem na mapie`} onClose={onClose}>
+    <Shell title="NOTAM i AUP/UUP — przestrzeń powietrzna" sub={`${all.length} pozycji · ${all.filter((n) => n.map).length} z obszarem na mapie`} onClose={onClose}>
       {!air && <p className="md-empty">Ładuję NOTAM…</p>}
       {air && !air.notam.enabled && <p className="md-empty">Warstwa NOTAM jest wyłączona na tym serwerze.</p>}
       {air?.notam.enabled && (
@@ -742,7 +745,7 @@ function LocalListPanel({ snap, st, onClose }: { snap: LocalAlertsSnapshot | nul
   const count = (c: LocalCategory) => all.filter((a) => a.categories.includes(c)).length;
   const rso = snap?.sources.find((x) => x.id === "rso");
   return (
-    <Shell title="Lokalne: awarie, wyłączenia, ćwiczenia" sub={`${list.length} komunikatów · ${list.filter((a) => a.state === "active").length} trwa`} onClose={onClose}>
+    <Shell title="Lokalne: awarie, wyłączenia, ćwiczenia, ostrzeżenia IMGW" sub={`${list.length} komunikatów · ${list.filter((a) => a.state === "active").length} trwa`} onClose={onClose}>
       <div className="ov-filters" role="group" aria-label="Rodzaj">
         {LOCAL_ORDER.map((c) => (
           <button
@@ -757,7 +760,7 @@ function LocalListPanel({ snap, st, onClose }: { snap: LocalAlertsSnapshot | nul
         ))}
       </div>
       {!snap && <p className="md-empty">Ładuję komunikaty…</p>}
-      {snap && !list.length && <p className="md-empty">Brak bieżących ani zaplanowanych komunikatów o awariach wody, prądu, gazu lub o ćwiczeniach.</p>}
+      {snap && !list.length && <p className="md-empty">Brak bieżących ani zaplanowanych komunikatów o awariach wody, prądu, gazu, o ćwiczeniach ani ostrzeżeń IMGW.</p>}
       {order.map((k) => (
         <section key={k || "pl"}>
           <h3 className="md-h">
@@ -781,7 +784,8 @@ function LocalListPanel({ snap, st, onClose }: { snap: LocalAlertsSnapshot | nul
         Źródło: komunikaty RSO (komunikaty.tvp.pl) wybrane automatycznie po treści
         {rso && !rso.ok ? ` — RSO teraz nie odpowiada (${rso.error ?? "?"}), lista z ostatniego pobrania` : ""}
         {(snap?.sources.length ?? 0) > 1 ? `, oraz ${snap!.sources.filter((x) => x.id !== "rso").map((x) => x.name ?? x.id).join(", ")}` : ""}. Okno czasowe
-        odczytane z treści; „komunikat z …” = bez daty w treści. Szczegóły zawsze w oryginale. Czasy: Europa/Warszawa.
+        odczytane z treści (operatorzy i IMGW podają je wprost); „komunikat z …” = bez daty w treści. Ostrzeżenia IMGW są
+        informacyjne i nie wpływają na poziom zagrożenia powietrznego. Szczegóły zawsze w oryginale. Czasy: Europa/Warszawa.
       </p>
     </Shell>
   );

@@ -1091,7 +1091,7 @@ const localDx = (k: number, i: number) => (i - (k - 1) / 2) * LOCAL_GAP;
 /** Per-feature offsets via a lookup on `slot` (= count * 10 + index): GeoJSON properties cannot carry arrays. */
 function slotMatch(fn: (k: number, i: number) => [number, number]): maplibregl.ExpressionSpecification {
   const m: unknown[] = ["match", ["get", "slot"]];
-  for (let k = 1; k <= 4; k++) for (let i = 0; i < k; i++) m.push(k * 10 + i, ["literal", fn(k, i)]);
+  for (let k = 1; k <= 6; k++) for (let i = 0; i < k; i++) m.push(k * 10 + i, ["literal", fn(k, i)]);
   m.push(["literal", [0, 0]]);
   return m as maplibregl.ExpressionSpecification;
 }

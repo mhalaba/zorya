@@ -24,7 +24,7 @@ export function QuickChips() {
           className={`mq-chip ${panel === "notam" ? "on" : ""}`}
           aria-pressed={panel === "notam"}
           onClick={() => open(panel === "notam" ? null : "notam")}
-          title={air?.notam.ok ? "NOTAM dla polskiej przestrzeni (FIR EPWW)" : `NOTAM: brak świeżych danych (${air?.notam.error ?? "?"})`}
+          title={air?.notam.ok ? `Przestrzeń FIR EPWW: ${air.notam.source}` : `NOTAM: brak świeżych danych (${air?.notam.error ?? "?"})`}
         >
           <span className="mq-ic notam" aria-hidden="true" />
           NOTAM <b>{notams.length}</b>
@@ -93,7 +93,7 @@ export function MapLayers() {
             {air?.notam.enabled !== false && (
               <label>
                 <input type="checkbox" checked={st.notamOn} onChange={(e) => st.setOverlay("notamOn", e.target.checked)} />
-                <span className="ua-sw notam" /> Strefy z NOTAM <span className="muted">{notamZones}</span>
+                <span className="ua-sw notam" /> Strefy z NOTAM / AUP <span className="muted">{notamZones}</span>
               </label>
             )}
             {air?.zones.enabled && (
@@ -103,10 +103,10 @@ export function MapLayers() {
               </label>
             )}
             <button type="button" className="ly-link" onClick={() => (setOpen(false), st.setListPanel("notam"))}>
-              Lista NOTAM ({air?.notam.items.length ?? 0}) →
+              Lista NOTAM / AUP ({air?.notam.items.length ?? 0}) →
             </button>
 
-            <div className="ly-h">Lokalne: awarie, wyłączenia, ćwiczenia</div>
+            <div className="ly-h">Lokalne: awarie, wyłączenia, ćwiczenia, IMGW</div>
             <label>
               <input type="checkbox" checked={st.localOn} onChange={(e) => st.setOverlay("localOn", e.target.checked)} />
               Pokaż na mapie <span className="muted">{allLocal.length}</span>
