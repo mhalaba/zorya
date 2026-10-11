@@ -55,11 +55,17 @@ export const LOCAL_META: Record<LocalCategory, { label: string; short: string; c
   water: { label: "Woda", short: "woda", color: "#4FA3E0", icon: "loc-water" },
   gas: { label: "Gaz", short: "gaz", color: "#F0783A", icon: "loc-gas" },
   exercise: { label: "Ćwiczenia", short: "ćwiczenia", color: "#B48CF0", icon: "loc-exercise" },
+  meteo: { label: "Pogoda (IMGW)", short: "pogoda", color: "#7DD3FC", icon: "loc-meteo" },
+  hydro: { label: "Hydro (IMGW)", short: "hydro", color: "#2E7BD6", icon: "loc-hydro" },
 };
-export const LOCAL_ORDER: LocalCategory[] = ["power", "water", "gas", "exercise"];
+export const LOCAL_ORDER: LocalCategory[] = ["power", "water", "gas", "exercise", "meteo", "hydro"];
 
-export function localKindLabel(a: Pick<LocalAlert, "kind" | "category">): string {
+export function localKindLabel(a: Pick<LocalAlert, "kind" | "category" | "level">): string {
   if (a.kind === "exercise") return "zapowiedź";
+  if (a.kind === "warning") {
+    if (a.level === -1) return "ostrzeżenie o suszy";
+    return a.level && a.level > 0 ? `ostrzeżenie ${a.level}. stopnia` : "ostrzeżenie";
+  }
   return a.kind === "planned" ? "planowane wyłączenie" : "awaria";
 }
 
@@ -76,6 +82,7 @@ export function visibleLocal(snap: LocalAlertsSnapshot | null, cats: Record<Loca
 export function localWindow(a: LocalAlert): string {
   if (a.window === "default") return `komunikat z ${fmtDayTime(a.published_at)}`;
   const s = fmtDayTime(a.starts_at);
+  if (a.until_cancelled) return `od ${s} do odwołania`;
   const e = fmtDayTime(a.ends_at);
   return s === e ? s : `${s} – ${e}`;
 }
@@ -115,5 +122,6 @@ export function geometrySourceLabel(src: Notam["geometry_source"]): string {
   if (src === "text") return "obszar z treści NOTAM";
   if (src === "circle") return "okrąg z treści NOTAM";
   if (src === "qline") return "okrąg z linii Q — przybliżenie";
+  if (src === "aup") return "granice strefy z mapy PAŻP (AUP/UUP)";
   return "bez geometrii (tylko lista)";
 }

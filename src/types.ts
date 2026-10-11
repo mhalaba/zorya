@@ -198,8 +198,11 @@ export interface UaThreatsSnapshot {
   pl_violations: { count: number; hours: number; checked_at: string } | null;
 }
 
-/** Local alert (server/local.mjs): water / power / gas outage or planned works, or an exercise. */
-export type LocalCategory = "power" | "water" | "gas" | "exercise";
+/**
+ * Local alert (server/local.mjs, operators.mjs, imgw.mjs): water / power / gas outage or planned works, an exercise,
+ * or an IMGW meteorological / hydrological warning. Informational only — never part of the threat level.
+ */
+export type LocalCategory = "power" | "water" | "gas" | "exercise" | "meteo" | "hydro";
 
 export interface LocalAlert {
   id: string;
@@ -207,7 +210,11 @@ export interface LocalAlert {
   source_name: string;
   categories: LocalCategory[];
   category: LocalCategory;
-  kind: "outage" | "planned" | "exercise";
+  kind: "outage" | "planned" | "exercise" | "warning";
+  /** IMGW warning level: 1–3, or -1 for hydrological drought. */
+  level?: number | null;
+  /** IMGW: valid until cancelled (ends_at is then only a display horizon). */
+  until_cancelled?: boolean;
   title: string;
   summary: string;
   url: string | null;
@@ -215,7 +222,7 @@ export interface LocalAlert {
   starts_at: string;
   ends_at: string;
   /** "text": window read from the notice; "default": no date in it, shown for a fixed time after publication. */
-  window: "text" | "default";
+  window: "text" | "default" | "source";
   voivodeships: string[];
   state: "active" | "upcoming" | "ended";
 }
@@ -266,7 +273,7 @@ export interface Notam {
   center: [number, number] | null;
   radius_nm: number | null;
   geometry: Polygon | MultiPolygon | null;
-  geometry_source: "text" | "circle" | "qline" | null;
+  geometry_source: "text" | "circle" | "qline" | "aup" | null;
   bbox: [number, number, number, number] | null;
   voivodeships: string[];
   map: boolean;
@@ -302,6 +309,8 @@ export interface AirspaceSnapshot {
     /** The source had more NOTAMs than were read. */
     truncated: boolean;
     items: Notam[];
+    /** PAŻP AUP/UUP reservations merged into items (geometry_source "aup"). */
+    aup?: { enabled: boolean; ok: boolean; fetched_at: string | null; error: string | null; count: number; link: string };
   };
   zones: {
     enabled: boolean;

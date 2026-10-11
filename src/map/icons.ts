@@ -177,6 +177,47 @@ function registerLocalIcons(map: MLMap) {
       g.stroke();
     })
   );
+  add(
+    map,
+    "loc-meteo",
+    badge("#7DD3FC", (g) => {
+      // Cloud with a lightning bolt.
+      g.fillStyle = "#070B12";
+      g.beginPath();
+      g.arc(-6, -2, 7, Math.PI * 0.5, Math.PI * 1.5);
+      g.arc(1, -7, 8, Math.PI, Math.PI * 1.9);
+      g.arc(8, -1, 6, Math.PI * 1.4, Math.PI * 0.5);
+      g.closePath();
+      g.fill();
+      g.beginPath();
+      g.moveTo(1, 3);
+      g.lineTo(-4, 12);
+      g.lineTo(0, 12);
+      g.lineTo(-2, 18);
+      g.lineTo(5, 9);
+      g.lineTo(1, 9);
+      g.lineTo(4, 3);
+      g.closePath();
+      g.fill();
+    })
+  );
+  add(
+    map,
+    "loc-hydro",
+    badge("#2E7BD6", (g) => {
+      // Waves.
+      g.strokeStyle = "#FFFFFF";
+      g.lineWidth = 3.5;
+      g.lineCap = "round";
+      for (const y of [-7, 1, 9]) {
+        g.beginPath();
+        g.moveTo(-14, y);
+        g.bezierCurveTo(-9, y - 5, -5, y - 5, 0, y);
+        g.bezierCurveTo(5, y + 5, 9, y + 5, 14, y);
+        g.stroke();
+      }
+    })
+  );
 }
 
 export function registerMapIcons(map: MLMap) {

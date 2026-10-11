@@ -214,7 +214,7 @@ export const useStore = create<Store>()(
       notamOn: true,
       zonesOn: true,
       localOn: true,
-      localCats: { power: true, water: true, gas: true, exercise: true },
+      localCats: { power: true, water: true, gas: true, exercise: true, meteo: true, hydro: true },
       view: "horyzont",
       sheet: null,
       selectedAreaId: null,
