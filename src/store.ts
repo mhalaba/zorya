@@ -99,6 +99,8 @@ interface Live {
   selectedNotams: string[] | null;
   /** Gmina opened in the panel (map click when zoomed in, search, "my location"). */
   selectedGmina: PlaceInfo | null;
+  /** Airspace areas under the tap that opened the gmina panel (zoomed in). */
+  tapAreas: string[] | null;
   /** Found address / "my location" marker ([lon, lat]). */
   searchPin: [number, number] | null;
   listPanel: ListPanel;
@@ -248,6 +250,7 @@ export const useStore = create<Store>()(
       selectedNotams: null,
       selectedGmina: null,
       searchPin: null,
+      tapAreas: null,
       listPanel: null,
       focus: null,
       uaMissilesOn: true,
@@ -333,12 +336,14 @@ export const useStore = create<Store>()(
       setPlaces: (places) => set({ places }),
       setHomeVoiv: (homeVoiv) => set({ homeVoiv }),
       setDrawer: (drawer) => set({ drawer }),
+      // Closing or switching panels also drops the search / "my location" pin.
       setSelectedVoiv: (selectedVoiv) =>
-        set({ selectedVoiv, selectedObj: null, selectedUa: null, objTrack: null, selectedNotams: null, selectedGmina: null, listPanel: null }),
+        set({ selectedVoiv, selectedObj: null, selectedUa: null, objTrack: null, selectedNotams: null, selectedGmina: null, listPanel: null, searchPin: null, tapAreas: null }),
       setSearchPin: (searchPin) => set({ searchPin }),
       setSelectedGmina: (selectedGmina) =>
         set((s) => ({
           selectedGmina,
+          tapAreas: null,
           selectedVoiv: selectedGmina ? null : s.selectedVoiv,
           selectedObj: null,
           selectedUa: null,

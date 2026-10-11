@@ -136,7 +136,8 @@ export interface CameraSite {
  */
 export interface PowiatLevels {
   why: string[];
-  list: [string, "w" | "p", number, number][];
+  /** [teryt, "w" | "p", points, why index, km to the nearest object (5 km steps) or null]; why may hold "{km}". */
+  list: [string, "w" | "p", number, number, number | null][];
 }
 
 export interface PowiatState {

@@ -179,8 +179,11 @@ app.get("/api/airspace", (req, res) => {
  * Answers gmina + powiat + voivodeship, or 404 outside Poland. Pure lookup — no personal data is kept.
  */
 app.get("/api/place", (req, res) => {
+  if (!ADMIN_READY) {
+    res.setHeader("Cache-Control", "no-store");
+    return res.status(503).json({ error: "brak granic gmin" });
+  }
   res.setHeader("Cache-Control", "public, max-age=86400");
-  if (!ADMIN_READY) return res.status(503).json({ error: "brak granic gmin" });
   const code = String(req.query.gmina || "").replace(/\D/g, "").slice(0, 7);
   const lat = Number(req.query.lat);
   const lon = Number(req.query.lon);

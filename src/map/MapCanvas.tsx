@@ -200,13 +200,9 @@ export function MapCanvas() {
         type: "fill",
         source: "pl",
         paint: {
-          "fill-color": [
-            "step",
-            ["zoom"],
-            LEVEL_COLOR,
-            POWIAT_ZOOM,
-            COLORS.navy,
-          ],
+          // Above POWIAT_ZOOM the powiaty carry the colour — but only once they are painted ("pp"); until then (or if
+          // the boundaries or powiat levels never arrive) the voivodeship keeps its level colour.
+          "fill-color": ["step", ["zoom"], LEVEL_COLOR, POWIAT_ZOOM, ["case", ["boolean", ["feature-state", "pp"], false], COLORS.navy, LEVEL_COLOR]],
           "fill-opacity": [
             "interpolate",
             ["linear"],
@@ -218,9 +214,19 @@ export function MapCanvas() {
               0.72,
               ["match", ["coalesce", ["feature-state", "paint"], "info"], "priority", 0.45, "watch", 0.35, "transfer", 0.2, 0.42],
             ],
-            // Powiaty carry the level colour from here; the voivodeship keeps only the dark base.
+            // Powiaty carry the level colour from here (when painted); the voivodeship keeps only the dark base.
             POWIAT_ZOOM,
-            ["case", ["boolean", ["feature-state", "hover"], false], 0.5, 0.42],
+            [
+              "case",
+              ["boolean", ["feature-state", "pp"], false],
+              ["case", ["boolean", ["feature-state", "hover"], false], 0.5, 0.42],
+              [
+                "case",
+                ["boolean", ["feature-state", "hover"], false],
+                0.72,
+                ["match", ["coalesce", ["feature-state", "paint"], "info"], "priority", 0.45, "watch", 0.35, "transfer", 0.2, 0.42],
+              ],
+            ],
           ],
         },
       });
@@ -851,8 +857,14 @@ export function MapCanvas() {
         if (zoomedIn) {
           const g = map.queryRenderedFeatures(e.point, { layers: ["gminy-fill"] })[0];
           const code = g ? String(g.properties?.id ?? g.id ?? "") : "";
+          // Airspace areas under the finger stay reachable from the gmina panel.
+          const under = map.queryRenderedFeatures(e.point, { layers: ["notam-fill", "asz-fill"].filter((l) => map.getLayer(l)) });
+          const keys = [...new Set(under.map((f) => String(f.properties?.key ?? "")).filter(Boolean))];
           void openGmina(code ? { gmina: code } : { lat: e.lngLat.lat, lon: e.lngLat.lng }).then((ok) => {
-            if (!ok) useStore.getState().setSelectedVoiv(null); // outside Poland
+            if (ok === false) {
+              if (keys.length) useStore.getState().setSelectedNotams(keys);
+              else useStore.getState().setSelectedVoiv(null); // outside Poland
+            } else if (keys.length) useStore.setState({ tapAreas: keys });
           });
           return;
         }
@@ -889,7 +901,7 @@ export function MapCanvas() {
       setMapReadyTick((t) => t + 1);
       applyData(map);
 
-      loadAdmin()
+      const fetchAdmin = () => loadAdmin()
         .then((layers) => {
           adminRef.current = layers;
           const fc = {
@@ -906,7 +918,12 @@ export function MapCanvas() {
           void syncGminy(map);
         })
         .catch((err) => console.error("Zorya powiaty", err));
-      map.on("moveend", () => void syncGminy(map));
+      void fetchAdmin();
+      // A failed boundary load is retried on the next map move, not given up for the session.
+      map.on("moveend", () => {
+        if (!adminRef.current) void fetchAdmin();
+        void syncGminy(map);
+      });
     });
 
     return () => {
@@ -1167,6 +1184,9 @@ export function MapCanvas() {
     }
     for (const id of paintedPow.current) if (!now.has(id)) map.setFeatureState({ source: "powiaty", id }, { paint: "info" });
     paintedPow.current = now;
+    // Voivodeships hand the colour over to the powiaty only when this state carries powiat levels.
+    const painted = !!state?.powiaty;
+    for (const v of state?.voivodeships ?? []) map.setFeatureState({ source: "pl", id: v.id }, { pp: painted });
   }, [powiatLevels, mapReadyTick, adminTick]);
 
   // NOTAM areas + permanent areas.

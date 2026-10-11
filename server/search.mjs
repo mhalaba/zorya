@@ -77,7 +77,7 @@ export function uugQuery(q) {
   let s = String(q || "")
     .replace(/\b\d{2}-\d{3}\b/g, " ")
     .replace(/(\d+[a-zA-Z]?)\s*(?:\/|m\.|lok\.?)\s*\d+[a-zA-Z]?/g, "$1")
-    .replace(/\b(?:ul\.?|ulica|al\.?|aleja|pl\.?|plac|os\.?|osiedle)\s+/gi, "")
+    .replace(/(?<![\p{L}\d])(?:ul\.?|ulica|al\.?|aleja|pl\.?|plac|os\.?|osiedle)\s+/giu, "")
     .replace(/\s+/g, " ")
     .replace(/\s*,\s*/g, ", ")
     .trim()
@@ -177,6 +177,8 @@ let nominatimNext = 0;
 async function nominatim(q) {
   if (!NOMINATIM_URL) return [];
   const wait = nominatimNext - Date.now();
+  // A backlog means someone is flooding: answer "busy" instead of making real users wait minutes.
+  if (wait > 4000) throw new Error("zajęty, spróbuj za chwilę");
   nominatimNext = Math.max(Date.now(), nominatimNext) + 1100;
   if (wait > 0) await new Promise((r) => setTimeout(r, wait));
   const u = new URL(NOMINATIM_URL);

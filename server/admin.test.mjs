@@ -87,3 +87,19 @@ test("powiat levels: nearer powiaty score higher, band keeps them within a step 
   // Quiet state: nothing listed.
   assert.deepEqual(buildState(now, {}, null).powiaty.list, []);
 });
+
+test("review fixes: capitalised keywords, hyphenated powiaty, partial overlaps", () => {
+  assert.ok(A.unitsFromText("Gmina Hrubieszów informuje o przerwie", ["lubelskie"]).gminy.length >= 1);
+  assert.deepEqual(A.unitsFromText("Miasto Hrubieszów: brak wody", ["lubelskie"]).gminy, ["0604011"]);
+  const k = A.unitsFromText("w powiecie kędzierzyńsko-kozielskim", ["opolskie"]).powiaty;
+  assert.equal(k.length, 1);
+  assert.equal(A.powiatById(k[0]).name, "kędzierzyńsko-kozielski");
+  assert.deepEqual(A.unitsFromText("w powiecie strzelecko-drezdeneckim", ["lubuskie", "opolskie"]).powiaty.map((id) => A.powiatById(id).name), ["strzelecko-drezdenecki"]);
+  // Every gmina with a sampled point inside the rectangle must be found.
+  const box = { type: "Polygon", coordinates: [[[20, 52], [21, 52], [21, 52.5], [20, 52.5], [20, 52]]] };
+  const found = new Set(A.unitsForGeometry(box).gminy);
+  for (let x = 20.005; x < 21; x += 0.02) for (let y = 52.005; y < 52.5; y += 0.02) {
+    const g = A.gminaAt(y, x);
+    if (g) assert.ok(found.has(g.id), `${g.name} missed`);
+  }
+});

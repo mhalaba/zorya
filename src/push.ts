@@ -25,7 +25,7 @@ async function sync() {
   const { notifyGranted, areas, watchGminy } = useStore.getState();
   if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return;
   const reg = await navigator.serviceWorker.ready;
-  if (!notifyGranted || Notification.permission !== "granted") {
+  if ((!notifyGranted && !watchGminy.length) || Notification.permission !== "granted") {
     const existing = await reg.pushManager.getSubscription();
     if (existing) {
       await fetch("/api/push/unsubscribe", {
@@ -38,12 +38,12 @@ async function sync() {
     return;
   }
   const VOIV_SLUG = /^[a-z]+(?:-[a-z]+)?$/;
+  // Voivodeship areas first (only with their own consent), so watching gminy never pushes them out of the 8 places.
   const places = [
+    ...(notifyGranted
+      ? areas.filter((p) => VOIV_SLUG.test(p.area.id)).map((p) => ({ voivodeship: p.area.id, notifyWatch: true, notifyPriority: true, name: p.area.name }))
+      : []),
     ...watchGminy.map((g) => ({ gmina: g.id, notifyWatch: true, notifyPriority: true, name: g.name })),
-    // Older onboarding areas: only voivodeship slugs mean anything to the server (TERYT-like ids were dropped).
-    ...areas
-      .filter((p) => VOIV_SLUG.test(p.area.id))
-      .map((p) => ({ voivodeship: p.area.id, notifyWatch: true, notifyPriority: true, name: p.area.name })),
   ].slice(0, 8);
   if (!places.length) {
     const existing = await reg.pushManager.getSubscription();

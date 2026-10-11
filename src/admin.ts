@@ -12,7 +12,10 @@ export function powiatLevels(st: FusionState | null): Map<string, PowiatState> {
   let m = powCache.get(raw);
   if (!m) {
     m = new Map(
-      raw.list.map(([id, l, points, w]) => [id, { id, level: l === "p" ? "priority" : "watch", points, whyPl: raw.why[w] ?? "" }])
+      raw.list.map(([id, l, points, w, km]) => [
+        id,
+        { id, level: l === "p" ? "priority" : "watch", points, whyPl: (raw.why[w] ?? "").replace("{km}", km == null ? "?" : String(km)) },
+      ])
     );
     powCache.set(raw, m);
   }

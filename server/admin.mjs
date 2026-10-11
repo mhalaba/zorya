@@ -207,6 +207,26 @@ export const powiatNeighbors = (id) => DATA.powiatNeighbors.get(String(id)) || [
 export const allPowiaty = () => DATA.powiaty;
 export const allGminy = () => DATA.gminy;
 
+function segX(a, b, c, d) {
+  const o = (p, q, r) => Math.sign((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]));
+  return o(a, b, c) !== o(a, b, d) && o(c, d, a) !== o(c, d, b);
+}
+
+/** Any zone edge crossing any ring edge of the unit (bbox-prefiltered per edge). */
+function crosses(edges, polygons) {
+  for (const rings of polygons)
+    for (const r of rings)
+      for (let i = 1; i < r.length; i++) {
+        const a = r[i - 1], b = r[i];
+        for (const [c, d] of edges) {
+          if (Math.max(a[0], b[0]) < Math.min(c[0], d[0]) || Math.max(c[0], d[0]) < Math.min(a[0], b[0])) continue;
+          if (Math.max(a[1], b[1]) < Math.min(c[1], d[1]) || Math.max(c[1], d[1]) < Math.min(a[1], b[1])) continue;
+          if (segX(a, b, c, d)) return true;
+        }
+      }
+  return false;
+}
+
 /** Gminy (7-digit TERYT) and powiaty (4-digit) touched by a set of [lon, lat] points, sorted. */
 export function unitsForPoints(points) {
   const g = new Set();
@@ -227,9 +247,11 @@ export function unitsForGeometry(geometry, extraPoints = []) {
   if (!polys.length) return unitsForPoints(extraPoints);
   const box = bboxOf(polys);
   const hit = new Set(unitsForPoints([...polys.flatMap((rings) => rings[0]), ...extraPoints]).gminy);
+  const zoneEdges = polys.flatMap((rings) => rings.flatMap((r) => r.slice(1).map((p, i) => [r[i], p])));
   for (const g of DATA.gminy) {
     if (hit.has(g.id) || !g.anchor || !boxesOverlap(g.bbox, box)) continue;
-    if (inPolygons(g.anchor[0], g.anchor[1], polys)) hit.add(g.id);
+    // Inside the zone (anchor), or a zone edge crossing the gmina border (partial overlap).
+    if (inPolygons(g.anchor[0], g.anchor[1], polys) || crosses(zoneEdges, g.polygons)) hit.add(g.id);
   }
   const gminy = [...hit].sort();
   return { gminy, powiaty: [...new Set(gminy.map((id) => id.slice(0, 4)))].sort() };
@@ -312,9 +334,10 @@ export function unitsFromTeryt(codes) {
 const powStem = (name) => fold(name).replace(/(?:i|y)$/, "");
 const CAP = "[A-ZŁŚŻŹĆŃÓĘĄ][\\p{L}-]+";
 const NAME = `(${CAP}(?:\\s+(?:${CAP}|nad|pod|w|k\\.)){0,3})`;
-const RX_POWIAT = /powi(?:at|atu|atem|ecie|aty|atów|atach)\s+((?:\p{L}+[\s,]+(?:i\s+)?){0,1}\p{L}+)/giu;
-const RX_GMINA = new RegExp(`gmin(?:a|y|ie|ę|ą|om|ach)\\s+(?:miejsk\\p{L}*\\s+|wiejsk\\p{L}*\\s+|miejsko-wiejsk\\p{L}*\\s+)?${NAME}`, "gu");
-const RX_TOWN = new RegExp(`(?:miejscowo\\p{L}*|miast(?:o|a|em|u)|m\\.|wsi|wieś)\\s+${NAME}`, "gu");
+const RX_POWIAT = /[Pp]owi(?:at|atu|atem|ecie|aty|atów|atach)\s+((?:[\p{L}-]+[\s,]+(?:i\s+)?){0,1}[\p{L}-]+)/gu;
+// Keywords may open a sentence ("Gmina Hrubieszów informuje"); the name itself must still be capitalised.
+const RX_GMINA = new RegExp(`[Gg]min(?:a|y|ie|ę|ą|om|ach)\\s+(?:miejsk\\p{L}*\\s+|wiejsk\\p{L}*\\s+|miejsko-wiejsk\\p{L}*\\s+)?${NAME}`, "gu");
+const RX_TOWN = new RegExp(`(?:[Mm]iejscowo\\p{L}*|[Mm]iast(?:o|a|em|u)|m\\.|[Ww]si|[Ww]ieś)\\s+${NAME}`, "gu");
 
 /**
  * Gminy and powiaty named in a notice ("gmina Wola Uhruska", "w powiecie zamojskim", "miejscowość Hrubieszów"),
@@ -327,8 +350,12 @@ export function unitsFromText(text, voivodeships = []) {
   const g = new Set();
   const p = new Set();
   for (const m of t.matchAll(RX_POWIAT)) {
-    for (const word of m[1].split(/[\s,]+|\bi\b/).map(fold).filter((w) => w.length >= 4)) {
-      const hits = DATA.powiaty.filter((x) => !x.city && inScope(x.woj) && word.startsWith(powStem(x.name)));
+    // Hyphenated names ("kędzierzyńsko-kozielski") stay one word: compare without spaces on both sides.
+    for (const word of m[1].split(/[\s,]+/).filter((w) => w !== "i").map((w) => fold(w).replace(/ /g, "")).filter((w) => w.length >= 4)) {
+      let hits = DATA.powiaty.filter((x) => !x.city && inScope(x.woj) && word.startsWith(powStem(x.name).replace(/ /g, "")));
+      // "strzelecko-drezdenecki" also starts with "strzelecki"'s stem: the longest stem is the named one.
+      const longest = Math.max(0, ...hits.map((x) => powStem(x.name).length));
+      hits = hits.filter((x) => powStem(x.name).length === longest);
       if (hits.length === 1 || (hits.length && voivodeships.length)) hits.forEach((x) => p.add(x.id));
     }
   }

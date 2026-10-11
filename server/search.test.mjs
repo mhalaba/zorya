@@ -35,3 +35,8 @@ test("UUG and Nominatim answers placed in their gmina", () => {
   assert.equal(n.gmina, "0663011");
   assert.deepEqual(n.bbox, [22.45, 51.14, 22.67, 51.3]);
 });
+
+test("street prefixes are removed only as whole words (Polish letters included)", () => {
+  assert.equal(uugQuery("Głos 5 Kraków"), "Kraków, Głos 5");
+  assert.equal(uugQuery("Kraków al. Mickiewicza 30"), "Kraków, Mickiewicza 30");
+});

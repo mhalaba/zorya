@@ -23,9 +23,22 @@ export function fetchPlace(q: { lat: number; lon: number } | { gmina: string }):
   return p;
 }
 
-/** Opens the gmina panel; `frame` also moves the map to the gmina (search, "my location"). */
-export async function openGmina(q: { lat: number; lon: number } | { gmina: string }, frame = false): Promise<boolean> {
+let seq = 0;
+const selection = () => {
+  const s = useStore.getState();
+  return [s.selectedVoiv, s.selectedObj, s.selectedUa, s.selectedNotams, s.listPanel, s.selectedGmina];
+};
+
+/**
+ * Opens the gmina panel; `frame` also moves the map to the gmina (search, "my location").
+ * true = opened, false = no gmina there (outside Poland), null = superseded by a newer action (nothing done).
+ */
+export async function openGmina(q: { lat: number; lon: number } | { gmina: string }, frame = false): Promise<boolean | null> {
+  const n = ++seq;
+  const before = selection();
   const info = await fetchPlace(q);
+  // A newer tap/search, or a panel the user opened meanwhile, wins over a late answer.
+  if (n !== seq || selection().some((v, i) => v !== before[i])) return null;
   if (!info) return false;
   const st = useStore.getState();
   st.setSelectedGmina(info);

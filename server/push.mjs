@@ -175,7 +175,12 @@ export async function notifyFromState(state) {
 async function notifyOnce(state) {
   const now = Date.now();
   const byId = Object.fromEntries(state.voivodeships.map((v) => [v.id, v]));
-  const pow = new Map((state.powiaty?.list || []).map(([id, l, pts, w]) => [id, { level: l === "p" ? "priority" : "watch", points: pts, why: state.powiaty.why[w] || "" }]));
+  const pow = new Map(
+    (state.powiaty?.list || []).map(([id, l, pts, w, km]) => [
+      id,
+      { level: l === "p" ? "priority" : "watch", points: pts, why: String(state.powiaty.why[w] || "").replace("{km}", km ?? "?") },
+    ])
+  );
   const jobs = [];
   let dirty = false;
   for (const sub of subs) {

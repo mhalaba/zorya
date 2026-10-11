@@ -603,16 +603,18 @@ export function scorePowiaty(input, rawObjects, buckets, voivodeships) {
     if (lv === 0) continue; // the client paints every powiat not listed as "info"
     const why = [];
     if (hits.size) {
-      why.push(`${[...hits].map(([t, n]) => `${n}× ${labelType(t)}`).join(", ")} ~${Math.round(minDist)} km od powiatu${toward ? ", kurs na PL" : ""}`);
+      // "{km}" is filled per powiat by the reader: the distance differs per row and would defeat the shared table.
+      why.push(`${[...hits].map(([t, n]) => `${n}× ${labelType(t)}`).join(", ")} ~{km} km od powiatu${toward ? ", kurs na PL" : ""}`);
     }
     if (ua > 0.04) why.push("alarm w obwodzie UA");
     if (b.own.rcb > 0) why.push("Alert RCB (całe województwo)");
     if (b.own.media > 0.04) why.push("wzmianka RSS (województwo)");
-    out.push([p.id, LEVELS[lv] === "priority" ? "p" : "w", round1(own), why.join(" · ")]);
+    out.push([p.id, LEVELS[lv] === "priority" ? "p" : "w", round1(own), why.join(" · "), hits.size ? Math.round(minDist / 5) * 5 : null]);
   }
-  // Compact for the WebSocket frame: [teryt, "w"|"p", points, why#], explanations listed once.
+  // Compact for the WebSocket frame: [teryt, "w"|"p", points, why#, km to nearest object (5 km steps) | null].
   const whys = [...new Set(out.map((r) => r[3]))];
-  return { why: whys, list: out.map((r) => [r[0], r[1], r[2], whys.indexOf(r[3])]) };
+  const idx = new Map(whys.map((w, i) => [w, i]));
+  return { why: whys, list: out.map((r) => [r[0], r[1], r[2], idx.get(r[3]), r[4]]) };
 }
 
 export function labelType(type) {

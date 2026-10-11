@@ -138,7 +138,7 @@ export function MapDetail() {
   if (listPanel === "local") return <LocalListPanel snap={local} st={st} onClose={close} />;
   if (notamSel) return <AreasPanel air={air} st={st} keys={notamSel} onClose={close} />;
   if (ua) return <UaPanel snap={uaSnap} id={ua} onClose={close} />;
-  if (gmina) return <GminaPanel place={gmina} st={st} ua={uaSnap} air={air} local={local} onClose={close} />;
+  if (gmina) return <GminaPanel key={gmina.gmina.id} place={gmina} st={st} ua={uaSnap} air={air} local={local} onClose={close} />;
   if (!st || (!voiv && !obj)) return null;
   if (obj) return <ObjectPanel st={st} id={obj} onClose={close} />;
   const v = st.voivodeships.find((x) => x.id === voiv);
@@ -880,6 +880,7 @@ function GminaPanel({
   const inPowiat = alerts.filter((a) => a.gminy?.length && !a.gminy.includes(g.id) && a.powiaty?.includes(g.powiat.id));
   const inVoiv = alerts.filter((a) => !(a.gminy?.length) && !(a.powiaty?.length) && a.voivodeships.includes(g.voivodeship));
   const zones = (air?.notam.items ?? []).filter((n) => n.gminy?.includes(g.id));
+  const tapAreas = useStore((s) => s.tapAreas);
 
   return (
     <Shell
@@ -976,6 +977,11 @@ function GminaPanel({
         </details>
       )}
 
+      {tapAreas && (
+        <button type="button" className="md-link" onClick={() => useStore.getState().setSelectedNotams(tapAreas)}>
+          Strefy w miejscu dotknięcia ({tapAreas.length}) →
+        </button>
+      )}
       <h3 className="md-h">Przestrzeń powietrzna nad gminą ({zones.length})</h3>
       {zones.length ? (
         <ul className="md-list">
@@ -1005,7 +1011,9 @@ function WatchGmina({ id, name }: { id: string; name: string }) {
       if (!supported) return setMsg("Ta przeglądarka nie obsługuje powiadomień push (na iPhonie: dodaj Zoryę do ekranu początkowego).");
       const perm = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
       if (perm !== "granted") return setMsg("Bez zgody na powiadomienia nie da się obserwować gminy.");
-      st.setNotifyGranted(true);
+      // Watching a gmina is its own opt-in: it does not switch on notifications for other areas.
+      const areas = st.areas.filter((a) => /^[a-z]+(?:-[a-z]+)?$/.test(a.area.id)).length;
+      if (st.watchGminy.length + (st.notifyGranted ? areas : 0) >= 8) return setMsg("Można obserwować najwyżej 8 miejsc — usuń któreś.");
     }
     st.toggleWatchGmina({ id, name });
     setMsg(watching ? "Nie obserwujesz już tej gminy." : "Obserwujesz tę gminę: powiadomimy, gdy jej powiat osiągnie poziom uwagi lub priorytetu.");

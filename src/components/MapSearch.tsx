@@ -42,12 +42,20 @@ export function MapSearch() {
   const [cur, setCur] = useState(-1);
   const listId = useId();
   const seq = useRef(0);
+  const skipQuick = useRef(false);
 
   // Type-ahead: names only, debounced.
   useEffect(() => {
     const term = q.trim();
+    if (skipQuick.current) {
+      // The text was set by choosing a result: no new suggestions (and no wiping of the result's note).
+      skipQuick.current = false;
+      return;
+    }
     if (term.length < 2) {
+      ++seq.current;
       setHits([]);
+      setCur(-1);
       return;
     }
     const n = ++seq.current;
@@ -89,6 +97,8 @@ export function MapSearch() {
   function choose(h: Hit) {
     const st = useStore.getState();
     setOpen(false);
+    setCur(-1);
+    skipQuick.current = true;
     setQ(h.name);
     const point = h.type !== "gmina" && h.type !== "powiat";
     st.setSearchPin(point ? [h.lon, h.lat] : null);
@@ -98,7 +108,7 @@ export function MapSearch() {
       return;
     }
     void openGmina(h.gmina && !point ? { gmina: h.gmina } : { lat: h.lat, lon: h.lon }).then((ok) => {
-      if (!ok) setNote("To miejsce leży poza Polską.");
+      if (ok === false) setNote("To miejsce leży poza Polską.");
     });
     st.focusOn(h.bbox ?? around(h.lon, h.lat, h.type === "address" ? 0.006 : 0.03));
   }
@@ -118,7 +128,7 @@ export function MapSearch() {
         const lo = Math.round(lon * 1000) / 1000;
         useStore.getState().setSearchPin([lo, la]);
         useStore.getState().focusOn(around(lo, la, 0.05));
-        void openGmina({ lat: la, lon: lo }).then((ok) => !ok && setNote("Twoje położenie jest poza Polską."));
+        void openGmina({ lat: la, lon: lo }).then((ok) => ok === false && setNote("Twoje położenie jest poza Polską."));
       },
       (err) => {
         setBusy(false);
@@ -139,7 +149,7 @@ export function MapSearch() {
           aria-expanded={showList}
           aria-controls={listId}
           aria-autocomplete="list"
-          aria-activedescendant={cur >= 0 ? `${listId}-${cur}` : undefined}
+          aria-activedescendant={showList && cur >= 0 ? `${listId}-${cur}` : undefined}
           aria-label="Szukaj gminy, miejscowości lub adresu"
           placeholder="Gmina, miejscowość, adres…"
           value={q}
@@ -161,9 +171,12 @@ export function MapSearch() {
               setCur((c) => Math.max(-1, c - 1));
             } else if (e.key === "Enter") {
               e.preventDefault();
-              if (cur >= 0 && hits[cur]) choose(hits[cur]);
+              if (showList && cur >= 0 && hits[cur]) choose(hits[cur]);
               else void full();
-            } else if (e.key === "Escape") setOpen(false);
+            } else if (e.key === "Escape") {
+              setOpen(false);
+              setCur(-1);
+            }
           }}
         />
         <button type="button" className="ms-btn" onClick={locate} disabled={busy} title="Moje położenie" aria-label="Pokaż moją gminę (położenie)">
