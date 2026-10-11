@@ -147,7 +147,7 @@ function monthOf(word) {
 
 /**
  * Finds dates and clock times in a notice and turns them into a [start, end) window (epoch ms, Warsaw time).
- * "w dniu 15.10.2026 w godz. 8:00–14:00", "14-15 października", "od 8.00 do 15.30", "2026-10-15".
+ * "w dniu 15.10.2026 w godz. 8:00–14:00", "14-15 października", "od 12 do 16 października", "od 8.00 do 15.30", "2026-10-15".
  * Returns null when nothing usable is found (the caller then applies a default lifetime).
  */
 export function parsePlWindow(text, refTs = Date.now()) {
@@ -179,7 +179,7 @@ export function parsePlWindow(text, refTs = Date.now()) {
     push(m.index + 1, +m[4], +m[3], +m[2]);
   });
   scan(/\b(\d{1,2})[./](\d{1,2})[./](\d{4})\b/g, (m) => push(m.index, +m[3], +m[2], +m[1]));
-  scan(new RegExp(`\\b(\\d{1,2})(?:\\s*[-–]\\s*(\\d{1,2}))?\\s+${MONTH_RX}(?:\\s+(\\d{4}))?`, "giu"), (m) => {
+  scan(new RegExp(`\\b(\\d{1,2})(?:\\s*(?:[-–]|do)\\s*(\\d{1,2}))?\\s+${MONTH_RX}(?:\\s+(\\d{4}))?`, "giu"), (m) => {
     const mo = monthOf(m[3]);
     const y = yearFor(mo, +m[1], m[4] ? +m[4] : 0);
     push(m.index, y, mo, +m[1]);

@@ -53,6 +53,9 @@ docker compose up -d --build
 - Aplikacja: [http://127.0.0.1:8787/](http://127.0.0.1:8787/); produkcja (Sietch) wystawia ją przez kontener `zorya-tunnel` (Cloudflare, `CF_TUNNEL_TOKEN` tylko w `.env`).
 - Dane (archiwum dronów SQLite, klucze VAPID, subskrypcje push) leżą w `./data` montowanym jako `/app/data` (`ZORYA_DATA_DIR`) — przetrwają rebuild i restart.
 - `VAPID_SUBJECT`, `MAPAUA_ENABLED` i token tunelu przekaż przez zmienne środowiskowe lub plik `.env` obok `docker-compose.yml` (nie commitować).
+- Port 8787 jest wystawiony tylko na `127.0.0.1` (tunel `zorya-tunnel` działa w sieci hosta, więc go widzi); z LAN-u — przez SSH (`ssh -L 8787:127.0.0.1:8787 …`).
+- Kontener działa jako użytkownik `node` (uid/gid 1000): przed pierwszym startem `chown -R 1000:1000 data`.
+- Obraz `cloudflare/cloudflared` jest przypięty do wersji; podbijaj świadomie.
 - Pliki Docker z PR #4 (wieloetapowy obraz alpine, użytkownik `node`, healthcheck, wolumen `zorya-data`) są w historii (19183f6); produkcja zostaje przy wersji z `./data` i tunelem, przejście wymaga migracji danych.
 
 ## Publikacja (Oracle / Caddy — wariant)

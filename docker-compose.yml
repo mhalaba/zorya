@@ -4,7 +4,8 @@ services:
     container_name: zorya
     restart: unless-stopped
     ports:
-      - "8787:8787"
+      # Loopback only: cloudflared (host network) and local tools reach 127.0.0.1:8787; nothing on the LAN/internet directly.
+      - "127.0.0.1:8787:8787"
     environment:
       NODE_ENV: production
       PORT: "8787"
@@ -26,7 +27,8 @@ services:
       - ./data:/app/data
 
   zorya-tunnel:
-    image: cloudflare/cloudflared:latest
+    # Pinned; bump deliberately (https://github.com/cloudflare/cloudflared/releases).
+    image: cloudflare/cloudflared:2026.10.0
     container_name: zorya-tunnel
     restart: unless-stopped
     network_mode: host

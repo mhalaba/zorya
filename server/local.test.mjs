@@ -52,6 +52,10 @@ test("parsePlWindow: numeric dates, hours, month names, ranges, overnight", () =
   assert.equal(stamp.start, warsawToUtc(2026, 10, 16, 0, 0));
 
   // No year: the nearest such date (January after an October notice is next year).
+  // RSO "Syrena-26": "Od 12 do 16 października 2026" is a range, not just the 16th.
+  const od = parsePlWindow("Od 12 do 16 października 2026 r. na terenie województwa mazowieckiego odbywać się będą ćwiczenia", REF);
+  assert.equal(od.start, warsawToUtc(2026, 10, 12, 0, 0));
+  assert.equal(od.end, warsawToUtc(2026, 10, 16, 23, 59));
   const jan = parsePlWindow("5 stycznia ćwiczenia", REF);
   assert.equal(jan.start, warsawToUtc(2027, 1, 5, 0, 0));
 
