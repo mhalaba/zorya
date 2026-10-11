@@ -5,6 +5,8 @@ import { circlePoly, destPoint, prefersReducedMotion } from "../lib";
 import { iconForType, registerMapIcons } from "./icons";
 import { uaDead, uaGroup, uaIcon } from "../mapaua";
 import { LOCAL_META, LOCAL_ORDER, NOTAM_META, visibleLocal } from "../overlays";
+import { loadAdmin, loadGminy, powiatLevels as decodePowiaty, wojInView, type AdminLayers } from "../admin";
+import { openGmina } from "../place";
 import { useStore } from "../store";
 import type { FusionState, LocalCategory, VoivodeshipState } from "../types";
 import type { Feature, FeatureCollection } from "geojson";
@@ -52,6 +54,10 @@ export function MapCanvas() {
   const objTrack = useStore((s) => s.objTrack);
   const uaThreats = useStore((s) => s.uaThreats);
   const [mapReadyTick, setMapReadyTick] = useState(0);
+  const [adminTick, setAdminTick] = useState(0);
+  const adminRef = useRef<AdminLayers | null>(null);
+  /** Gmina features loaded so far, per voivodeship. */
+  const gminyRef = useRef(new Map<string, Feature[]>());
   const uaMissilesOn = useStore((s) => s.uaMissilesOn);
   const uaBombsOn = useStore((s) => s.uaBombsOn);
   const uaDronesOn = useStore((s) => s.uaDronesOn);
@@ -68,6 +74,8 @@ export function MapCanvas() {
   const localOn = useStore((s) => s.localOn);
   const localCats = useStore((s) => s.localCats);
   const focus = useStore((s) => s.focus);
+  const selectedGmina = useStore((s) => s.selectedGmina);
+  const searchPin = useStore((s) => s.searchPin);
 
   useEffect(() => {
     if (!ref.current || mapRef.current) return;
@@ -123,6 +131,11 @@ export function MapCanvas() {
       map.addSource("notam", { type: "geojson", data: emptyFc() });
       map.addSource("notam-pts", { type: "geojson", data: emptyFc() });
       map.addSource("local", { type: "geojson", data: emptyFc() });
+      // Alerts with an exact place or a gmina/powiat (outage points, named gminy), clustered when zoomed out.
+      map.addSource("local-pts", { type: "geojson", data: emptyFc(), cluster: true, clusterRadius: 36, clusterMaxZoom: 11 });
+      map.addSource("powiaty", { type: "geojson", data: emptyFc(), promoteId: "id" });
+      map.addSource("gminy", { type: "geojson", data: emptyFc(), promoteId: "id" });
+      map.addSource("search-pin", { type: "geojson", data: emptyFc() });
       map.addSource("cameras", {
         type: "geojson",
         data: emptyFc(),
@@ -188,22 +201,94 @@ export function MapCanvas() {
         source: "pl",
         paint: {
           "fill-color": [
-            "match",
-            ["coalesce", ["feature-state", "paint"], "info"],
-            "priority",
-            COLORS.crimson,
-            "watch",
-            COLORS.amber,
-            "transfer",
-            COLORS.olive,
+            "step",
+            ["zoom"],
+            LEVEL_COLOR,
+            POWIAT_ZOOM,
             COLORS.navy,
           ],
           "fill-opacity": [
-            "case",
-            ["boolean", ["feature-state", "hover"], false],
-            0.72,
-            ["match", ["coalesce", ["feature-state", "paint"], "info"], "priority", 0.45, "watch", 0.35, "transfer", 0.2, 0.42],
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            POWIAT_ZOOM - 0.4,
+            [
+              "case",
+              ["boolean", ["feature-state", "hover"], false],
+              0.72,
+              ["match", ["coalesce", ["feature-state", "paint"], "info"], "priority", 0.45, "watch", 0.35, "transfer", 0.2, 0.42],
+            ],
+            // Powiaty carry the level colour from here; the voivodeship keeps only the dark base.
+            POWIAT_ZOOM,
+            ["case", ["boolean", ["feature-state", "hover"], false], 0.5, 0.42],
           ],
+        },
+      });
+      // Powiaty: coloured by their own level from POWIAT_ZOOM; below it the voivodeship fill carries the colour.
+      map.addLayer({
+        id: "pow-fill",
+        type: "fill",
+        source: "powiaty",
+        paint: {
+          "fill-color": LEVEL_COLOR,
+          "fill-opacity": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            POWIAT_ZOOM - 0.4,
+            0,
+            POWIAT_ZOOM,
+            ["match", ["coalesce", ["feature-state", "paint"], "info"], "priority", 0.45, "watch", 0.35, "transfer", 0.2, 0],
+          ],
+        },
+      });
+      map.addLayer({
+        id: "pow-line",
+        type: "line",
+        source: "powiaty",
+        minzoom: POWIAT_ZOOM - 0.5,
+        paint: {
+          "line-color": ["case", ["boolean", ["feature-state", "selected"], false], "#E8EEF7", "#4A5A70"],
+          "line-width": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            5.5,
+            ["case", ["boolean", ["feature-state", "selected"], false], 1.8, 0.4],
+            8,
+            ["case", ["boolean", ["feature-state", "selected"], false], 2.2, 1],
+          ],
+          "line-opacity": ["case", ["boolean", ["feature-state", "selected"], false], 0.9, 0.7],
+        },
+      });
+      // Gminy: outlines and a (nearly) invisible fill for taps, from GMINA_ZOOM; the chosen one is highlighted.
+      map.addLayer({
+        id: "gminy-fill",
+        type: "fill",
+        source: "gminy",
+        minzoom: GMINA_ZOOM - 0.3,
+        paint: {
+          "fill-color": "#E8EEF7",
+          "fill-opacity": ["case", ["boolean", ["feature-state", "selected"], false], 0.16, 0.01],
+        },
+      });
+      map.addLayer({
+        id: "gminy-line",
+        type: "line",
+        source: "gminy",
+        minzoom: GMINA_ZOOM - 0.3,
+        paint: {
+          "line-color": ["case", ["boolean", ["feature-state", "selected"], false], "#FFFFFF", "#8796AB"],
+          "line-width": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            7,
+            ["case", ["boolean", ["feature-state", "selected"], false], 2.6, 0.3],
+            10,
+            ["case", ["boolean", ["feature-state", "selected"], false], 3, 0.9],
+          ],
+          "line-opacity": ["case", ["boolean", ["feature-state", "selected"], false], 1, 0.55],
         },
       });
       map.addLayer({
@@ -561,6 +646,8 @@ export function MapCanvas() {
         id: "local-icon",
         type: "symbol",
         source: "local",
+        maxzoom: GMINA_ZOOM,
+        filter: ["==", ["get", "set"], "all"],
         layout: {
           visibility: initial.localOn ? "visible" : "none",
           "icon-image": ["get", "icon"],
@@ -581,6 +668,109 @@ export function MapCanvas() {
           "text-color": "#E8EEF7",
           "text-halo-color": "#070B12",
           "text-halo-width": 1.6,
+        },
+      });
+      map.addLayer({
+        id: "pow-label",
+        type: "symbol",
+        source: "powiaty",
+        minzoom: 7,
+        maxzoom: 9,
+        layout: { "text-field": ["get", "short"], "text-font": ["Noto Sans Regular"], "text-size": 10.5, "text-padding": 6 },
+        paint: { "text-color": "#C2CCDA", "text-halo-color": "#070B12", "text-halo-width": 1.3 },
+      });
+      map.addLayer({
+        id: "gminy-label",
+        type: "symbol",
+        source: "gminy",
+        minzoom: 9,
+        layout: { "text-field": ["get", "name"], "text-font": ["Noto Sans Regular"], "text-size": 11, "text-padding": 4 },
+        paint: { "text-color": "#E8EEF7", "text-halo-color": "#070B12", "text-halo-width": 1.4 },
+      });
+      // Precise local alerts (zoomed in): clusters with a count, single alerts with their category icon.
+      map.addLayer({
+        id: "local-pt-cluster",
+        type: "circle",
+        source: "local-pts",
+        minzoom: GMINA_ZOOM,
+        filter: ["has", "point_count"],
+        layout: { visibility: initial.localOn ? "visible" : "none" },
+        paint: {
+          "circle-color": "#1C2A3F",
+          "circle-stroke-color": "#F2C14E",
+          "circle-stroke-width": 1.5,
+          "circle-radius": ["step", ["get", "point_count"], 11, 10, 14, 50, 18],
+        },
+      });
+      map.addLayer({
+        id: "local-pt-count",
+        type: "symbol",
+        source: "local-pts",
+        minzoom: GMINA_ZOOM,
+        filter: ["has", "point_count"],
+        layout: {
+          visibility: initial.localOn ? "visible" : "none",
+          "text-field": ["get", "point_count_abbreviated"],
+          "text-font": ["Noto Sans Regular"],
+          "text-size": 11,
+          "text-allow-overlap": true,
+          "text-ignore-placement": true,
+        },
+        paint: { "text-color": "#E8EEF7" },
+      });
+      map.addLayer({
+        id: "local-pt-icon",
+        type: "symbol",
+        source: "local-pts",
+        minzoom: GMINA_ZOOM,
+        filter: ["!", ["has", "point_count"]],
+        layout: {
+          visibility: initial.localOn ? "visible" : "none",
+          "icon-image": ["get", "icon"],
+          "icon-size": LOCAL_ICON_SIZE,
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+        },
+        paint: { "icon-opacity": ["case", ["get", "active"], 1, 0.6] },
+      });
+      map.addLayer({
+        id: "local-icon-wide",
+        type: "symbol",
+        source: "local",
+        minzoom: GMINA_ZOOM,
+        filter: ["==", ["get", "set"], "wide"],
+        layout: {
+          visibility: initial.localOn ? "visible" : "none",
+          "icon-image": ["get", "icon"],
+          "icon-size": LOCAL_ICON_SIZE,
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+          "icon-offset": slotMatch((k, i) => [localDx(k, i) / LOCAL_ICON_SIZE, LOCAL_DY / LOCAL_ICON_SIZE]),
+          "text-field": ["case", [">", ["get", "n"], 1], ["to-string", ["get", "n"]], ""],
+          "text-font": ["Noto Sans Regular"],
+          "text-size": 10,
+          "text-offset": slotMatch((k, i) => [(localDx(k, i) + 10) / 10, (LOCAL_DY - 9) / 10]),
+          "text-allow-overlap": true,
+          "text-ignore-placement": true,
+          "text-optional": true,
+        },
+        paint: {
+          "icon-opacity": ["case", ["get", "active"], 1, 0.6],
+          "text-color": "#E8EEF7",
+          "text-halo-color": "#070B12",
+          "text-halo-width": 1.6,
+        },
+      });
+      // Found address / "my location".
+      map.addLayer({
+        id: "search-pin",
+        type: "circle",
+        source: "search-pin",
+        paint: {
+          "circle-radius": 7,
+          "circle-color": "#FFFFFF",
+          "circle-stroke-color": "#070B12",
+          "circle-stroke-width": 3,
         },
       });
       // Region names on top: markers and clusters must not cover them.
@@ -614,7 +804,7 @@ export function MapCanvas() {
         const id = String(f.properties?.id ?? f.id ?? "");
         return f.layer.id === "mua-icon" ? `ua:${id}` : id;
       };
-      for (const l of [...OBJ_LAYERS, "local-icon"]) {
+      for (const l of [...OBJ_LAYERS, "local-icon", "local-icon-wide", "local-pt-icon", "local-pt-cluster"]) {
         map.on("mouseenter", l, () => {
           map.getCanvas().style.cursor = "pointer";
         });
@@ -635,10 +825,35 @@ export function MapCanvas() {
           [p.x - 8, p.y - 8],
           [p.x + 8, p.y + 8],
         ];
+        const zoomedIn = map.getZoom() >= GMINA_ZOOM;
+        // Cluster of precise local alerts: zoom in until it splits.
+        const cluster = zoomedIn ? map.queryRenderedFeatures(near, { layers: ["local-pt-cluster"] })[0] : null;
+        if (cluster) {
+          const src = map.getSource("local-pts") as GeoJSONSource;
+          const geom = cluster.geometry as { type: "Point"; coordinates: [number, number] };
+          void src.getClusterExpansionZoom(cluster.properties?.cluster_id).then((z) => map.easeTo({ center: geom.coordinates, zoom: z }));
+          return;
+        }
+        // A precise alert opens the gmina it sits in (the gmina panel lists it with the others there).
+        const pin = zoomedIn ? map.queryRenderedFeatures(near, { layers: ["local-pt-icon"] })[0] : null;
+        if (pin) {
+          const [lon, lat] = (pin.geometry as { type: "Point"; coordinates: [number, number] }).coordinates;
+          void openGmina({ lat, lon });
+          return;
+        }
         // A local-alert badge opens its voivodeship (the panel lists the alerts).
-        const badge = map.getLayer("local-icon") ? map.queryRenderedFeatures(near, { layers: ["local-icon"] })[0] : null;
+        const badge = map.queryRenderedFeatures(near, { layers: ["local-icon", "local-icon-wide"].filter((l) => map.getLayer(l)) })[0];
         if (badge?.properties?.voiv) {
           store.setSelectedVoiv(String(badge.properties.voiv));
+          return;
+        }
+        // Zoomed in, a tap means "this gmina": its panel lists the zones, alerts and threats that concern it.
+        if (zoomedIn) {
+          const g = map.queryRenderedFeatures(e.point, { layers: ["gminy-fill"] })[0];
+          const code = g ? String(g.properties?.id ?? g.id ?? "") : "";
+          void openGmina(code ? { gmina: code } : { lat: e.lngLat.lat, lon: e.lngLat.lng }).then((ok) => {
+            if (!ok) useStore.getState().setSelectedVoiv(null); // outside Poland
+          });
           return;
         }
         // Inside NOTAM / permanent areas: list every area under the finger.
@@ -656,7 +871,7 @@ export function MapCanvas() {
           store.setSelectedVoiv(String(reg.id ?? ""));
           return;
         }
-        if (store.selectedVoiv || store.selectedObj || store.selectedUa || store.selectedNotams) {
+        if (store.selectedVoiv || store.selectedObj || store.selectedUa || store.selectedNotams || store.selectedGmina) {
           store.setSelectedVoiv(null);
         }
       });
@@ -673,6 +888,25 @@ export function MapCanvas() {
       ready.current = true;
       setMapReadyTick((t) => t + 1);
       applyData(map);
+
+      loadAdmin()
+        .then((layers) => {
+          adminRef.current = layers;
+          const fc = {
+            ...layers.powiaty,
+            features: layers.powiaty.features.map((f) => ({
+              ...f,
+              properties: { ...f.properties, short: f.properties.city ? f.properties.name : `pow. ${f.properties.name}` },
+            })),
+          };
+          (map.getSource("powiaty") as GeoJSONSource | undefined)?.setData(fc);
+          // Same topology as the powiaty, so voivodeship and powiat borders coincide exactly.
+          (map.getSource("pl") as GeoJSONSource | undefined)?.setData(layers.woj);
+          setAdminTick((t) => t + 1);
+          void syncGminy(map);
+        })
+        .catch((err) => console.error("Zorya powiaty", err));
+      map.on("moveend", () => void syncGminy(map));
     });
 
     return () => {
@@ -682,6 +916,45 @@ export function MapCanvas() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /** Loads the gmina files the viewport needs (zoomed in only) and the selected gmina's voivodeship. */
+  async function syncGminy(map: MLMap) {
+    const layers = adminRef.current;
+    if (!layers) return;
+    const want = new Set<string>();
+    if (map.getZoom() >= GMINA_ZOOM - 0.5) {
+      const b = map.getBounds();
+      for (const id of wojInView(layers, [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()])) want.add(id);
+    }
+    const sel = useStore.getState().selectedGmina;
+    if (sel) want.add(sel.voivodeship);
+    const missing = [...want].filter((id) => !gminyRef.current.has(id));
+    if (!missing.length) return;
+    const got = await Promise.all(missing.map((id) => loadGminy(id).then((fc) => [id, fc.features] as const).catch(() => null)));
+    let added = false;
+    for (const g of got) {
+      if (!g || gminyRef.current.has(g[0])) continue;
+      gminyRef.current.set(g[0], g[1] as Feature[]);
+      added = true;
+    }
+    if (!added) return;
+    (map.getSource("gminy") as GeoJSONSource | undefined)?.setData({ type: "FeatureCollection", features: [...gminyRef.current.values()].flat() });
+    applyGminaSelection(map);
+  }
+
+  /** Highlights the selected gmina and its powiat (feature-state, no data reload). */
+  const selectedRef = useRef<{ g: string | null; p: string | null }>({ g: null, p: null });
+  function applyGminaSelection(map: MLMap) {
+    const sel = useStore.getState().selectedGmina;
+    const prev = selectedRef.current;
+    const next = { g: sel?.gmina.id ?? null, p: sel?.gmina.powiat.id ?? null };
+    if (!map.getSource("gminy") || !map.getSource("powiaty")) return;
+    if (prev.g && prev.g !== next.g) map.setFeatureState({ source: "gminy", id: prev.g }, { selected: false });
+    if (prev.p && prev.p !== next.p) map.setFeatureState({ source: "powiaty", id: prev.p }, { selected: false });
+    if (next.g) map.setFeatureState({ source: "gminy", id: next.g }, { selected: true });
+    if (next.p) map.setFeatureState({ source: "powiaty", id: next.p }, { selected: true });
+    selectedRef.current = next;
+  }
 
   /** Hover and selection only — cheap enough to run on every pointer move between regions. */
   function applyFocus(map: MLMap) {
@@ -864,6 +1137,38 @@ export function MapCanvas() {
     (map.getSource("mua-lines") as GeoJSONSource | undefined)?.setData(lines);
   }, [uaThreats, uaMissilesOn, uaBombsOn, uaDronesOn, selectedUa, mapReadyTick]);
 
+  // Selected gmina: make sure its voivodeship's gminy are loaded, then highlight it and its powiat.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready.current) return;
+    applyGminaSelection(map);
+    void syncGminy(map);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedGmina, mapReadyTick, adminTick]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready.current) return;
+    (map.getSource("search-pin") as GeoJSONSource | undefined)?.setData(
+      searchPin ? { type: "FeatureCollection", features: [{ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: searchPin } }] } : emptyFc()
+    );
+  }, [searchPin, mapReadyTick]);
+
+  // Powiat levels: only powiaty with something to show are sent; everything else is "info".
+  const paintedPow = useRef(new Set<string>());
+  const powiatLevels = state?.powiaty;
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready.current || !adminRef.current || !map.getSource("powiaty")) return;
+    const now = new Set<string>();
+    for (const p of decodePowiaty(state).values()) {
+      map.setFeatureState({ source: "powiaty", id: p.id }, { paint: p.level });
+      now.add(p.id);
+    }
+    for (const id of paintedPow.current) if (!now.has(id)) map.setFeatureState({ source: "powiaty", id }, { paint: "info" });
+    paintedPow.current = now;
+  }, [powiatLevels, mapReadyTick, adminTick]);
+
   // NOTAM areas + permanent areas.
   useEffect(() => {
     const map = mapRef.current;
@@ -919,44 +1224,62 @@ export function MapCanvas() {
     (map.getSource("aszones") as GeoJSONSource | undefined)?.setData({ type: "FeatureCollection", features: zones });
   }, [airspace, notamOn, zonesOn, selectedNotams, mapReadyTick]);
 
-  // Local alerts (outages, planned works, exercises) as badges per voivodeship.
+  // Local alerts: zoomed out, one badge per category and voivodeship (all alerts); zoomed in, every alert with a
+  // place of its own (outage point, named gmina/powiat) as a pin, and badges only for voivodeship-wide ones.
   const voivCentres = state?.voivodeships;
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready.current) return;
-    if (map.getLayer("local-icon")) map.setLayoutProperty("local-icon", "visibility", localOn ? "visible" : "none");
+    for (const l of ["local-icon", "local-icon-wide", "local-pt-cluster", "local-pt-count", "local-pt-icon"]) {
+      if (map.getLayer(l)) map.setLayoutProperty(l, "visibility", localOn ? "visible" : "none");
+    }
     const centre = new Map<string, [number, number]>();
     for (const v of voivCentres ?? []) if (Number.isFinite(v.lon) && Number.isFinite(v.lat)) centre.set(v.id, [v.lon, v.lat]);
     for (const [id, b] of Object.entries(VOIV_BOUNDS)) {
       if (!centre.has(id)) centre.set(id, [(b[0][0] + b[1][0]) / 2, (b[0][1] + b[1][1]) / 2]);
     }
-    const groups = new Map<string, Map<LocalCategory, { n: number; active: boolean }>>();
+    type Group = Map<string, Map<LocalCategory, { n: number; active: boolean }>>;
+    const all: Group = new Map();
+    const wide: Group = new Map();
+    const add = (groups: Group, voiv: string, c: LocalCategory, active: boolean) => {
+      const g = groups.get(voiv) ?? new Map();
+      const cur = g.get(c) ?? { n: 0, active: false };
+      g.set(c, { n: cur.n + 1, active: cur.active || active });
+      groups.set(voiv, g);
+    };
+    const pins: Feature[] = [];
     for (const a of visibleLocal(localAlerts, localCats)) {
-      for (const v of a.voivodeships) {
-        const g = groups.get(v) ?? new Map();
-        for (const c of a.categories) {
-          if (!localCats[c]) continue;
-          const cur = g.get(c) ?? { n: 0, active: false };
-          g.set(c, { n: cur.n + 1, active: cur.active || a.state === "active" });
-        }
-        groups.set(v, g);
-      }
+      const cats = a.categories.filter((c) => localCats[c]);
+      const active = a.state === "active";
+      for (const v of a.voivodeships) for (const c of cats) add(all, v, c, active);
+      if (a.at && cats.length) {
+        pins.push({
+          type: "Feature",
+          properties: { id: a.id, icon: LOCAL_META[cats[0]].icon, active },
+          geometry: { type: "Point", coordinates: a.at },
+        });
+      } else for (const v of a.voivodeships) for (const c of cats) add(wide, v, c, active);
     }
     const features: Feature[] = [];
-    for (const [voiv, g] of groups) {
-      const at = centre.get(voiv);
-      if (!at) continue;
-      const cats = LOCAL_ORDER.filter((c) => g.has(c));
-      cats.forEach((c, i) => {
-        const x = g.get(c)!;
-        features.push({
-          type: "Feature",
-          properties: { voiv, icon: LOCAL_META[c].icon, n: x.n, active: x.active, slot: cats.length * 10 + i },
-          geometry: { type: "Point", coordinates: at },
+    const badges = (groups: Group, set: string) => {
+      for (const [voiv, g] of groups) {
+        const at = centre.get(voiv);
+        if (!at) continue;
+        const cats = LOCAL_ORDER.filter((c) => g.has(c));
+        cats.forEach((c, i) => {
+          const x = g.get(c)!;
+          features.push({
+            type: "Feature",
+            properties: { voiv, set, icon: LOCAL_META[c].icon, n: x.n, active: x.active, slot: cats.length * 10 + i },
+            geometry: { type: "Point", coordinates: at },
+          });
         });
-      });
-    }
+      }
+    };
+    badges(all, "all");
+    badges(wide, "wide");
     (map.getSource("local") as GeoJSONSource | undefined)?.setData({ type: "FeatureCollection", features });
+    (map.getSource("local-pts") as GeoJSONSource | undefined)?.setData({ type: "FeatureCollection", features: pins });
   }, [localAlerts, localOn, localCats, voivCentres, mapReadyTick]);
 
   // "Show on map" from the panels: frame the area, leaving room for the bottom sheet on phones.
@@ -1081,6 +1404,22 @@ class FitAllControl implements maplibregl.IControl {
     this.el = null;
   }
 }
+
+/** From this zoom powiaty carry the level colour; below it the voivodeships do. */
+const POWIAT_ZOOM = 5;
+/** From this zoom gmina borders are drawn and a tap opens the gmina. */
+const GMINA_ZOOM = 7;
+const LEVEL_COLOR: maplibregl.ExpressionSpecification = [
+  "match",
+  ["coalesce", ["feature-state", "paint"], "info"],
+  "priority",
+  COLORS.crimson,
+  "watch",
+  COLORS.amber,
+  "transfer",
+  COLORS.olive,
+  COLORS.navy,
+];
 
 const LOCAL_ICON_SIZE = 0.55;
 /** Badge spacing (px) and drop below the voivodeship centre (px). */

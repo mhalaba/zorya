@@ -6,6 +6,7 @@
  * Informational layer: NOTAMs never change the air-threat level of a voivodeship.
  */
 import { voivodeshipsForPoints } from "./fusion.mjs";
+import { unitsForGeometry } from "./admin.mjs";
 import { envFlag, fetchText } from "./util.mjs";
 
 export const NOTAM_ENABLED = envFlag("ZORYA_NOTAM_ENABLED");
@@ -298,6 +299,7 @@ export function toNotamItem(row) {
   const pts = geo ? geometryPoints(geo.geometry) : [];
   // No area → no voivodeship: a FIR-wide NOTAM's Q-line centre sits in łódzkie, but it is not about łódzkie.
   const voivodeships = geo ? voivodeshipsForPoints(p.center ? [...pts, p.center] : pts) : [];
+  const units = geo ? unitsForGeometry(geo.geometry) : { gminy: [], powiaty: [] };
   const off = OFF_CONDITIONS.has(cls.condition);
   return {
     id,
@@ -324,6 +326,8 @@ export function toNotamItem(row) {
     geometry_source: geo?.source ?? null,
     bbox: bboxOf(pts),
     voivodeships,
+    gminy: units.gminy,
+    powiaty: units.powiaty,
     map: !!geo && ZONE_CATEGORIES.has(cls.category) && !off,
   };
 }

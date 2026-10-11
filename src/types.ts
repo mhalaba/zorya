@@ -130,11 +130,28 @@ export interface CameraSite {
   note: string;
 }
 
+/**
+ * Powiat levels (server/fusion.mjs scorePowiaty), compact: [teryt, "w" (watch) | "p" (priority), points, why index].
+ * Powiaty not listed are "info".
+ */
+export interface PowiatLevels {
+  why: string[];
+  list: [string, "w" | "p", number, number][];
+}
+
+export interface PowiatState {
+  id: string;
+  level: Level;
+  points: number;
+  whyPl: string;
+}
+
 export interface FusionState {
   generated_at: string;
   demo: boolean;
   sources: SourceStatus[];
   voivodeships: VoivodeshipState[];
+  powiaty?: PowiatLevels;
   objects: TrackedObject[];
   adsb: AdsbCraft[];
   zones: PazpZone[];
@@ -224,7 +241,31 @@ export interface LocalAlert {
   /** "text": window read from the notice; "default": no date in it, shown for a fixed time after publication. */
   window: "text" | "default" | "source";
   voivodeships: string[];
+  /** TERYT of the gminy (7 digits) / powiaty (4 digits) the source names or locates; empty = whole voivodeship. */
+  gminy?: string[];
+  powiaty?: string[];
+  /** Exact place from the source ([lon, lat]), e.g. an operator's outage point. */
+  point?: [number, number] | null;
+  /** Map position: point, else the gmina's / single powiat's anchor; null = voivodeship only. */
+  at?: [number, number] | null;
+  precision?: "point" | "gmina" | "powiat" | "voivodeship";
   state: "active" | "upcoming" | "ended";
+}
+
+/** /api/place: the gmina of a point (map click, search, "my location"), with its powiat and voivodeship. */
+export interface PlaceInfo {
+  gmina: {
+    id: string;
+    name: string;
+    kind: string;
+    label: string;
+    powiat: { id: string; name: string; label: string };
+    voivodeship: string;
+    anchor: [number, number];
+    bbox: [number, number, number, number];
+  };
+  powiat: { id: string; name: string; label: string; city: boolean; voivodeship: string; anchor: [number, number]; bbox: [number, number, number, number] } | null;
+  voivodeship: string;
 }
 
 export interface LocalAlertsSnapshot {
@@ -276,6 +317,8 @@ export interface Notam {
   geometry_source: "text" | "circle" | "qline" | "aup" | null;
   bbox: [number, number, number, number] | null;
   voivodeships: string[];
+  gminy?: string[];
+  powiaty?: string[];
   map: boolean;
   state: "active" | "upcoming";
 }

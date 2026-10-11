@@ -22,7 +22,7 @@ export function syncPushSubscription() {
 }
 
 async function sync() {
-  const { notifyGranted, areas } = useStore.getState();
+  const { notifyGranted, areas, watchGminy } = useStore.getState();
   if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return;
   const reg = await navigator.serviceWorker.ready;
   if (!notifyGranted || Notification.permission !== "granted") {
@@ -37,13 +37,25 @@ async function sync() {
     }
     return;
   }
-  const places = areas.map((p) => ({
-    voivodeship: p.area.id,
-    notifyWatch: true,
-    notifyPriority: true,
-    name: p.area.name,
-  }));
-  if (!places.length) return;
+  const VOIV_SLUG = /^[a-z]+(?:-[a-z]+)?$/;
+  const places = [
+    ...watchGminy.map((g) => ({ gmina: g.id, notifyWatch: true, notifyPriority: true, name: g.name })),
+    // Older onboarding areas: only voivodeship slugs mean anything to the server (TERYT-like ids were dropped).
+    ...areas
+      .filter((p) => VOIV_SLUG.test(p.area.id))
+      .map((p) => ({ voivodeship: p.area.id, notifyWatch: true, notifyPriority: true, name: p.area.name })),
+  ].slice(0, 8);
+  if (!places.length) {
+    const existing = await reg.pushManager.getSubscription();
+    if (existing) {
+      await fetch("/api/push/unsubscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint: existing.endpoint }),
+      }).catch(() => undefined);
+    }
+    return;
+  }
   const keyRes = await fetch("/api/push/key");
   if (!keyRes.ok) return;
   const { publicKey } = (await keyRes.json()) as { publicKey: string };

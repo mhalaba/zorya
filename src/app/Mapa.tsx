@@ -1,10 +1,12 @@
-import { Component, type ReactNode } from "react";
+import { Component, useEffect, type ReactNode } from "react";
+import { openGmina } from "../place";
 import { s } from "../strings";
 import { useStore } from "../store";
 import { MapCanvas } from "../map/MapCanvas";
 import { MapHud } from "../components/Chrome";
 import { MapDetail } from "../components/MapDetail";
 import { MapLayers, QuickChips } from "../components/MapLayers";
+import { MapSearch } from "../components/MapSearch";
 import { useMapFeeds, visibleLocal } from "../overlays";
 
 class MapErrorBoundary extends Component<{ children: ReactNode }, { err: string | null }> {
@@ -26,6 +28,11 @@ export function Mapa() {
   const notams = useStore((x) => x.airspace?.notam.items.length ?? 0);
   const local = useStore((x) => visibleLocal(x.localAlerts, x.localCats).length);
   useMapFeeds();
+  // Deep link from a push notification or a shared link: /app/mapa?g=<gmina TERYT>.
+  useEffect(() => {
+    const g = new URLSearchParams(location.search).get("g");
+    if (g && /^\d{6,7}$/.test(g)) void openGmina({ gmina: g }, true);
+  }, []);
   const ua = fusion ? fusion.ua_alerts.filter((a) => a.active).length : 0;
 
   return (
@@ -34,7 +41,10 @@ export function Mapa() {
         <MapCanvas />
       </MapErrorBoundary>
       <MapHud />
-      <QuickChips />
+      <div className="map-top">
+        <MapSearch />
+        <QuickChips />
+      </div>
       <MapLayers />
       <MapDetail />
       {connecting && !fusion && <div className="map-status">{s("home.loading")}</div>}

@@ -13,6 +13,7 @@ export function App() {
   const path = usePath();
   const notifyGranted = useStore((s) => s.notifyGranted);
   const areas = useStore((s) => s.areas);
+  const watchGminy = useStore((s) => s.watchGminy);
 
   useEffect(() => {
     syncHead(path);
@@ -20,7 +21,7 @@ export function App() {
 
   useEffect(() => {
     void syncPushSubscription();
-  }, [notifyGranted, areas]);
+  }, [notifyGranted, areas, watchGminy]);
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {

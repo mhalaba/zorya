@@ -8,6 +8,7 @@
  * Informational only: never changes the air-threat level.
  */
 import { voivodeshipAt } from "./fusion.mjs";
+import { mergeUnits, unitsForPoints, unitsFromTeryt, unitsFromText } from "./admin.mjs";
 import { localStore, OPERATOR_HORIZON_MS, VOIV_IDS } from "./local.mjs";
 import { envFlag, fetchText, parseWarsawTime, voivFromTeryt, voivFromText } from "./util.mjs";
 
@@ -42,7 +43,11 @@ export function placeOf(message) {
   return clip(m, 48);
 }
 
-function baseItem({ id, source, source_name, kind, title, summary, url, published, start, end, voivodeships }) {
+/** [lon, lat] rounded to ~1 m, or null. */
+const pointOf = (lat, lon) =>
+  Number.isFinite(lat) && Number.isFinite(lon) ? [Math.round(lon * 1e5) / 1e5, Math.round(lat * 1e5) / 1e5] : null;
+
+function baseItem({ id, source, source_name, kind, title, summary, url, published, start, end, voivodeships, units, point }) {
   return {
     id: String(id).slice(0, 120),
     source,
@@ -58,6 +63,9 @@ function baseItem({ id, source, source_name, kind, title, summary, url, publishe
     ends_at: iso(end),
     window: "source",
     voivodeships: voivodeships.filter((v) => VOIV_IDS.has(v)),
+    gminy: units?.gminy ?? [],
+    powiaty: units?.powiaty ?? [],
+    point: point ?? null,
   };
 }
 
@@ -75,6 +83,10 @@ export function tauronItem(r, now = Date.now()) {
   const msg = String(r.Message || "");
   const pt = r.Center || (Array.isArray(r.Coordinates) ? r.Coordinates[0] : null);
   const at = pt ? voivodeshipAt(Number(pt.lat), Number(pt.lng)) : null;
+  const point = pt ? pointOf(Number(pt.lat), Number(pt.lng)) : null;
+  // Every vertex of the outage area (Coordinates) counts, so an outage spanning a gmina border lists both.
+  const pts = (Array.isArray(r.Coordinates) ? r.Coordinates : []).map((c) => [Number(c?.lng), Number(c?.lat)]);
+  const units = unitsForPoints(point ? [point, ...pts] : pts);
   return baseItem({
     id: `tauron-${r.OutageId}`,
     source: "tauron",
@@ -87,6 +99,8 @@ export function tauronItem(r, now = Date.now()) {
     start,
     end,
     voivodeships: at ? [at] : voivFromText(msg),
+    units: units.gminy.length ? units : unitsFromText(msg, at ? [at] : []),
+    point,
   });
 }
 
@@ -98,7 +112,10 @@ export function tauronItems(rows, now = Date.now()) {
     if (!it) continue;
     const prev = byId.get(it.id);
     if (!prev) byId.set(it.id, it);
-    else for (const v of it.voivodeships) if (!prev.voivodeships.includes(v)) prev.voivodeships.push(v);
+    else {
+      for (const v of it.voivodeships) if (!prev.voivodeships.includes(v)) prev.voivodeships.push(v);
+      Object.assign(prev, mergeUnits(prev, it));
+    }
   }
   return [...byId.values()];
 }
@@ -131,12 +148,20 @@ export function pgeItem(r, now = Date.now()) {
   const addr = Array.isArray(r.addresses) ? r.addresses : [];
   const teryt = addr.map((a) => a?.teryt?.voivodeshipCode || a?.teryt?.communeCode).filter(Boolean);
   let voiv = voivFromTeryt(teryt);
-  if (!voiv.length && Array.isArray(r.coordinates) && r.coordinates[0]) {
-    const at = voivodeshipAt(Number(r.coordinates[0].latitude), Number(r.coordinates[0].longitude));
+  const coords = (Array.isArray(r.coordinates) ? r.coordinates : []).map((c) => [Number(c?.longitude), Number(c?.latitude)]);
+  if (!voiv.length && coords[0]) {
+    const at = voivodeshipAt(coords[0][1], coords[0][0]);
     if (at) voiv = [at];
   }
   const desc = String(r.description || "");
   if (!voiv.length) voiv = voivFromText(desc);
+  // Gmina from the address TERYT (communeCode) and from the outage coordinates; the text as a last resort.
+  let units = mergeUnits(
+    unitsFromTeryt(addr.flatMap((a) => [a?.teryt?.communeCode, a?.teryt?.districtCode, a?.teryt?.countyCode])),
+    unitsForPoints(coords)
+  );
+  if (!units.gminy.length && !units.powiaty.length) units = unitsFromText(desc, voiv);
+  const point = coords[0] ? pointOf(coords[0][1], coords[0][0]) : null;
   const place = addr[0]?.teryt?.cityName || placeOf(desc) || r.regionName || "obszar PGE";
   const more = live.length > 1 ? ` (+${live.length - 1} kolejne terminy)` : "";
   return baseItem({
@@ -151,6 +176,8 @@ export function pgeItem(r, now = Date.now()) {
     start: win.s,
     end: win.e,
     voivodeships: voiv,
+    units,
+    point,
   });
 }
 

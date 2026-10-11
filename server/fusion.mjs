@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { allPowiaty } from "./admin.mjs";
 
 export const SOURCE_IDS = ["neptun", "ua", "adsb", "rss", "rcb", "pazp"];
 
@@ -271,6 +272,8 @@ export function scoreWorld(now, input) {
 
   const objectsOut = [];
   const signals = [];
+  /** Scored (non-observation) objects with their raw value, reused for the powiat level. */
+  const rawObjects = [];
 
   for (const obj of input.objects) {
     const dist = distToPlBorder(obj.lat, obj.lon);
@@ -294,6 +297,7 @@ export function scoreWorld(now, input) {
         else if (obj.eta_min <= 10) raw = Math.max(raw, 2);
       }
     }
+    if (!observation && raw > 0) rawObjects.push({ lat: obj.lat, lon: obj.lon, raw, type: obj.type, n: obj.count || 1, toward: fHead >= 1 });
     for (const v of VOIV) {
       if (observation || raw <= 0) {
         contrib.push({ id: v.id, points: 0 });
@@ -542,7 +546,73 @@ export function scoreWorld(now, input) {
     }
   }
 
-  return { voivodeships, objects: objectsOut, signals, objectContribByVoiv };
+  const powiaty = scorePowiaty(input, rawObjects, buckets, voivodeships);
+  return { voivodeships, powiaty, objects: objectsOut, signals, objectContribByVoiv };
+}
+
+const LEVELS = ["info", "watch", "priority"];
+
+/**
+ * Powiat level (380 units). Only NEPTUN and the UA oblast alerts are measured from the powiat's own centre — the
+ * sources whose position is real; RSO/RCB, media and the rest stay voivodeship-wide (copied from the voivodeship's
+ * capped breakdown), never sharper than the source. Same kernel, caps and thresholds as for voivodeships.
+ * Safety band: a powiat is at most one step above its voivodeship (unless RSO forced it), and never below "watch"
+ * while its voivodeship is "priority". No neighbour transfer: the distance kernel already gives the gradient.
+ * The voivodeship level is untouched: existing push subscribers, history and archive see exactly what they saw.
+ */
+export function scorePowiaty(input, rawObjects, buckets, voivodeships) {
+  const units = allPowiaty();
+  if (!units.length) return { why: [], list: [] };
+  const voivById = Object.fromEntries(voivodeships.map((v) => [v.id, v]));
+  const alerts = (input.ua_alerts || [])
+    .filter((a) => a.active)
+    .map((a) => UA_OBLASTS.find((o) => o.id === a.oblast))
+    .filter(Boolean)
+    .map((o) => ({ o, pts: uaAlertWeight(o.distKm) }))
+    .filter((x) => x.pts > 0);
+  const out = [];
+  for (const p of units) {
+    const c = p.centroid || p.anchor;
+    const b = buckets[p.woj];
+    const v = voivById[p.woj];
+    if (!c || !b || !v) continue;
+    let neptun = 0;
+    const hits = new Map();
+    let minDist = Infinity;
+    let toward = false;
+    for (const o of rawObjects) {
+      const d = haversine(o.lon, o.lat, c[0], c[1]);
+      const pts = o.raw * Math.max(0.12, Math.min(1, 1.15 - d / 420));
+      neptun += pts;
+      if (pts > 0.05) {
+        hits.set(o.type, (hits.get(o.type) || 0) + o.n);
+        minDist = Math.min(minDist, d);
+        toward ||= o.toward;
+      }
+    }
+    let ua = 0;
+    for (const { o, pts } of alerts) {
+      const d = haversine(o.lon, o.lat, c[0], c[1]);
+      ua += pts * (d < 220 ? 1 : EAST_IDS.has(p.woj) ? 0.4 : 0.1);
+    }
+    const own = cap(neptun, 8) + cap(ua, 1) + b.own.rcb + b.own.media + b.own.pazp + b.own.other;
+    let lv = LEVELS.indexOf(levelOf(own, b.rcbForce));
+    const vl = LEVELS.indexOf(v.level);
+    if (!b.rcbForce) lv = Math.min(lv, vl + 1);
+    if (vl === 2) lv = Math.max(lv, 1);
+    if (lv === 0) continue; // the client paints every powiat not listed as "info"
+    const why = [];
+    if (hits.size) {
+      why.push(`${[...hits].map(([t, n]) => `${n}× ${labelType(t)}`).join(", ")} ~${Math.round(minDist)} km od powiatu${toward ? ", kurs na PL" : ""}`);
+    }
+    if (ua > 0.04) why.push("alarm w obwodzie UA");
+    if (b.own.rcb > 0) why.push("Alert RCB (całe województwo)");
+    if (b.own.media > 0.04) why.push("wzmianka RSS (województwo)");
+    out.push([p.id, LEVELS[lv] === "priority" ? "p" : "w", round1(own), why.join(" · ")]);
+  }
+  // Compact for the WebSocket frame: [teryt, "w"|"p", points, why#], explanations listed once.
+  const whys = [...new Set(out.map((r) => r[3]))];
+  return { why: whys, list: out.map((r) => [r[0], r[1], r[2], whys.indexOf(r[3])]) };
 }
 
 export function labelType(type) {
@@ -820,6 +890,8 @@ export function buildState(now = Date.now(), input, sourceRows) {
     demo: false,
     sources,
     voivodeships: scored.voivodeships,
+    // Powiaty with something to show (level or points); every other powiat is "info".
+    powiaty: scored.powiaty,
     objects: scored.objects.map((o) => ({
       id: o.id,
       type: o.type,

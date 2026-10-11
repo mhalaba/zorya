@@ -5,6 +5,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { VOIV } from "./fusion.mjs";
+import { gminaById, powiatById } from "./admin.mjs";
 
 const require = createRequire(import.meta.url);
 const webpush = require("web-push");
@@ -16,6 +17,8 @@ fs.mkdirSync(dataDir, { recursive: true });
 const vapidPath = path.join(dataDir, "vapid.json");
 const subsPath = path.join(dataDir, "push-subs.json");
 const COOLDOWN_MS = 10 * 60 * 1000;
+/** Gmina places follow their powiat's level, which crosses thresholds more often than a voivodeship's: rarer repeats. */
+const GMINA_COOLDOWN_MS = 30 * 60 * 1000;
 const MAX_SUBS = 10_000;
 const VOIV_IDS = new Set(VOIV.map((v) => v.id));
 /** A push older than this is noise, not a warning: the push service drops it instead of delivering it late. */
@@ -93,15 +96,17 @@ export function upsertPushSub(body) {
   if (!Array.isArray(body.places)) throw new Error("places musi być tablicą");
   const known = subs.some((s) => s.subscription.endpoint === endpoint);
   if (!known && subs.length >= MAX_SUBS) throw new Error("limit subskrypcji");
+  // Two kinds of place: a voivodeship (slug, the original meaning, unchanged) or a gmina (7-digit TERYT), which is
+  // notified by its powiat's level. Only the powiat and voivodeship are derived server-side; nothing else is kept.
   const places = body.places
     .slice(0, 8)
-    .map((p) => ({
-      voivodeship: String(p?.voivodeship || "").slice(0, 40),
-      notifyWatch: !!p?.notifyWatch,
-      notifyPriority: p?.notifyPriority !== false,
-      name: String(p?.name || "").slice(0, 80),
-    }))
-    .filter((p) => VOIV_IDS.has(p.voivodeship));
+    .map((p) => {
+      const base = { notifyWatch: !!p?.notifyWatch, notifyPriority: p?.notifyPriority !== false, name: String(p?.name || "").slice(0, 80) };
+      const g = p?.gmina ? gminaById(String(p.gmina).replace(/\D/g, "").slice(0, 7)) : null;
+      if (g) return { ...base, gmina: g.id, powiat: g.pow, voivodeship: g.woj, name: base.name || g.name };
+      return { ...base, voivodeship: String(p?.voivodeship || "").slice(0, 40) };
+    })
+    .filter((p) => p.gmina || VOIV_IDS.has(p.voivodeship));
   subs = subs.filter((s) => s.subscription.endpoint !== subscription.endpoint);
   if (places.length) {
     subs.push({
@@ -127,6 +132,34 @@ export function removePushSub(endpoint) {
   if (subs.length !== before) saveSubs();
 }
 
+/** Notification for a gmina place, from its powiat's level (null: nothing to send or still cooling down). */
+function gminaJob(sub, place, p, now) {
+  if (!p) return null;
+  const priority = p.level === "priority" && place.notifyPriority;
+  const watch = p.level === "watch" && place.notifyWatch;
+  if (!priority && !watch) return null;
+  const level = priority ? "priority" : "watch";
+  const key = `p:${place.powiat}:${level}`;
+  if ((sub.last?.[key] ?? 0) > now - GMINA_COOLDOWN_MS) return null;
+  sub.last = sub.last || {};
+  sub.last[key] = now;
+  const en = sub.lang === "en";
+  const powLabel = powiatById(place.powiat)?.label || place.powiat;
+  const lvlWord = level === "priority" ? (en ? "PRIORITY" : "PRIORYTET") : en ? "WATCH" : "UWAGA";
+  return {
+    sub,
+    level,
+    topic: `z-p${place.powiat}-${level}`,
+    payload: JSON.stringify({
+      title: `Zorya · ${place.name} · ${lvlWord}`,
+      body: `${powLabel}: ${Number(p.points).toFixed(1)} ${en ? "pts" : "pkt"}${p.why ? ` — ${p.why}` : ""}`,
+      level,
+      tag: `zorya-p${place.powiat}-${level}`,
+      url: `/app/mapa?g=${place.gmina}`,
+    }),
+  };
+}
+
 let notifying = false;
 
 export async function notifyFromState(state) {
@@ -142,11 +175,20 @@ export async function notifyFromState(state) {
 async function notifyOnce(state) {
   const now = Date.now();
   const byId = Object.fromEntries(state.voivodeships.map((v) => [v.id, v]));
+  const pow = new Map((state.powiaty?.list || []).map(([id, l, pts, w]) => [id, { level: l === "p" ? "priority" : "watch", points: pts, why: state.powiaty.why[w] || "" }]));
   const jobs = [];
   let dirty = false;
   for (const sub of subs) {
     if (!sub.places?.length) continue;
     for (const place of sub.places) {
+      if (place.gmina) {
+        const job = gminaJob(sub, place, pow.get(place.powiat), now);
+        if (job) {
+          jobs.push(job);
+          dirty = true;
+        }
+        continue;
+      }
       const v = byId[place.voivodeship];
       if (!v) continue;
       const priority = v.level === "priority" && place.notifyPriority;

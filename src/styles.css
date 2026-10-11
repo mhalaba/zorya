@@ -922,10 +922,10 @@ footer.site-foot .lk a { text-decoration: none; }
 .map-detail {
   position: absolute;
   z-index: 30;
-  top: max(94px, calc(env(safe-area-inset-top) + 86px));
+  top: max(140px, calc(env(safe-area-inset-top) + 132px));
   left: max(10px, env(safe-area-inset-left));
   width: min(380px, calc(100% - 20px));
-  max-height: calc(100% - 150px);
+  max-height: calc(100% - 196px);
   display: flex;
   flex-direction: column;
   background: var(--z-bg-raised);
@@ -1094,16 +1094,68 @@ footer.site-foot .lk a { text-decoration: none; }
 .ua-sw.zone { background: transparent; border: 1px dashed #FF5A4E; }
 
 /* Always-visible shortcuts under the HUD: NOTAM list, local alerts list. */
-.map-quick {
+/* Search + quick chips under the HUD. */
+.map-top {
   position: absolute;
-  z-index: 5;
+  z-index: 7;
   top: max(50px, calc(env(safe-area-inset-top) + 42px));
   left: max(10px, env(safe-area-inset-left));
+  width: min(360px, calc(100% - 80px));
+  display: grid;
+  gap: 6px;
+}
+.map-quick {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  max-width: calc(100% - 80px);
 }
+.map-search { position: relative; }
+.ms-row { display: flex; gap: 0; }
+.map-search input {
+  flex: 1;
+  min-width: 0;
+  min-height: 38px;
+  padding: 6px 10px;
+  border: 1px solid var(--z-line-strong);
+  border-right: 0;
+  background: color-mix(in srgb, var(--z-bg-raised) 94%, transparent);
+  color: var(--z-text);
+  font: inherit;
+  font-size: 15px;
+}
+.map-search input:focus-visible { outline: 2px solid var(--z-text); outline-offset: -2px; }
+.ms-btn {
+  width: 40px;
+  min-height: 38px;
+  border: 1px solid var(--z-line-strong);
+  background: color-mix(in srgb, var(--z-bg-raised) 94%, transparent);
+  color: var(--z-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.ms-list {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  max-height: min(60dvh, 420px);
+  overflow: auto;
+  border: 1px solid var(--z-line-strong);
+  background: var(--z-bg-raised);
+}
+.ms-list li { display: grid; gap: 1px; padding: 8px 12px; cursor: pointer; min-height: 40px; }
+.ms-list li.on, .ms-list li:hover { background: color-mix(in srgb, var(--z-text) 10%, transparent); }
+.ms-name { font-size: 15px; font-weight: 700; overflow-wrap: anywhere; }
+.ms-ctx { font-size: 12px; color: var(--z-text-2); overflow-wrap: anywhere; }
+.ms-more { color: var(--z-link); font-size: 13px; border-top: 1px solid var(--z-line); }
+.ms-note { font-size: 12px; color: var(--z-text-2); cursor: default; }
+.ms-note.solo { margin-top: 4px; padding: 4px 8px; background: var(--z-bg-raised); border: 1px solid var(--z-line); }
 .mq-chip {
   display: inline-flex;
   align-items: center;
@@ -1204,3 +1256,4 @@ footer.site-foot .lk a { text-decoration: none; }
   color: var(--z-text-2);
 }
 #wojewodztwa p { max-width: 72ch; font-size: 17px; line-height: 26px; color: var(--z-text-2); }
+.md-watch { display: grid; gap: 4px; justify-items: start; }

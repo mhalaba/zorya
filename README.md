@@ -1,6 +1,6 @@
 # Zorya
 
-**czuwanie świtu** — niekomercyjna mapa zagrożeń z powietrza dla Polski z otwartych źródeł: NEPTUN (OSINT z Ukrainy, nie radar), alarmy powietrzne UA, ADS-B (adsb.lol), RSO / Alert RCB (komunikaty.tvp.pl) i media RSS (RMF24, PAP). Ocena co minutę dla każdego województwa. Strona „O projekcie”: `/o-projekcie` (EN: `/en/about`).
+**czuwanie świtu** — niekomercyjna mapa zagrożeń z powietrza dla Polski z otwartych źródeł: NEPTUN (OSINT z Ukrainy, nie radar), alarmy powietrzne UA, ADS-B (adsb.lol), RSO / Alert RCB (komunikaty.tvp.pl) i media RSS (RMF24, PAP). Ocena co minutę dla każdego województwa i — dokładniej — dla każdego z 380 powiatów; kliknięcie w gminę lub wyszukanie adresu pokazuje sytuację dla tej gminy. Strona „O projekcie”: `/o-projekcie` (EN: `/en/about`).
 
 **Produkcja:** [https://zorya.website](https://zorya.website) — HTTPS, PWA. Krawędź: Cloudflare Tunnel na `http://127.0.0.1:8787`.
 
@@ -73,6 +73,18 @@ Aktualizacja: `sudo bash /opt/zorya/deploy/update.sh`. Kluczy VAPID w `/opt/zory
 
 Brak kont, reklam, ciasteczek i skryptów trzecich. Fonty Atkinson Hyperlegible są self-hostowane (`public/fonts/`). Serwer dostaje nazwy subskrybowanych gmin, token push i zgłoszenia (miejsce zaokrąglone do 500 m).
 
+## Powiaty, gminy i wyszukiwanie
+
+**Granice.** PRG (Państwowy Rejestr Granic, Geoportal, sierpień 2025, domena publiczna) w wersji WGS84 z repozytorium waszkiewiczja/GeoJSON-Polska-Wojewodztwa-Powiaty-Gminy; `node scripts/build-admin-geo.mjs` upraszcza gminy raz i z nich „rozpuszcza” powiaty i województwa (jedna topologia, granice się pokrywają). Wynik: `public/geo/pl-admin.topojson` (województwa + 380 powiatów, ~117 KB gzip, ładowane z mapą) i `public/geo/gminy/<województwo>.topojson` (2479 gmin, 13–47 KB gzip, ładowane dopiero po przybliżeniu). `public/geo/pl-voivodeships.geojson` celowo się nie zmienia — fuzja mierzy na nim odległość od granicy.
+
+**Poziom powiatu.** Ocena województw liczy się dokładnie jak dotąd (te same punkty, progi, push dla subskrypcji województw, historia, archiwum). Obok fuzja liczy poziom każdego powiatu: NEPTUN i alarmy w obwodach UA mierzone od środka powiatu (ta sama funkcja odległości, limity i progi 2/4 pkt), RSO/RCB i media — jak dla całego województwa (źródło nie podaje dokładniej). Bezpiecznik: powiat najwyżej o stopień wyżej niż jego województwo (chyba że RCB) i nie niżej niż „uwaga”, gdy województwo ma „priorytet”. Gmina dziedziczy poziom powiatu — żadne źródło nie jest dokładniejsze niż ~25 km. Od przybliżenia 5 mapa koloruje powiaty, obrys województw zostaje. W ramce WS tylko powiaty z poziomem (`state.powiaty = { why: [...], list: [[teryt, "w"|"p", pkt, why#]] }`), kilka KB przy dużym ataku.
+
+**Gmina.** Od przybliżenia 7 widać granice gmin, a dotknięcie mapy otwiera panel gminy: poziom powiatu i województwa, obiekty w promieniu 400 km (odległość, kierunek, „kurs w stronę gminy”, czas przy obecnym kursie), komunikaty dotyczące gminy (punkt operatora, gmina z TERYT/treści, ostrzeżenie dla całego powiatu), w innych gminach powiatu i tylko z województwem, strefy AUP/NOTAM nad gminą. Przycisk „powiadamiaj o tej gminie” zapisuje subskrypcję push z kodem gminy — serwer zna z niego tylko powiat i województwo i powiadamia według poziomu powiatu (co najwyżej raz na 30 min dla danego poziomu). Link `/app/mapa?g=<TERYT gminy>` otwiera gminę (tak też otwiera się powiadomienie). `GET /api/place?lat=&lon=` lub `?gmina=` — gmina, powiat, województwo punktu.
+
+**Dokładność alertów.** Każdy alert lokalny i strefa ma `gminy` (TERYT 7), `powiaty` (TERYT 4), `point`, `at` i `precision` (`point` | `gmina` | `powiat` | `voivodeship`): Tauron/PGE — punkt i gmina z współrzędnych/TERYT adresu, IMGW — powiaty z TERYT, RSO i kanały — nazwy gmin/powiatów z treści szukane tylko w województwie komunikatu (nazwy powtarzające się w kilku powiatach są pomijane), AUP/NOTAM — gminy pod obszarem. Po przybliżeniu mapa pokazuje alerty w ich miejscu (z grupowaniem), a znaczki przy województwie zostają tylko dla komunikatów bez dokładniejszego miejsca.
+
+**Wyszukiwanie.** Pole „Gmina, miejscowość, adres…”: podczas pisania podpowiada gminy i powiaty z własnego indeksu (zapytanie nie wychodzi poza serwer; „Osiek oświęcimski” rozróżnia imienniczki). Enter szuka dokładnego adresu: serwer zamienia wpis na składnię GUGiK UUG („Miejscowość, Ulica Numer”, bez kodu pocztowego i numeru lokalu, miasto na początek) i pyta `services.gugik.gov.pl/uug` (`srid=4326`, punkty adresowe PRG), a gdy nic nie znajdzie — OpenStreetMap Nominatim (najwyżej 1 zapytanie/s, nigdy przy pisaniu). Wynik dostaje pinezkę, gminę i panel. Przycisk celownika — „moje położenie” (zaokrąglone do ~100 m, tylko do własnego serwera). Limit 20 wyszukiwań adresu/min na IP, cache 10 min. `ZORYA_GEOCODER_ENABLED=0` wyłącza geokodowanie, `ZORYA_UUG_URL` / `ZORYA_NOMINATIM_URL` (pusty = bez OSM) — lustra.
+
 ## Archiwum dronów (180 dni)
 
 Serwer zapisuje każdy dron do SQLite `data/drones.sqlite` (`ZORYA_DATA_DIR`, w Dockerze wolumen `./data:/app/data`):
@@ -127,7 +139,7 @@ Do `/api/local-alerts` trafiają tylko wyłączenia trwające lub zaczynające s
 
 - Zapisy (`POST /api/reports`, `DELETE /api/reports/:id`, push) tylko z tej samej domeny (bez nagłówków CORS), z limitami na IP; publiczne odczyty `GET` mają CORS `*`.
 - Zgłoszenia: biała lista rodzajów, położenie tylko w Polsce i zaokrąglane do 500 m **na serwerze**, notatka do 500 znaków, losowy identyfikator (128 bit), pamięć ograniczona (2000 / 24 h).
-- Push: tylko endpointy usług Web Push, walidacja kluczy i województw, TTL 15–30 min (stary alarm nie dochodzi po godzinach), zapis na dysk tylko przy zmianie.
+- Push: tylko endpointy usług Web Push, walidacja kluczy, województw i kodów gmin, TTL 15–30 min (stary alarm nie dochodzi po godzinach), zapis na dysk tylko przy zmianie.
 - Nagłówki: CSP (produkcja), `X-Content-Type-Options`, `X-Frame-Options`/`frame-ancestors`, `Referrer-Policy`, `Permissions-Policy`. Błędy jako krótki JSON, bez stosu.
 - WebSocket: ramki od klientów ≤ 1 KiB, limit połączeń (`ZORYA_WS_MAX_CLIENTS`), heartbeat co 30 s.
 - Źródła zewnętrzne: limit rozmiaru odpowiedzi (8 MB), timeouty, linki tylko `http(s)`.

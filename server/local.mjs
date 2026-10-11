@@ -8,6 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { safeHttpUrl } from "./security.mjs";
+import { gminaById, powiatById, unitsFromText } from "./admin.mjs";
 import { envFlag, getText, parseFeed, voivFromText, warsawDate, warsawToUtc } from "./util.mjs";
 
 /** meteo / hydro: IMGW warnings (server/imgw.mjs). */
@@ -242,6 +243,8 @@ export function toLocalItems(rows, now = Date.now(), fixedCategory = null) {
     const start = win?.start ?? r.ts;
     const end = win?.end ?? r.ts + DEFAULT_TTL[kind];
     const voiv = (r.voivodeships?.length ? r.voivodeships : voivFromText(text)).filter((v) => VOIV_IDS.has(v));
+    // Gminy / powiaty named in the notice, looked up inside its voivodeships only.
+    const units = unitsFromText(text, voiv);
     out.push({
       id: String(r.id).slice(0, 120),
       source: r.source || "rso",
@@ -257,6 +260,9 @@ export function toLocalItems(rows, now = Date.now(), fixedCategory = null) {
       ends_at: new Date(end).toISOString(),
       window: win ? "text" : "default",
       voivodeships: voiv,
+      gminy: units.gminy,
+      powiaty: units.powiaty,
+      point: null,
     });
   }
   return out;
@@ -272,6 +278,23 @@ export function itemState(it, now = Date.now()) {
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = process.env.ZORYA_DATA_DIR || path.resolve(here, "..", "data");
+
+/**
+ * Where an alert sits on the map: its own point (operator outage), the anchor of its gmina (up to 3 gminy) or of
+ * its single powiat; otherwise only its voivodeship. `precision` says which, so the UI never implies more detail
+ * than the source gave.
+ */
+export function locate(it) {
+  const gminy = Array.isArray(it.gminy) ? it.gminy.filter((id) => gminaById(id)) : [];
+  const powiaty = Array.isArray(it.powiaty) ? it.powiaty.filter((id) => powiatById(id)) : [];
+  const point = Array.isArray(it.point) && it.point.length === 2 && it.point.every(Number.isFinite) ? it.point : null;
+  let at = null;
+  let precision = "voivodeship";
+  if (point) [at, precision] = [point, "point"];
+  else if (gminy.length) [at, precision] = [gminy.length <= 3 ? gminaById(gminy[0]).anchor : null, "gmina"];
+  else if (powiaty.length) [at, precision] = [powiaty.length === 1 ? powiatById(powiaty[0]).anchor : null, "powiat"];
+  return { ...it, gminy, powiaty, point, at, precision };
+}
 
 export function createLocalStore({ file = null } = {}) {
   const items = new Map();
@@ -299,7 +322,8 @@ export function createLocalStore({ file = null } = {}) {
     /** Adds/updates items. RSO keeps notices that fell off its first page until their window ends. */
     merge(list, now = Date.now()) {
       let changed = false;
-      for (const it of list || []) {
+      for (const raw of list || []) {
+        const it = locate(raw);
         const prev = items.get(it.id);
         if (prev && JSON.stringify(prev) === JSON.stringify(it)) continue;
         items.set(it.id, it);
@@ -366,7 +390,7 @@ export function createLocalStore({ file = null } = {}) {
       try {
         const saved = JSON.parse(fs.readFileSync(file, "utf8"));
         for (const it of Array.isArray(saved) ? saved : []) {
-          if (it?.id && it.starts_at && it.ends_at && Array.isArray(it.categories)) items.set(it.id, it);
+          if (it?.id && it.starts_at && it.ends_at && Array.isArray(it.categories)) items.set(it.id, locate(it));
         }
         prune(now);
       } catch (err) {

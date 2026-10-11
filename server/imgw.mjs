@@ -8,6 +8,7 @@
  * The RSO parser skips IMGW re-posts (SKIP in local.mjs), so nothing is shown twice.
  */
 import { localStore, VOIV_IDS } from "./local.mjs";
+import { unitsFromTeryt, unitsFromText } from "./admin.mjs";
 import { envFlag, fetchText, hash, parseWarsawTime, voivFromTeryt, voivFromText } from "./util.mjs";
 
 const BASE = (process.env.ZORYA_IMGW_BASE || "https://danepubliczne.imgw.pl/api/data").replace(/\/$/, "");
@@ -68,6 +69,10 @@ export function meteoItem(r, now = Date.now()) {
     until_cancelled: open,
     window: "source",
     voivodeships: voiv,
+    // The warning names its powiaty (TERYT): it applies to all their gminy, not to a gmina in particular.
+    powiaty: unitsFromTeryt(teryt).powiaty,
+    gminy: [],
+    point: null,
   };
 }
 
@@ -101,6 +106,10 @@ export function hydroItem(r, now = Date.now()) {
     until_cancelled: open,
     window: "source",
     voivodeships: voiv,
+    // Catchments are described in words ("powiat X, gmina Y") — read them where they are named.
+    powiaty: unitsFromText(areas.map((a) => String(a?.opis || "")).join("; "), voiv).powiaty,
+    gminy: [],
+    point: null,
   };
 }
 

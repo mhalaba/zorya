@@ -9,6 +9,7 @@ import type {
   LocalAlertsSnapshot,
   LocalCategory,
   Notam,
+  PlaceInfo,
   PazpZone,
   Signal,
   TrackedObject,
@@ -17,6 +18,8 @@ import type {
   VoivodeshipState,
 } from "../types";
 import { MAPAUA_URL, uaDead, uaStatusLabel, uaTypeLabel } from "../mapaua";
+import { azimuthDeg, haversineKm } from "../lib";
+import { powiatLevels } from "../admin";
 import {
   geometrySourceLabel,
   LOCAL_META,
@@ -120,8 +123,9 @@ export function MapDetail() {
   const listPanel = useStore((s) => s.listPanel);
   const air = useStore((s) => s.airspace);
   const local = useStore((s) => s.localAlerts);
+  const gmina = useStore((s) => s.selectedGmina);
   const close = () => useStore.getState().setSelectedVoiv(null);
-  const open = !!(voiv || obj || ua || notamSel || listPanel);
+  const open = !!(voiv || obj || ua || notamSel || listPanel || gmina);
 
   useEffect(() => {
     if (!open) return;
@@ -134,6 +138,7 @@ export function MapDetail() {
   if (listPanel === "local") return <LocalListPanel snap={local} st={st} onClose={close} />;
   if (notamSel) return <AreasPanel air={air} st={st} keys={notamSel} onClose={close} />;
   if (ua) return <UaPanel snap={uaSnap} id={ua} onClose={close} />;
+  if (gmina) return <GminaPanel place={gmina} st={st} ua={uaSnap} air={air} local={local} onClose={close} />;
   if (!st || (!voiv && !obj)) return null;
   if (obj) return <ObjectPanel st={st} id={obj} onClose={close} />;
   const v = st.voivodeships.find((x) => x.id === voiv);
@@ -705,6 +710,16 @@ function NotamListPanel({ air, st, onClose }: { air: AirspaceSnapshot | null; st
   );
 }
 
+/** Where the source places the alert, in words — never more precise than the source. */
+function precisionLabel(a: LocalAlert): string {
+  if (a.precision === "point") return "Miejsce: punkt podany przez operatora";
+  const g = a.gminy?.length ?? 0;
+  const p = a.powiaty?.length ?? 0;
+  if (g) return g === 1 ? "Miejsce: jedna gmina" : `Miejsce: ${g} gmin(y)`;
+  if (p) return p === 1 ? "Dotyczy całego powiatu" : `Dotyczy ${p} powiatów`;
+  return "";
+}
+
 function LocalCard({ a }: { a: LocalAlert }) {
   return (
     <li className="md-item ov-item" style={{ borderLeftColor: LOCAL_META[a.category].color }}>
@@ -716,6 +731,7 @@ function LocalCard({ a }: { a: LocalAlert }) {
       </div>
       <div className="md-title">{a.title}</div>
       {a.summary && <div className="md-reason">{a.summary}</div>}
+      {a.precision && a.precision !== "voivodeship" && <div className="md-meta">{precisionLabel(a)}</div>}
       <div className="md-meta">
         {localWindow(a)} · {a.source_name}
         {a.url && (
@@ -788,5 +804,218 @@ function LocalListPanel({ snap, st, onClose }: { snap: LocalAlertsSnapshot | nul
         informacyjne i nie wpływają na poziom zagrożenia powietrznego. Szczegóły zawsze w oryginale. Czasy: Europa/Warszawa.
       </p>
     </Shell>
+  );
+}
+
+// ---- gmina ---------------------------------------------------------------------------------------
+
+const LEVEL_TEXT: Record<string, string> = { info: "spokój", watch: "uwaga", priority: "priorytet" };
+
+interface Near {
+  key: string;
+  label: string;
+  km: number;
+  bearing: number;
+  toward: boolean;
+  eta: number | null;
+  unc: number | null;
+  source: string;
+  dead?: boolean;
+  open: () => void;
+}
+
+/** Bearing difference in degrees, 0–180. */
+const angle = (a: number, b: number) => Math.abs(((a - b + 540) % 360) - 180);
+
+/** Threats around a gmina's anchor: NEPTUN objects and MAPA.UA objects, nearest first. */
+function threatsNear(anchor: [number, number], st: FusionState | null, ua: UaThreatsSnapshot | null, maxKm = 400): Near[] {
+  const [lon, lat] = anchor;
+  const out: Near[] = [];
+  const add = (id: string, label: string, olat: number, olon: number, course: number | null, speed: number | null, unc: number | null, source: string, open: () => void, dead = false) => {
+    const km = haversineKm(lat, lon, olat, olon);
+    if (km > maxKm) return;
+    const bearing = (azimuthDeg(lat, lon, olat, olon) + 360) % 360;
+    // Heading at the gmina: the object's course within 30° of the bearing from the object to the gmina.
+    const back = (azimuthDeg(olat, olon, lat, lon) + 360) % 360;
+    const toward = course != null && !dead && angle(course, back) <= 30;
+    const eta = toward && speed && speed > 30 ? Math.round((km / speed) * 60) : null;
+    out.push({ key: id, label, km, bearing, toward, eta, unc, source, dead, open });
+  };
+  for (const o of st?.objects ?? []) {
+    add(`n:${o.id}`, TYPE[o.type] ?? o.type, o.lat, o.lon, o.course, o.speed, o.unc_km, "NEPTUN", () => useStore.getState().setSelectedObj(String(o.id)));
+  }
+  for (const o of ua?.enabled ? ua.objects : []) {
+    add(`u:${o.id}`, uaTypeLabel(o), o.lat, o.lon, o.heading, o.speed_kmh, null, "MAPA.UA", () => useStore.getState().setSelectedUa(o.id), uaDead(o));
+  }
+  return out.sort((a, b) => Number(b.toward) - Number(a.toward) || a.km - b.km).slice(0, 8);
+}
+
+function GminaPanel({
+  place,
+  st,
+  ua,
+  air,
+  local,
+  onClose,
+}: {
+  place: PlaceInfo;
+  st: FusionState | null;
+  ua: UaThreatsSnapshot | null;
+  air: AirspaceSnapshot | null;
+  local: LocalAlertsSnapshot | null;
+  onClose: () => void;
+}) {
+  const g = place.gmina;
+  const cats = useStore((s) => s.localCats);
+  const focusOn = useStore((s) => s.focusOn);
+  const voiv = st?.voivodeships.find((v) => v.id === g.voivodeship);
+  const pow = powiatLevels(st).get(g.powiat.id);
+  const level = pow?.level ?? "info";
+  const near = threatsNear(g.anchor, st, ua);
+
+  const alerts = visibleLocal(local, cats);
+  // Applies here: named for this gmina, or for its whole powiat (an IMGW warning lists powiaty, not gminy).
+  const inGmina = alerts.filter((a) => a.gminy?.includes(g.id) || (!a.gminy?.length && a.powiaty?.includes(g.powiat.id)));
+  // Nearby: other gminy of the same powiat.
+  const inPowiat = alerts.filter((a) => a.gminy?.length && !a.gminy.includes(g.id) && a.powiaty?.includes(g.powiat.id));
+  const inVoiv = alerts.filter((a) => !(a.gminy?.length) && !(a.powiaty?.length) && a.voivodeships.includes(g.voivodeship));
+  const zones = (air?.notam.items ?? []).filter((n) => n.gminy?.includes(g.id));
+
+  return (
+    <Shell
+      title={g.name}
+      sub={`gmina ${g.kind} · ${g.powiat.label} · woj. ${voiv?.name ?? g.voivodeship}`}
+      level={level}
+      onClose={onClose}
+    >
+      <p className="md-why">
+        {pow ? (
+          <>
+            {g.powiat.label.charAt(0).toUpperCase() + g.powiat.label.slice(1)}: <b>{LEVEL_TEXT[pow.level]}</b> ({n(pow.points, 1)} pkt)
+            {pow.whyPl ? ` — ${pow.whyPl}` : ""}.
+          </>
+        ) : (
+          <>
+            {g.powiat.label.charAt(0).toUpperCase() + g.powiat.label.slice(1)}: spokój — żadne źródło nie daje tu punktów w ostatnich 60
+            minutach.
+          </>
+        )}
+        {voiv && (
+          <>
+            {" "}
+            Województwo jako całość: {LEVEL_TEXT[voiv.level]} ({n(voiv.points, 1)} pkt).
+          </>
+        )}
+      </p>
+      <WatchGmina id={g.id} name={g.name} />
+      <div className="md-chips">
+        <button type="button" className="ov-chip" onClick={() => focusOn(g.bbox)}>
+          pokaż gminę
+        </button>
+        <button type="button" className="ov-chip" onClick={() => place.powiat && focusOn(place.powiat.bbox)}>
+          pokaż powiat
+        </button>
+        <button type="button" className="ov-chip" onClick={() => useStore.getState().setSelectedVoiv(g.voivodeship)}>
+          województwo
+        </button>
+      </div>
+
+      <h3 className="md-h">Zagrożenia w promieniu 400 km ({near.length})</h3>
+      {near.length ? (
+        <ul className="md-list">
+          {near.map((x) => (
+            <li key={x.key} className="md-item">
+              <div className="md-item-top">
+                <span className="md-src">{x.source}</span>
+                <span className={`md-state ${x.toward ? "on" : "off"}`}>{x.dead ? "zestrzelony / utracony" : x.toward ? "kurs w stronę gminy" : "inny kurs"}</span>
+              </div>
+              <div className="md-title">{x.label}</div>
+              <div className="md-meta">
+                {n(x.km)} km na {compass(x.bearing)} od gminy
+                {x.unc ? ` (±${n(x.unc)} km)` : ""}
+                {x.eta != null ? ` · przy obecnym kursie ok. ${x.eta} min` : ""}
+              </div>
+              <button type="button" className="md-link" onClick={x.open}>
+                Szczegóły obiektu →
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="md-empty">Żaden śledzony obiekt nie jest bliżej niż 400 km od tej gminy.</p>
+      )}
+
+      <h3 className="md-h">Dotyczy tej gminy ({inGmina.length})</h3>
+      {inGmina.length ? (
+        <ul className="md-list">
+          {inGmina.map((a) => (
+            <LocalCard key={a.id} a={a} />
+          ))}
+        </ul>
+      ) : (
+        <p className="md-empty">Brak komunikatów przypisanych do tej gminy (awarie, wyłączenia, ćwiczenia).</p>
+      )}
+      {inPowiat.length > 0 && (
+        <>
+          <h3 className="md-h">W innych gminach powiatu ({inPowiat.length})</h3>
+          <ul className="md-list">
+            {inPowiat.map((a) => (
+              <LocalCard key={a.id} a={a} />
+            ))}
+          </ul>
+        </>
+      )}
+      {inVoiv.length > 0 && (
+        <details className="ov-more">
+          <summary>W województwie, bez dokładnego miejsca ({inVoiv.length})</summary>
+          <ul className="md-list">
+            {inVoiv.map((a) => (
+              <LocalCard key={a.id} a={a} />
+            ))}
+          </ul>
+        </details>
+      )}
+
+      <h3 className="md-h">Przestrzeń powietrzna nad gminą ({zones.length})</h3>
+      {zones.length ? (
+        <ul className="md-list">
+          {zones.map((z) => (
+            <NotamCard key={`${z.location}:${z.id}`} n={z} st={st} compact />
+          ))}
+        </ul>
+      ) : (
+        <p className="md-empty">{air ? "Żadna strefa z planu AUP/UUP ani NOTAM nie obejmuje tej gminy." : "Ładuję strefy…"}</p>
+      )}
+      <p className="md-foot">
+        Granice gmin: PRG (Geoportal, 2025), uproszczone — przy samej granicy gminy wynik może dotyczyć sąsiedniej. Odległości od
+        środka gminy; pozycje NEPTUN i MAPA.UA są szacunkowe. Czasy: Europa/Warszawa.
+      </p>
+    </Shell>
+  );
+}
+
+/** Push for this gmina: asks for permission once, then subscribes (notifications follow the powiat's level). */
+function WatchGmina({ id, name }: { id: string; name: string }) {
+  const watching = useStore((s) => s.watchGminy.some((x) => x.id === id));
+  const [msg, setMsg] = useState<string | null>(null);
+  const supported = typeof window !== "undefined" && "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
+  async function toggle() {
+    const st = useStore.getState();
+    if (!watching) {
+      if (!supported) return setMsg("Ta przeglądarka nie obsługuje powiadomień push (na iPhonie: dodaj Zoryę do ekranu początkowego).");
+      const perm = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
+      if (perm !== "granted") return setMsg("Bez zgody na powiadomienia nie da się obserwować gminy.");
+      st.setNotifyGranted(true);
+    }
+    st.toggleWatchGmina({ id, name });
+    setMsg(watching ? "Nie obserwujesz już tej gminy." : "Obserwujesz tę gminę: powiadomimy, gdy jej powiat osiągnie poziom uwagi lub priorytetu.");
+  }
+  return (
+    <div className="md-watch">
+      <button type="button" className={`ov-chip ${watching ? "on" : ""}`} aria-pressed={watching} onClick={() => void toggle()}>
+        {watching ? "✓ obserwujesz tę gminę" : "🔔 powiadamiaj o tej gminie"}
+      </button>
+      {msg && <div className="md-meta">{msg}</div>}
+    </div>
   );
 }

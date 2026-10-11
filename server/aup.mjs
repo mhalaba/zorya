@@ -5,6 +5,7 @@
  * Informational only: it is NOT fed to the fusion (input.zones stays empty), so it never changes a voivodeship level.
  */
 import { voivodeshipsForPoints } from "./fusion.mjs";
+import { unitsForGeometry } from "./admin.mjs";
 import { envFlag, fetchText } from "./util.mjs";
 
 export const AUP_ENABLED = envFlag("ZORYA_AUP_ENABLED");
@@ -74,6 +75,8 @@ export function aupItems(feature, plan = "UUP") {
   const c = Array.isArray(p.centroid) ? p.centroid[0] : null;
   const center = c && Number.isFinite(c.x) && Number.isFinite(c.y) ? [Math.round(c.x * 1e5) / 1e5, Math.round(c.y * 1e5) / 1e5] : null;
   const voivodeships = voivodeshipsForPoints(center ? [...pts, center] : pts);
+  // Once per area, not per reservation: the same zone is listed for every time slot.
+  const units = unitsForGeometry(geometry, center ? [center] : []);
   const out = [];
   for (const r of Array.isArray(p.airspaceReservations) ? p.airspaceReservations : []) {
     const from = Date.parse(r.startDate);
@@ -113,6 +116,8 @@ export function aupItems(feature, plan = "UUP") {
       geometry_source: "aup",
       bbox: bboxOf(pts),
       voivodeships,
+      gminy: units.gminy,
+      powiaty: units.powiaty,
       map: MAP_CATS.has(category),
       source: "aup",
     });

@@ -18,6 +18,8 @@ import { aupSnapshot, mergeAirspace, startAup } from "./aup.mjs";
 import { startOperators } from "./operators.mjs";
 import { startImgw } from "./imgw.mjs";
 import { rateLimit, safeEqual, securityHeaders } from "./security.mjs";
+import { search } from "./search.mjs";
+import { ADMIN_READY, gminaAt, gminaById, gminaInfo, powiatById, powiatInfo } from "./admin.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
@@ -39,6 +41,8 @@ app.use(express.json({ limit: "32kb" }));
 
 const writeLimit = rateLimit({ windowMs: 10 * 60_000, max: 20, name: "zapis" });
 const pushLimit = rateLimit({ windowMs: 10 * 60_000, max: 120, name: "push" });
+// Address look-ups reach GUGiK / OpenStreetMap: a person searches a few times, a scraper many.
+const geocodeLimit = rateLimit({ windowMs: 60_000, max: 20, name: "wyszukiwanie" });
 
 let state = buildState(Date.now(), emptyInput(), null);
 let historyBundle = emptyHistory(12);
@@ -168,6 +172,35 @@ app.get("/api/airspace", (req, res) => {
     airspaceBody = { notam: mergeAirspace(notam, aup), zones, generated_at: new Date().toISOString() };
   }
   sendCached(req, res, "airspace", airspaceBody, "public, max-age=60");
+});
+
+/**
+ * Administrative unit of a point or code: ?lat=&lon= (map click, search result, "my location") or ?gmina=TERYT.
+ * Answers gmina + powiat + voivodeship, or 404 outside Poland. Pure lookup — no personal data is kept.
+ */
+app.get("/api/place", (req, res) => {
+  res.setHeader("Cache-Control", "public, max-age=86400");
+  if (!ADMIN_READY) return res.status(503).json({ error: "brak granic gmin" });
+  const code = String(req.query.gmina || "").replace(/\D/g, "").slice(0, 7);
+  const lat = Number(req.query.lat);
+  const lon = Number(req.query.lon);
+  const g = code ? gminaById(code) : Number.isFinite(lat) && Number.isFinite(lon) ? gminaAt(lat, lon) : null;
+  if (!g) return res.status(404).json({ error: "poza Polską lub nieznana gmina" });
+  const info = gminaInfo(g);
+  res.json({ gmina: info, powiat: powiatInfo(powiatById(g.pow)), voivodeship: g.woj });
+});
+
+/** Search: ?q=…&mode=quick (names, while typing) | full (with address geocoding, on Enter). */
+app.get("/api/search", (req, res, next) => {
+  const full = req.query.mode === "full";
+  const run = () =>
+    search(typeof req.query.q === "string" ? req.query.q : "", full ? "full" : "quick")
+      .then((out) => {
+        res.setHeader("Cache-Control", full ? "private, max-age=300" : "public, max-age=3600");
+        res.json(out);
+      })
+      .catch(next);
+  return full ? geocodeLimit(req, res, run) : run();
 });
 
 app.get("/api/health", (_req, res) => {
