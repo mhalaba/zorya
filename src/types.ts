@@ -1,3 +1,5 @@
+import type { MultiPolygon, Polygon } from "geojson";
+
 export type Lang = "pl" | "en";
 export type ViewId = "map" | "signals" | "history" | "more";
 export type Level = "info" | "watch" | "priority";
@@ -38,6 +40,9 @@ export interface VoivodeshipState {
   name: string;
   nameEn: string;
   eastRank: number;
+  /** Centre used for scoring; the map hangs local-alert badges here. */
+  lat: number;
+  lon: number;
   points: number;
   own: number;
   transfer: number;
@@ -191,4 +196,119 @@ export interface UaThreatsSnapshot {
   attack: { id: number; status: string; started_at: number | null } | null;
   objects: UaThreat[];
   pl_violations: { count: number; hours: number; checked_at: string } | null;
+}
+
+/** Local alert (server/local.mjs): water / power / gas outage or planned works, or an exercise. */
+export type LocalCategory = "power" | "water" | "gas" | "exercise";
+
+export interface LocalAlert {
+  id: string;
+  source: string;
+  source_name: string;
+  categories: LocalCategory[];
+  category: LocalCategory;
+  kind: "outage" | "planned" | "exercise";
+  title: string;
+  summary: string;
+  url: string | null;
+  published_at: string;
+  starts_at: string;
+  ends_at: string;
+  /** "text": window read from the notice; "default": no date in it, shown for a fixed time after publication. */
+  window: "text" | "default";
+  voivodeships: string[];
+  state: "active" | "upcoming" | "ended";
+}
+
+export interface LocalAlertsSnapshot {
+  generated_at: string;
+  sources: { id: string; name?: string; ok: boolean; at: string | null; error: string | null; records: number }[];
+  items: LocalAlert[];
+}
+
+export type NotamCategory =
+  | "prohibited"
+  | "restricted"
+  | "danger"
+  | "temporary"
+  | "reserved"
+  | "military"
+  | "exercise"
+  | "firing"
+  | "uas"
+  | "parachute"
+  | "display"
+  | "warning"
+  | "gnss"
+  | "airspace"
+  | "other";
+
+/** NOTAM (server/notam.mjs). Times are ISO strings in UTC. */
+export interface Notam {
+  id: string;
+  location: string | null;
+  type: "N" | "R" | "C";
+  replaces: string | null;
+  qcode: string | null;
+  category: NotamCategory;
+  label: string;
+  condition: string;
+  condition_label: string;
+  from: string | null;
+  to: string | null;
+  permanent: boolean;
+  estimated: boolean;
+  schedule: string | null;
+  lower: string | null;
+  upper: string | null;
+  text: string;
+  raw: string;
+  center: [number, number] | null;
+  radius_nm: number | null;
+  geometry: Polygon | MultiPolygon | null;
+  geometry_source: "text" | "circle" | "qline" | null;
+  bbox: [number, number, number, number] | null;
+  voivodeships: string[];
+  map: boolean;
+  state: "active" | "upcoming";
+}
+
+/** Permanent airspace area (server/airspace.mjs, OpenAIP). */
+export interface AirspaceZone {
+  id: string;
+  name: string;
+  kind: "restricted" | "danger" | "prohibited" | "reserved";
+  code: string;
+  label: string;
+  lower: string | null;
+  upper: string | null;
+  by_notam: boolean;
+  geometry: Polygon | MultiPolygon;
+  voivodeships: string[];
+}
+
+export interface AirspaceSnapshot {
+  generated_at: string;
+  notam: {
+    enabled: boolean;
+    ok: boolean;
+    source: string;
+    locations: string[];
+    fetched_at: string | null;
+    error: string | null;
+    total: number;
+    /** NOTAMs not shown (obstacles, lighting, navaids, aerodrome services). */
+    skipped: number;
+    /** The source had more NOTAMs than were read. */
+    truncated: boolean;
+    items: Notam[];
+  };
+  zones: {
+    enabled: boolean;
+    ok: boolean;
+    source: string;
+    fetched_at: string | null;
+    error: string | null;
+    items: AirspaceZone[];
+  };
 }

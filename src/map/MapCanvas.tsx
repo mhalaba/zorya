@@ -4,9 +4,10 @@ import { CAMERA, COLORS } from "../config";
 import { circlePoly, destPoint, prefersReducedMotion } from "../lib";
 import { iconForType, registerMapIcons } from "./icons";
 import { uaDead, uaGroup, uaIcon } from "../mapaua";
+import { LOCAL_META, LOCAL_ORDER, NOTAM_META, visibleLocal } from "../overlays";
 import { useStore } from "../store";
-import type { FusionState, VoivodeshipState } from "../types";
-import type { FeatureCollection } from "geojson";
+import type { FusionState, LocalCategory, VoivodeshipState } from "../types";
+import type { Feature, FeatureCollection } from "geojson";
 
 function hatch(color: string) {
   const c = document.createElement("canvas");
@@ -59,6 +60,14 @@ export function MapCanvas() {
   const preset = useStore((s) => s.cameraPreset);
   const nonce = useStore((s) => s.cameraNonce);
   const lang = useStore((s) => s.lang);
+  const airspace = useStore((s) => s.airspace);
+  const notamOn = useStore((s) => s.notamOn);
+  const zonesOn = useStore((s) => s.zonesOn);
+  const selectedNotams = useStore((s) => s.selectedNotams);
+  const localAlerts = useStore((s) => s.localAlerts);
+  const localOn = useStore((s) => s.localOn);
+  const localCats = useStore((s) => s.localCats);
+  const focus = useStore((s) => s.focus);
 
   useEffect(() => {
     if (!ref.current || mapRef.current) return;
@@ -110,6 +119,10 @@ export function MapCanvas() {
       map.addSource("mua-lines", { type: "geojson", data: emptyFc() });
       map.addSource("adsb", { type: "geojson", data: emptyFc() });
       map.addSource("zones", { type: "geojson", data: emptyFc() });
+      map.addSource("aszones", { type: "geojson", data: emptyFc() });
+      map.addSource("notam", { type: "geojson", data: emptyFc() });
+      map.addSource("notam-pts", { type: "geojson", data: emptyFc() });
+      map.addSource("local", { type: "geojson", data: emptyFc() });
       map.addSource("cameras", {
         type: "geojson",
         data: emptyFc(),
@@ -258,6 +271,84 @@ export function MapCanvas() {
           "line-color": ["match", ["get", "kind"], "score", COLORS.amber, "#9AA8B8"],
           "line-width": 1.2,
         },
+      });
+
+      // Permanent P/R/D/TSA/TRA areas (OpenAIP): faint, dashed — they exist, they are not necessarily active.
+      map.addLayer({
+        id: "asz-fill",
+        type: "fill",
+        source: "aszones",
+        layout: { visibility: initial.zonesOn ? "visible" : "none" },
+        paint: { "fill-color": ["get", "color"], "fill-opacity": 0.05 },
+      });
+      map.addLayer({
+        id: "asz-line",
+        type: "line",
+        source: "aszones",
+        layout: { visibility: initial.zonesOn ? "visible" : "none" },
+        paint: { "line-color": ["get", "color"], "line-width": 1, "line-opacity": 0.7, "line-dasharray": [4, 2] },
+      });
+      map.addLayer({
+        id: "asz-label",
+        type: "symbol",
+        source: "aszones",
+        minzoom: 7,
+        layout: {
+          visibility: initial.zonesOn ? "visible" : "none",
+          "text-field": ["get", "label"],
+          "text-font": ["Noto Sans Regular"],
+          "text-size": 10,
+          "text-padding": 6,
+        },
+        paint: { "text-color": ["get", "color"], "text-halo-color": "#070B12", "text-halo-width": 1.3 },
+      });
+      // NOTAM areas: active ones filled and outlined solid; upcoming ones and Q-line circles
+      // (approximate, the NOTAM did not spell the area out) outlined dashed.
+      map.addLayer({
+        id: "notam-fill",
+        type: "fill",
+        source: "notam",
+        layout: { visibility: initial.notamOn ? "visible" : "none" },
+        paint: {
+          "fill-color": ["get", "color"],
+          "fill-opacity": ["case", ["get", "sel"], 0.32, ["get", "active"], 0.18, 0.05],
+        },
+      });
+      map.addLayer({
+        id: "notam-line",
+        type: "line",
+        source: "notam",
+        filter: ["!", ["get", "dash"]],
+        layout: { visibility: initial.notamOn ? "visible" : "none", "line-join": "round" },
+        paint: { "line-color": ["get", "color"], "line-width": ["case", ["get", "sel"], 3.2, 2], "line-opacity": 0.95 },
+      });
+      map.addLayer({
+        id: "notam-line-dash",
+        type: "line",
+        source: "notam",
+        filter: ["get", "dash"],
+        layout: { visibility: initial.notamOn ? "visible" : "none", "line-join": "round" },
+        paint: {
+          "line-color": ["get", "color"],
+          "line-width": ["case", ["get", "sel"], 3, 1.5],
+          "line-opacity": ["case", ["get", "active"], 0.9, 0.6],
+          "line-dasharray": [2, 2],
+        },
+      });
+      map.addLayer({
+        id: "notam-label",
+        type: "symbol",
+        source: "notam-pts",
+        minzoom: 5.6,
+        layout: {
+          visibility: initial.notamOn ? "visible" : "none",
+          "text-field": ["step", ["zoom"], ["get", "id"], 7, ["get", "label"]],
+          "text-font": ["Noto Sans Regular"],
+          "text-size": 10.5,
+          "text-padding": 4,
+          "text-max-width": 12,
+        },
+        paint: { "text-color": ["get", "color"], "text-halo-color": "#070B12", "text-halo-width": 1.5 },
       });
 
       map.addLayer({
@@ -465,6 +556,33 @@ export function MapCanvas() {
         filter: ["!", ["has", "point_count"]],
         layout: { "icon-image": "cam-pin", "icon-size": 0.9, "icon-allow-overlap": true, "icon-ignore-placement": true },
       });
+      // Local alerts: a row of badges under each voivodeship's centre, one per category.
+      map.addLayer({
+        id: "local-icon",
+        type: "symbol",
+        source: "local",
+        layout: {
+          visibility: initial.localOn ? "visible" : "none",
+          "icon-image": ["get", "icon"],
+          "icon-size": LOCAL_ICON_SIZE,
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+          "icon-offset": slotMatch((k, i) => [localDx(k, i) / LOCAL_ICON_SIZE, LOCAL_DY / LOCAL_ICON_SIZE]),
+          "text-field": ["case", [">", ["get", "n"], 1], ["to-string", ["get", "n"]], ""],
+          "text-font": ["Noto Sans Regular"],
+          "text-size": 10,
+          "text-offset": slotMatch((k, i) => [(localDx(k, i) + 10) / 10, (LOCAL_DY - 9) / 10]),
+          "text-allow-overlap": true,
+          "text-ignore-placement": true,
+          "text-optional": true,
+        },
+        paint: {
+          "icon-opacity": ["case", ["get", "active"], 1, 0.6],
+          "text-color": "#E8EEF7",
+          "text-halo-color": "#070B12",
+          "text-halo-width": 1.6,
+        },
+      });
       // Region names on top: markers and clusters must not cover them.
       map.moveLayer("pl-label");
 
@@ -496,7 +614,7 @@ export function MapCanvas() {
         const id = String(f.properties?.id ?? f.id ?? "");
         return f.layer.id === "mua-icon" ? `ua:${id}` : id;
       };
-      for (const l of OBJ_LAYERS) {
+      for (const l of [...OBJ_LAYERS, "local-icon"]) {
         map.on("mouseenter", l, () => {
           map.getCanvas().style.cursor = "pointer";
         });
@@ -512,12 +630,33 @@ export function MapCanvas() {
           else store.setSelectedObj(obj);
           return;
         }
+        const p = e.point;
+        const near: [maplibregl.PointLike, maplibregl.PointLike] = [
+          [p.x - 8, p.y - 8],
+          [p.x + 8, p.y + 8],
+        ];
+        // A local-alert badge opens its voivodeship (the panel lists the alerts).
+        const badge = map.getLayer("local-icon") ? map.queryRenderedFeatures(near, { layers: ["local-icon"] })[0] : null;
+        if (badge?.properties?.voiv) {
+          store.setSelectedVoiv(String(badge.properties.voiv));
+          return;
+        }
+        // Inside NOTAM / permanent areas: list every area under the finger.
+        const areaLayers = ["notam-fill", "asz-fill"].filter((l) => map.getLayer(l));
+        const areas = areaLayers.length ? map.queryRenderedFeatures(e.point, { layers: areaLayers }) : [];
+        if (areas.length) {
+          const ids = [...new Set(areas.map((f) => String(f.properties?.key ?? "")).filter(Boolean))];
+          if (ids.length) {
+            store.setSelectedNotams(ids);
+            return;
+          }
+        }
         const reg = map.getLayer("pl-fill") ? map.queryRenderedFeatures(e.point, { layers: ["pl-fill"] })[0] : null;
         if (reg) {
           store.setSelectedVoiv(String(reg.id ?? ""));
           return;
         }
-        if (store.selectedVoiv || store.selectedObj || store.selectedUa) {
+        if (store.selectedVoiv || store.selectedObj || store.selectedUa || store.selectedNotams) {
           store.setSelectedVoiv(null);
         }
       });
@@ -725,6 +864,122 @@ export function MapCanvas() {
     (map.getSource("mua-lines") as GeoJSONSource | undefined)?.setData(lines);
   }, [uaThreats, uaMissilesOn, uaBombsOn, uaDronesOn, selectedUa, mapReadyTick]);
 
+  // NOTAM areas + permanent areas.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready.current) return;
+    const vis = (on: boolean) => (on ? "visible" : "none");
+    for (const l of ["notam-fill", "notam-line", "notam-line-dash", "notam-label"]) {
+      if (map.getLayer(l)) map.setLayoutProperty(l, "visibility", vis(notamOn));
+    }
+    for (const l of ["asz-fill", "asz-line", "asz-label"]) {
+      if (map.getLayer(l)) map.setLayoutProperty(l, "visibility", vis(zonesOn));
+    }
+    const sel = new Set(selectedNotams ?? []);
+    const notams = (airspace?.notam.items ?? []).filter((n) => n.map && n.geometry);
+    const areas: Feature[] = notams.map((n) => {
+      const key = `notam:${n.location}:${n.id}`;
+      const active = n.state === "active";
+      return {
+        type: "Feature",
+        properties: {
+          key,
+          color: NOTAM_META[n.category]?.color ?? "#9AA8B8",
+          active,
+          dash: !active || n.geometry_source === "qline",
+          sel: sel.has(key),
+        },
+        geometry: n.geometry!,
+      };
+    });
+    const pts: Feature[] = notams.flatMap((n) => {
+      const c = n.bbox ? [(n.bbox[0] + n.bbox[2]) / 2, (n.bbox[1] + n.bbox[3]) / 2] : n.center;
+      if (!c) return [];
+      const meta = NOTAM_META[n.category];
+      const lim = n.lower || n.upper ? ` · ${n.lower ?? "?"}–${n.upper ?? "?"}` : "";
+      return [
+        {
+          type: "Feature",
+          properties: { id: n.id, label: `${n.id} · ${meta?.label ?? n.label}${lim}`, color: meta?.color ?? "#9AA8B8" },
+          geometry: { type: "Point", coordinates: c },
+        },
+      ];
+    });
+    const zones: Feature[] = (airspace?.zones.enabled ? airspace.zones.items : []).map((z) => ({
+      type: "Feature",
+      properties: {
+        key: `zone:${z.id}`,
+        color: z.kind === "prohibited" || z.kind === "restricted" ? "#FF5A4E" : z.kind === "danger" ? "#F0783A" : "#E0A100",
+        label: `${z.name}${z.lower || z.upper ? ` · ${z.lower ?? "?"}–${z.upper ?? "?"}` : ""}`,
+      },
+      geometry: z.geometry,
+    }));
+    (map.getSource("notam") as GeoJSONSource | undefined)?.setData({ type: "FeatureCollection", features: areas });
+    (map.getSource("notam-pts") as GeoJSONSource | undefined)?.setData({ type: "FeatureCollection", features: pts });
+    (map.getSource("aszones") as GeoJSONSource | undefined)?.setData({ type: "FeatureCollection", features: zones });
+  }, [airspace, notamOn, zonesOn, selectedNotams, mapReadyTick]);
+
+  // Local alerts (outages, planned works, exercises) as badges per voivodeship.
+  const voivCentres = state?.voivodeships;
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready.current) return;
+    if (map.getLayer("local-icon")) map.setLayoutProperty("local-icon", "visibility", localOn ? "visible" : "none");
+    const centre = new Map<string, [number, number]>();
+    for (const v of voivCentres ?? []) if (Number.isFinite(v.lon) && Number.isFinite(v.lat)) centre.set(v.id, [v.lon, v.lat]);
+    for (const [id, b] of Object.entries(VOIV_BOUNDS)) {
+      if (!centre.has(id)) centre.set(id, [(b[0][0] + b[1][0]) / 2, (b[0][1] + b[1][1]) / 2]);
+    }
+    const groups = new Map<string, Map<LocalCategory, { n: number; active: boolean }>>();
+    for (const a of visibleLocal(localAlerts, localCats)) {
+      for (const v of a.voivodeships) {
+        const g = groups.get(v) ?? new Map();
+        for (const c of a.categories) {
+          if (!localCats[c]) continue;
+          const cur = g.get(c) ?? { n: 0, active: false };
+          g.set(c, { n: cur.n + 1, active: cur.active || a.state === "active" });
+        }
+        groups.set(v, g);
+      }
+    }
+    const features: Feature[] = [];
+    for (const [voiv, g] of groups) {
+      const at = centre.get(voiv);
+      if (!at) continue;
+      const cats = LOCAL_ORDER.filter((c) => g.has(c));
+      cats.forEach((c, i) => {
+        const x = g.get(c)!;
+        features.push({
+          type: "Feature",
+          properties: { voiv, icon: LOCAL_META[c].icon, n: x.n, active: x.active, slot: cats.length * 10 + i },
+          geometry: { type: "Point", coordinates: at },
+        });
+      });
+    }
+    (map.getSource("local") as GeoJSONSource | undefined)?.setData({ type: "FeatureCollection", features });
+  }, [localAlerts, localOn, localCats, voivCentres, mapReadyTick]);
+
+  // "Show on map" from the panels: frame the area, leaving room for the bottom sheet on phones.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !focus) return;
+    const [w, s, e, n] = focus.bbox;
+    const phone = window.innerWidth <= 640;
+    map.fitBounds(
+      [
+        [w, s],
+        [e, n],
+      ],
+      {
+        padding: phone
+          ? { top: 70, left: 24, right: 24, bottom: Math.round(window.innerHeight * 0.6) }
+          : { top: 70, left: 420, right: 60, bottom: 40 },
+        maxZoom: 10,
+        duration: prefersReducedMotion() ? 0 : 700,
+      }
+    );
+  }, [focus]);
+
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready.current) return;
@@ -825,6 +1080,20 @@ class FitAllControl implements maplibregl.IControl {
     this.el?.remove();
     this.el = null;
   }
+}
+
+const LOCAL_ICON_SIZE = 0.55;
+/** Badge spacing (px) and drop below the voivodeship centre (px). */
+const LOCAL_GAP = 20;
+const LOCAL_DY = 20;
+const localDx = (k: number, i: number) => (i - (k - 1) / 2) * LOCAL_GAP;
+
+/** Per-feature offsets via a lookup on `slot` (= count * 10 + index): GeoJSON properties cannot carry arrays. */
+function slotMatch(fn: (k: number, i: number) => [number, number]): maplibregl.ExpressionSpecification {
+  const m: unknown[] = ["match", ["get", "slot"]];
+  for (let k = 1; k <= 4; k++) for (let i = 0; i < k; i++) m.push(k * 10 + i, ["literal", fn(k, i)]);
+  m.push(["literal", [0, 0]]);
+  return m as maplibregl.ExpressionSpecification;
 }
 
 function emptyFc(): FeatureCollection {

@@ -1,8 +1,34 @@
 import { useEffect, useState } from "react";
 import { useStore } from "../store";
 import { fmtDateTime, fmtDayTime } from "../format";
-import type { FusionState, PazpZone, Signal, TrackedObject, UaThreat, UaThreatsSnapshot, VoivodeshipState } from "../types";
+import type {
+  AirspaceSnapshot,
+  AirspaceZone,
+  FusionState,
+  LocalAlert,
+  LocalAlertsSnapshot,
+  LocalCategory,
+  Notam,
+  PazpZone,
+  Signal,
+  TrackedObject,
+  UaThreat,
+  UaThreatsSnapshot,
+  VoivodeshipState,
+} from "../types";
 import { MAPAUA_URL, uaDead, uaStatusLabel, uaTypeLabel } from "../mapaua";
+import {
+  geometrySourceLabel,
+  LOCAL_META,
+  LOCAL_ORDER,
+  localKindLabel,
+  localStateLabel,
+  localWindow,
+  NOTAM_META,
+  notamLimits,
+  notamWindow,
+  visibleLocal,
+} from "../overlays";
 
 /**
  * Tap a voivodeship → which alerts count there and why. Tap a drone → what NEPTUN says about it,
@@ -90,21 +116,29 @@ export function MapDetail() {
   const obj = useStore((s) => s.selectedObj);
   const ua = useStore((s) => s.selectedUa);
   const uaSnap = useStore((s) => s.uaThreats);
+  const notamSel = useStore((s) => s.selectedNotams);
+  const listPanel = useStore((s) => s.listPanel);
+  const air = useStore((s) => s.airspace);
+  const local = useStore((s) => s.localAlerts);
   const close = () => useStore.getState().setSelectedVoiv(null);
+  const open = !!(voiv || obj || ua || notamSel || listPanel);
 
   useEffect(() => {
-    if (!voiv && !obj && !ua) return;
+    if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [voiv, obj, ua]);
+  }, [open]);
 
+  if (listPanel === "notam") return <NotamListPanel air={air} st={st} onClose={close} />;
+  if (listPanel === "local") return <LocalListPanel snap={local} st={st} onClose={close} />;
+  if (notamSel) return <AreasPanel air={air} st={st} keys={notamSel} onClose={close} />;
   if (ua) return <UaPanel snap={uaSnap} id={ua} onClose={close} />;
   if (!st || (!voiv && !obj)) return null;
   if (obj) return <ObjectPanel st={st} id={obj} onClose={close} />;
   const v = st.voivodeships.find((x) => x.id === voiv);
   if (!v) return null;
-  return <VoivPanel st={st} v={v} pl={uaSnap?.enabled ? uaSnap.pl_violations : null} onClose={close} />;
+  return <VoivPanel st={st} v={v} pl={uaSnap?.enabled ? uaSnap.pl_violations : null} air={air} local={local} onClose={close} />;
 }
 
 function Shell({ title, sub, level, onClose, children }: {
@@ -149,13 +183,20 @@ function VoivPanel({
   st,
   v,
   pl,
+  air,
+  local,
   onClose,
 }: {
   st: FusionState;
   v: VoivodeshipState;
   pl: UaThreatsSnapshot["pl_violations"] | null;
+  air: AirspaceSnapshot | null;
+  local: LocalAlertsSnapshot | null;
   onClose: () => void;
 }) {
+  const localCats = useStore((s) => s.localCats);
+  const localHere = visibleLocal(local, localCats).filter((a) => a.voivodeships.includes(v.id));
+  const notamsHere = (air?.notam.items ?? []).filter((n) => n.voivodeships.includes(v.id));
   const signals = st.signals
     .filter((s) => s.voivodeships?.includes(v.id))
     .sort((a, b) => (b.points ?? 0) - (a.points ?? 0));
@@ -185,7 +226,7 @@ function VoivPanel({
 
       {nothing ? (
         <p className="md-empty">
-          Brak aktywnych alertów dla tego województwa w ostatnich 60 minutach. Żadne źródło nie zgłasza tu zagrożenia.
+          Brak zagrożeń z powietrza dla tego województwa w ostatnich 60 minutach. Żadne źródło nie zgłasza tu zagrożenia.
         </p>
       ) : (
         <>
@@ -243,6 +284,32 @@ function VoivPanel({
           )}
         </>
       )}
+      <h3 className="md-h">Lokalne: awarie, wyłączenia, ćwiczenia ({localHere.length})</h3>
+      {localHere.length ? (
+        <ul className="md-list">
+          {localHere.map((a) => (
+            <LocalCard key={a.id} a={a} />
+          ))}
+        </ul>
+      ) : (
+        <p className="md-empty">
+          {local ? "Brak komunikatów RSO o awariach lub wyłączeniach wody, prądu, gazu ani o ćwiczeniach." : "Ładuję komunikaty lokalne…"}
+        </p>
+      )}
+
+      <h3 className="md-h">NOTAM nad województwem ({notamsHere.length})</h3>
+      {notamsHere.length ? (
+        <ul className="md-list">
+          {notamsHere.map((n) => (
+            <NotamCard key={`${n.location}:${n.id}`} n={n} st={st} compact />
+          ))}
+        </ul>
+      ) : (
+        <p className="md-empty">
+          {!air ? "Ładuję NOTAM…" : air.notam.ok ? "Brak NOTAM z obszarem nad tym województwem." : `NOTAM niedostępne (${air.notam.error ?? "?"}).`}
+        </p>
+      )}
+
       {pl && (
         <>
           <h3 className="md-h">Naruszenia przestrzeni PL (MAPA.UA)</h3>
@@ -465,6 +532,256 @@ function UaPanel({ snap, id, onClose }: { snap: UaThreatsSnapshot | null; id: st
       <p className="md-foot">
         Szacunkowe pozycje z komunikatów, to nie jest oficjalne ostrzeżenie. {snap?.ok === false ? "MAPA.UA nie odpowiada, dane mogą być nieaktualne. " : ""}
         Czasy: Europa/Warszawa.
+      </p>
+    </Shell>
+  );
+}
+
+// ---- airspace & local alerts ---------------------------------------------------------------------
+
+function voivNames(st: FusionState | null, ids: string[]): string {
+  return ids.map((x) => st?.voivodeships.find((v) => v.id === x)?.name ?? x).join(", ");
+}
+
+function NotamCard({ n, st, compact = false }: { n: Notam; st: FusionState | null; compact?: boolean }) {
+  const meta = NOTAM_META[n.category];
+  const focusOn = useStore((s) => s.focusOn);
+  const active = n.state === "active";
+  const lim = notamLimits(n);
+  return (
+    <li className="md-item ov-item" style={{ borderLeftColor: meta?.color }}>
+      <div className="md-item-top">
+        <span className="md-src">
+          NOTAM <b>{n.id}</b>
+          {n.location ? ` · ${n.location}` : ""}
+        </span>
+        <span className={`md-state ${active ? "on" : "off"}`}>{active ? "obowiązuje" : "zapowiedziany"}</span>
+      </div>
+      <div className="md-title">
+        {n.label}
+        {n.condition_label ? ` — ${n.condition_label}` : ""}
+      </div>
+      <div className="md-meta">
+        {notamWindow(n)}
+        {n.schedule ? ` · harmonogram: ${n.schedule}` : ""}
+      </div>
+      {(lim || !compact) && (
+        <div className="md-meta">
+          {lim ? `Wysokość ${lim}` : ""}
+          {!compact ? `${lim ? " · " : ""}${geometrySourceLabel(n.geometry_source)}` : ""}
+        </div>
+      )}
+      {!compact && n.voivodeships.length > 0 && <div className="md-meta">Województwa: {voivNames(st, n.voivodeships)}</div>}
+      {compact ? (
+        <details className="ov-more">
+          <summary>Treść</summary>
+          <pre className="notam-text">{n.text || n.raw}</pre>
+        </details>
+      ) : (
+        <>
+          <pre className="notam-text">{n.text || n.raw}</pre>
+          <details className="ov-more">
+            <summary>Pełny komunikat (ICAO)</summary>
+            <pre className="notam-text">{n.raw}</pre>
+          </details>
+        </>
+      )}
+      {n.bbox && n.map && (
+        <button type="button" className="md-link" onClick={() => focusOn(n.bbox!)}>
+          Pokaż obszar na mapie →
+        </button>
+      )}
+    </li>
+  );
+}
+
+function ZoneCard({ z, st }: { z: AirspaceZone; st: FusionState | null }) {
+  const lim = notamLimits(z);
+  return (
+    <li className="md-item ov-item" style={{ borderLeftColor: z.kind === "danger" ? "#F0783A" : z.kind === "reserved" ? "#E0A100" : "#FF5A4E" }}>
+      <div className="md-item-top">
+        <span className="md-src">Strefa stała · {z.code}</span>
+        <span className="md-state off">{z.by_notam ? "aktywowana NOTAM-em" : "wg AIP/AUP"}</span>
+      </div>
+      <div className="md-title">{z.name}</div>
+      <div className="md-meta">
+        {z.label}
+        {lim ? ` · wysokość ${lim}` : ""}
+      </div>
+      {z.voivodeships.length > 0 && <div className="md-meta">Województwa: {voivNames(st, z.voivodeships)}</div>}
+      <div className="md-reason">Granice strefy stałej. Czy jest aktywna teraz, mówi NOTAM lub plan AUP — nie ta warstwa.</div>
+    </li>
+  );
+}
+
+/** Everything under a tapped point: NOTAM areas and permanent areas. */
+function AreasPanel({ air, st, keys, onClose }: { air: AirspaceSnapshot | null; st: FusionState | null; keys: string[]; onClose: () => void }) {
+  const notams = (air?.notam.items ?? []).filter((n) => keys.includes(`notam:${n.location}:${n.id}`));
+  const zones = (air?.zones.items ?? []).filter((z) => keys.includes(`zone:${z.id}`));
+  const total = notams.length + zones.length;
+  const at = notams[0]?.voivodeships[0] ?? zones[0]?.voivodeships[0];
+  return (
+    <Shell
+      title={total === 1 && notams.length ? `NOTAM ${notams[0].id}` : `Strefy w tym miejscu (${total})`}
+      sub={air?.notam.fetched_at ? `NOTAM pobrane ${fmtDayTime(air.notam.fetched_at)}` : undefined}
+      onClose={onClose}
+    >
+      {!total && <p className="md-empty">Tej strefy nie ma już w danych (NOTAM wygasł lub został odwołany).</p>}
+      <ul className="md-list">
+        {notams.map((n) => (
+          <NotamCard key={`${n.location}:${n.id}`} n={n} st={st} />
+        ))}
+        {zones.map((z) => (
+          <ZoneCard key={z.id} z={z} st={st} />
+        ))}
+      </ul>
+      {at && (
+        <button type="button" className="md-link" onClick={() => useStore.getState().setSelectedVoiv(at)}>
+          Pokaż województwo {voivNames(st, [at])} →
+        </button>
+      )}
+      <NotamFoot air={air} />
+    </Shell>
+  );
+}
+
+function NotamFoot({ air }: { air: AirspaceSnapshot | null }) {
+  return (
+    <p className="md-foot">
+      Źródło NOTAM: {air?.notam.source ?? "FAA NOTAM Search"} (FIR {air?.notam.locations.join(", ") || "EPWW"})
+      {air?.notam.fetched_at ? `, pobrano ${fmtDayTime(air.notam.fetched_at)}` : ""}
+      {air && !air.notam.ok && air.notam.enabled ? ` — brak świeżych danych: ${air.notam.error}` : ""}.
+      {air?.notam.skipped ? ` Pominięto ${air.notam.skipped} NOTAM o przeszkodach, oświetleniu i lotniskach.` : ""}
+      {air?.notam.truncated ? " Źródło ma więcej NOTAM, niż zostało odczytane — lista może być niepełna." : ""}
+      {air?.zones.enabled ? ` Strefy stałe: ${air.zones.source}.` : ""} Czasy: Europa/Warszawa. Do planowania lotu używaj
+      oficjalnego briefingu (AIS PAŻP), nie tej mapy.
+    </p>
+  );
+}
+
+function NotamListPanel({ air, st, onClose }: { air: AirspaceSnapshot | null; st: FusionState | null; onClose: () => void }) {
+  const [onlyMap, setOnlyMap] = useState(true);
+  const [onlyNow, setOnlyNow] = useState(false);
+  const all = air?.notam.items ?? [];
+  const list = all.filter((n) => (!onlyMap || n.map) && (!onlyNow || n.state === "active"));
+  const zones = air?.zones.enabled ? air.zones.items : [];
+  return (
+    <Shell title="NOTAM — przestrzeń powietrzna" sub={`${all.length} NOTAM · ${all.filter((n) => n.map).length} z obszarem na mapie`} onClose={onClose}>
+      {!air && <p className="md-empty">Ładuję NOTAM…</p>}
+      {air && !air.notam.enabled && <p className="md-empty">Warstwa NOTAM jest wyłączona na tym serwerze.</p>}
+      {air?.notam.enabled && (
+        <>
+          <div className="ov-filters" role="group" aria-label="Filtr NOTAM">
+            <button type="button" className={`ov-chip ${onlyMap ? "on" : ""}`} aria-pressed={onlyMap} onClick={() => setOnlyMap((x) => !x)}>
+              tylko strefy na mapie
+            </button>
+            <button type="button" className={`ov-chip ${onlyNow ? "on" : ""}`} aria-pressed={onlyNow} onClick={() => setOnlyNow((x) => !x)}>
+              tylko obowiązujące teraz
+            </button>
+          </div>
+          <div className="ov-legend" aria-label="Legenda">
+            <span><i className="lg-solid" /> obowiązuje</span>
+            <span><i className="lg-dash" /> zapowiedziany lub obszar przybliżony</span>
+          </div>
+          {list.length ? (
+            <ul className="md-list">
+              {list.map((n) => (
+                <NotamCard key={`${n.location}:${n.id}`} n={n} st={st} compact />
+              ))}
+            </ul>
+          ) : (
+            <p className="md-empty">{air.notam.ok || all.length ? "Brak NOTAM spełniających filtr." : `Brak danych NOTAM (${air.notam.error ?? "?"}).`}</p>
+          )}
+        </>
+      )}
+      {zones.length > 0 && (
+        <p className="md-reason">Strefy stałe (P/R/D/TSA/TRA, {zones.length}) są na mapie jako przerywane kontury — dotknij strefy, by zobaczyć szczegóły.</p>
+      )}
+      <NotamFoot air={air} />
+    </Shell>
+  );
+}
+
+function LocalCard({ a }: { a: LocalAlert }) {
+  return (
+    <li className="md-item ov-item" style={{ borderLeftColor: LOCAL_META[a.category].color }}>
+      <div className="md-item-top">
+        <span className="md-src">
+          {a.categories.map((c) => LOCAL_META[c].label).join(" + ")} · {localKindLabel(a)}
+        </span>
+        <span className={`md-state ${a.state === "active" ? "on" : "off"}`}>{localStateLabel(a)}</span>
+      </div>
+      <div className="md-title">{a.title}</div>
+      {a.summary && <div className="md-reason">{a.summary}</div>}
+      <div className="md-meta">
+        {localWindow(a)} · {a.source_name}
+        {a.url && (
+          <>
+            {" · "}
+            <a href={a.url} target="_blank" rel="noopener noreferrer">
+              treść komunikatu
+            </a>
+          </>
+        )}
+      </div>
+    </li>
+  );
+}
+
+function LocalListPanel({ snap, st, onClose }: { snap: LocalAlertsSnapshot | null; st: FusionState | null; onClose: () => void }) {
+  const cats = useStore((s) => s.localCats);
+  const setCat = useStore((s) => s.setLocalCat);
+  const list = visibleLocal(snap, cats);
+  const groups = new Map<string, LocalAlert[]>();
+  for (const a of list) {
+    const keys = a.voivodeships.length ? a.voivodeships : [""];
+    for (const k of keys) groups.set(k, [...(groups.get(k) ?? []), a]);
+  }
+  const order = [...groups.keys()].sort((x, y) => (x === "" ? 1 : y === "" ? -1 : voivNames(st, [x]).localeCompare(voivNames(st, [y]), "pl")));
+  const all = (snap?.items ?? []).filter((a) => a.state !== "ended");
+  const count = (c: LocalCategory) => all.filter((a) => a.categories.includes(c)).length;
+  const rso = snap?.sources.find((x) => x.id === "rso");
+  return (
+    <Shell title="Lokalne: awarie, wyłączenia, ćwiczenia" sub={`${list.length} komunikatów · ${list.filter((a) => a.state === "active").length} trwa`} onClose={onClose}>
+      <div className="ov-filters" role="group" aria-label="Rodzaj">
+        {LOCAL_ORDER.map((c) => (
+          <button
+            key={c}
+            type="button"
+            className={`ov-chip ${cats[c] ? "on" : ""}`}
+            aria-pressed={cats[c]}
+            onClick={() => setCat(c, !cats[c])}
+          >
+            <span className="mq-dot" style={{ background: LOCAL_META[c].color }} aria-hidden="true" /> {LOCAL_META[c].short} {count(c)}
+          </button>
+        ))}
+      </div>
+      {!snap && <p className="md-empty">Ładuję komunikaty…</p>}
+      {snap && !list.length && <p className="md-empty">Brak bieżących ani zaplanowanych komunikatów o awariach wody, prądu, gazu lub o ćwiczeniach.</p>}
+      {order.map((k) => (
+        <section key={k || "pl"}>
+          <h3 className="md-h">
+            {k ? (
+              <button type="button" className="md-link" onClick={() => useStore.getState().setSelectedVoiv(k)}>
+                woj. {voivNames(st, [k])}
+              </button>
+            ) : (
+              "Bez przypisanego województwa"
+            )}{" "}
+            ({groups.get(k)!.length})
+          </h3>
+          <ul className="md-list">
+            {groups.get(k)!.map((a) => (
+              <LocalCard key={`${k}:${a.id}`} a={a} />
+            ))}
+          </ul>
+        </section>
+      ))}
+      <p className="md-foot">
+        Źródło: komunikaty RSO (komunikaty.tvp.pl) wybrane automatycznie po treści
+        {rso && !rso.ok ? ` — RSO teraz nie odpowiada (${rso.error ?? "?"}), lista z ostatniego pobrania` : ""}
+        {(snap?.sources.length ?? 0) > 1 ? `, oraz ${snap!.sources.filter((x) => x.id !== "rso").map((x) => x.name ?? x.id).join(", ")}` : ""}. Okno czasowe
+        odczytane z treści; „komunikat z …” = bez daty w treści. Szczegóły zawsze w oryginale. Czasy: Europa/Warszawa.
       </p>
     </Shell>
   );

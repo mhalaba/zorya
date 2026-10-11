@@ -93,21 +93,43 @@ function loadPlGeometry() {
   try {
     const fc = JSON.parse(fs.readFileSync(PL_GEO_PATH, "utf8"));
     const polygons = [];
+    /** Per voivodeship: its polygons and a bounding box, for point → voivodeship lookups. */
+    const regions = [];
     for (const f of fc.features || []) {
       const g = f.geometry;
-      if (g?.type === "Polygon") polygons.push(g.coordinates);
-      else if (g?.type === "MultiPolygon") polygons.push(...g.coordinates);
+      const own = g?.type === "Polygon" ? [g.coordinates] : g?.type === "MultiPolygon" ? g.coordinates : [];
+      polygons.push(...own);
+      const id = String(f.properties?.id ?? f.id ?? "");
+      if (id && own.length) regions.push({ id, polygons: own, bbox: bboxOf(own.flatMap((rings) => rings[0])) });
     }
     const vertices = polygons.flatMap((rings) => rings.flat());
     if (!vertices.length) throw new Error("pusta geometria");
-    return { polygons, vertices };
+    return { polygons, vertices, regions, bbox: bboxOf(vertices) };
   } catch (err) {
     console.error("Zorya: brak granic PL z GeoJSON, używam przybliżenia —", err.message || err);
-    return { polygons: [], vertices: PL_BORDER_FALLBACK };
+    return { polygons: [], vertices: PL_BORDER_FALLBACK, regions: [], bbox: null };
   }
 }
 
+function bboxOf(points) {
+  let minLon = Infinity, minLat = Infinity, maxLon = -Infinity, maxLat = -Infinity;
+  for (const [lon, lat] of points) {
+    if (lon < minLon) minLon = lon;
+    if (lon > maxLon) maxLon = lon;
+    if (lat < minLat) minLat = lat;
+    if (lat > maxLat) maxLat = lat;
+  }
+  return { minLon, minLat, maxLon, maxLat };
+}
+
+function inBbox(lat, lon, b) {
+  return !!b && lon >= b.minLon && lon <= b.maxLon && lat >= b.minLat && lat <= b.maxLat;
+}
+
 const PL_GEOMETRY = loadPlGeometry();
+// Flat copy of the boundary for the nearest-vertex scan (no per-call destructuring).
+const VERT_LON = Float64Array.from(PL_GEOMETRY.vertices, (v) => v[0]);
+const VERT_LAT = Float64Array.from(PL_GEOMETRY.vertices, (v) => v[1]);
 
 function inRing(lon, lat, ring) {
   let inside = false;
@@ -119,8 +141,32 @@ function inRing(lon, lat, ring) {
   return inside;
 }
 
+function inPolygons(lat, lon, polygons) {
+  return polygons.some(([outer, ...holes]) => inRing(lon, lat, outer) && !holes.some((h) => inRing(lon, lat, h)));
+}
+
 export function insidePl(lat, lon) {
-  return PL_GEOMETRY.polygons.some(([outer, ...holes]) => inRing(lon, lat, outer) && !holes.some((h) => inRing(lon, lat, h)));
+  if (PL_GEOMETRY.bbox && !inBbox(lat, lon, PL_GEOMETRY.bbox)) return false;
+  return inPolygons(lat, lon, PL_GEOMETRY.polygons);
+}
+
+/** Voivodeship id containing the point, or null outside Poland. */
+export function voivodeshipAt(lat, lon) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  for (const r of PL_GEOMETRY.regions) {
+    if (inBbox(lat, lon, r.bbox) && inPolygons(lat, lon, r.polygons)) return r.id;
+  }
+  return null;
+}
+
+/** Voivodeships touched by a set of [lon, lat] points (polygon vertices, centre…), in VOIV order. */
+export function voivodeshipsForPoints(points) {
+  const hit = new Set();
+  for (const p of points || []) {
+    const id = voivodeshipAt(p[1], p[0]);
+    if (id) hit.add(id);
+  }
+  return VOIV.map((v) => v.id).filter((id) => hit.has(id));
 }
 
 export function haversine(lon1, lat1, lon2, lat2) {
@@ -136,11 +182,21 @@ export function haversine(lon1, lat1, lon2, lat2) {
 /** 0 inside Poland; otherwise distance (km) to the nearest point of the Polish border. */
 export function distToPlBorder(lat, lon) {
   if (insidePl(lat, lon)) return 0;
-  let min = Infinity;
-  for (const [blon, blat] of PL_GEOMETRY.vertices) {
-    min = Math.min(min, haversine(lon, lat, blon, blat));
+  // Nearest vertex by a flat (equirectangular) metric, then one exact haversine: same answer at
+  // these distances, without ~8000 trigonometric calls per object per minute.
+  const k = Math.cos((lat * Math.PI) / 180);
+  let best = -1;
+  let bestD = Infinity;
+  for (let i = 0; i < VERT_LON.length; i++) {
+    const dx = (VERT_LON[i] - lon) * k;
+    const dy = VERT_LAT[i] - lat;
+    const d = dx * dx + dy * dy;
+    if (d < bestD) {
+      bestD = d;
+      best = i;
+    }
   }
-  return min;
+  return best < 0 ? Infinity : haversine(lon, lat, VERT_LON[best], VERT_LAT[best]);
 }
 
 export function azimuthToPl(lat, lon) {
@@ -465,6 +521,8 @@ export function scoreWorld(now, input) {
       name: v.name,
       nameEn: v.nameEn,
       eastRank: v.eastRank,
+      lat: v.lat,
+      lon: v.lon,
       points,
       own: round2(ownSum),
       transfer,

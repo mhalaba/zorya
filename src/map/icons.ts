@@ -100,8 +100,88 @@ function registerMapaUaIcons(map: MLMap) {
   }
 }
 
+/** Local alerts: round badges (power = bolt, water = drop, gas = flame, exercise = crosshair). */
+function registerLocalIcons(map: MLMap) {
+  const badge = (fill: string, glyph: (g: CanvasRenderingContext2D) => void) =>
+    drawIcon((g, s) => {
+      g.translate(s / 2, s / 2);
+      g.beginPath();
+      g.arc(0, 0, 24, 0, Math.PI * 2);
+      g.fillStyle = fill;
+      g.fill();
+      g.lineWidth = 3;
+      g.strokeStyle = "#070B12";
+      g.stroke();
+      glyph(g);
+    });
+  add(
+    map,
+    "loc-power",
+    badge("#F2C14E", (g) => {
+      g.fillStyle = "#070B12";
+      g.beginPath();
+      g.moveTo(3, -16);
+      g.lineTo(-9, 3);
+      g.lineTo(-1, 3);
+      g.lineTo(-4, 16);
+      g.lineTo(9, -4);
+      g.lineTo(1, -4);
+      g.closePath();
+      g.fill();
+    })
+  );
+  add(
+    map,
+    "loc-water",
+    badge("#4FA3E0", (g) => {
+      g.fillStyle = "#FFFFFF";
+      g.beginPath();
+      g.moveTo(0, -15);
+      g.bezierCurveTo(8, -4, 11, 2, 11, 6);
+      g.arc(0, 6, 11, 0, Math.PI);
+      g.bezierCurveTo(-11, 2, -8, -4, 0, -15);
+      g.fill();
+    })
+  );
+  add(
+    map,
+    "loc-gas",
+    badge("#F0783A", (g) => {
+      g.fillStyle = "#FFFFFF";
+      g.beginPath();
+      g.moveTo(0, -16);
+      g.bezierCurveTo(10, -6, 12, 4, 7, 11);
+      g.bezierCurveTo(4, 15, -4, 15, -7, 11);
+      g.bezierCurveTo(-11, 5, -6, -2, -2, -6);
+      g.bezierCurveTo(-2, 0, 1, 2, 3, 2);
+      g.bezierCurveTo(3, -4, 2, -10, 0, -16);
+      g.fill();
+    })
+  );
+  add(
+    map,
+    "loc-exercise",
+    badge("#B48CF0", (g) => {
+      g.strokeStyle = "#FFFFFF";
+      g.lineWidth = 3.5;
+      g.beginPath();
+      g.arc(0, 0, 10, 0, Math.PI * 2);
+      g.moveTo(0, -17);
+      g.lineTo(0, -5);
+      g.moveTo(0, 5);
+      g.lineTo(0, 17);
+      g.moveTo(-17, 0);
+      g.lineTo(-5, 0);
+      g.moveTo(5, 0);
+      g.lineTo(17, 0);
+      g.stroke();
+    })
+  );
+}
+
 export function registerMapIcons(map: MLMap) {
   registerMapaUaIcons(map);
+  registerLocalIcons(map);
   add(
     map,
     "obj-shahed",

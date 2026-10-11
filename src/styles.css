@@ -922,10 +922,10 @@ footer.site-foot .lk a { text-decoration: none; }
 .map-detail {
   position: absolute;
   z-index: 30;
-  top: max(56px, calc(env(safe-area-inset-top) + 48px));
+  top: max(94px, calc(env(safe-area-inset-top) + 86px));
   left: max(10px, env(safe-area-inset-left));
   width: min(380px, calc(100% - 20px));
-  max-height: calc(100% - 120px);
+  max-height: calc(100% - 150px);
   display: flex;
   flex-direction: column;
   background: var(--z-bg-raised);
@@ -1056,7 +1056,10 @@ footer.site-foot .lk a { text-decoration: none; }
   cursor: pointer;
 }
 .ua-layers-pop {
-  width: 230px;
+  width: 264px;
+  max-height: calc(100dvh - 200px);
+  overflow: auto;
+  overscroll-behavior: contain;
   display: grid;
   gap: 4px;
   padding: 10px 12px;
@@ -1064,6 +1067,110 @@ footer.site-foot .lk a { text-decoration: none; }
   background: var(--z-bg-raised);
   font-size: 14px;
 }
+.ly-h {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--z-text-2);
+}
+.ly-h:first-child { margin-top: 0; }
+.ly-cats { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8px; padding-left: 4px; }
+.ua-layers-pop .ly-cat { min-height: 32px; font-size: 13px; }
+.ly-link {
+  justify-self: start;
+  border: 0;
+  padding: 4px 0;
+  background: transparent;
+  color: var(--z-link);
+  text-decoration: underline;
+  text-decoration-color: var(--z-link-underline);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.ua-sw.notam { background: transparent; border: 2px solid #FF2D7A; }
+.ua-sw.zone { background: transparent; border: 1px dashed #FF5A4E; }
+
+/* Always-visible shortcuts under the HUD: NOTAM list, local alerts list. */
+.map-quick {
+  position: absolute;
+  z-index: 5;
+  top: max(50px, calc(env(safe-area-inset-top) + 42px));
+  left: max(10px, env(safe-area-inset-left));
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: calc(100% - 80px);
+}
+.mq-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 4px 10px;
+  border: 1px solid var(--z-line-strong);
+  background: color-mix(in srgb, var(--z-bg-raised) 90%, transparent);
+  color: var(--z-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.mq-chip.on { border-color: var(--z-text); }
+.mq-chip b { font-weight: 700; }
+.mq-sub { color: var(--z-text-2); }
+.mq-ic.notam { width: 12px; height: 12px; border: 2px solid #FF2D7A; background: rgba(255, 45, 122, 0.25); flex: none; }
+.mq-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+.mq-warn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--z-status-ostrzezenie);
+  color: var(--z-on-status);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* NOTAM / local alert cards and filters inside the detail panel. */
+.ov-item { border-left-width: 4px; }
+.notam-text {
+  margin: 2px 0 0;
+  padding: 6px 8px;
+  max-height: 11em;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--z-font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--z-text);
+  background: color-mix(in srgb, var(--z-text) 6%, transparent);
+}
+.ov-more summary { cursor: pointer; font-size: 13px; color: var(--z-link); min-height: 28px; display: flex; align-items: center; }
+.ov-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.ov-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 2px 10px;
+  border: 1px solid var(--z-line-strong);
+  background: transparent;
+  color: var(--z-text-2);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.ov-chip.on { color: var(--z-text); border-color: var(--z-text); background: color-mix(in srgb, var(--z-text) 8%, transparent); }
+.ov-legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--z-text-2); }
+.ov-legend i { display: inline-block; width: 18px; height: 0; vertical-align: middle; margin-right: 4px; border-top: 2px solid #FF2D7A; }
+.ov-legend i.lg-dash { border-top-style: dashed; }
+.md-h .md-link { padding: 0; font-size: inherit; letter-spacing: inherit; text-transform: none; }
 .ua-layers-pop label { display: flex; align-items: center; gap: 8px; min-height: 36px; cursor: pointer; }
 .ua-layers-pop .muted { margin-left: auto; font-variant-numeric: tabular-nums; }
 .ua-sw { width: 10px; height: 10px; display: inline-block; flex: none; }

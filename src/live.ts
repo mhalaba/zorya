@@ -63,7 +63,10 @@ export function useLiveFusion() {
 
     void load();
     connect();
-    const poll = window.setInterval(() => void load(), 60_000);
+    // HTTP fallback only while the socket is down: an open socket already pushes every frame.
+    const poll = window.setInterval(() => {
+      if (ws?.readyState !== WebSocket.OPEN) void load();
+    }, 60_000);
     const onOffline = () => {
       if (!closed) setOffline(true);
     };

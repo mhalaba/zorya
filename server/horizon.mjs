@@ -1,5 +1,6 @@
 /** Horizon adapter: sample fixtures + live fusion state → content-model shapes. */
 
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,14 +12,18 @@ function readJson(name) {
   return JSON.parse(fs.readFileSync(path.join(fixtureDir, name), "utf8"));
 }
 
+let fixtures = null;
+
+/** Sample data never changes at runtime: read it once, not on every request. */
 export function loadFixtures() {
-  return {
+  fixtures ??= {
     events: readJson("events.json").events,
     signals: readJson("signals.json").signals,
     sources: readJson("sources.json").sources,
     status: readJson("status.json"),
     areas: readJson("areas.json").areas,
   };
+  return fixtures;
 }
 
 function mapFusionLevel(v) {
@@ -192,13 +197,59 @@ export function statusFromFusion(state) {
   };
 }
 
+const REPORT_KINDS = new Set(["syrena", "huk", "dron_samolot", "dym_pozar", "brak_pradu", "inne"]);
+const MAX_REPORTS = 2000;
+const REPORT_KEEP_MS = 24 * 3600_000;
+const WITHDRAW_MS = 10 * 60_000;
+/** Rough box around Poland (with a margin): reports from elsewhere are not about Polish skies. */
+const REPORT_BOX = { minLat: 48.5, maxLat: 55.5, minLon: 13.5, maxLon: 24.8 };
+
 const reports = [];
 
+/** 500 m grid, so a stored report never carries a precise home address (README promise, enforced here). */
+function round500(lat, lon) {
+  const dLat = 500 / 111_320;
+  const dLon = 500 / (111_320 * Math.cos((lat * Math.PI) / 180));
+  return { lat: Math.round(lat / dLat) * dLat, lon: Math.round(lon / dLon) * dLon };
+}
+
+/** Whitelist and clamp a report body. Throws with a short Polish reason on bad input. */
+export function cleanReport(body) {
+  const kind = String(body?.kind || "");
+  if (!REPORT_KINDS.has(kind)) throw new Error("nieznany rodzaj zgłoszenia");
+  const lat = Number(body?.location?.lat);
+  const lon = Number(body?.location?.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) throw new Error("brak położenia");
+  if (lat < REPORT_BOX.minLat || lat > REPORT_BOX.maxLat || lon < REPORT_BOX.minLon || lon > REPORT_BOX.maxLon) {
+    throw new Error("położenie poza Polską");
+  }
+  const seen = Date.parse(body?.observed_at);
+  const now = Date.now();
+  // A sighting from the future or older than a day is not a live report.
+  const observed = Number.isFinite(seen) && seen <= now + 5 * 60_000 && seen >= now - 24 * 3600_000 ? seen : now;
+  const p = round500(lat, lon);
+  return {
+    kind,
+    observed_at: new Date(observed).toISOString(),
+    location: { lat: Math.round(p.lat * 1e5) / 1e5, lon: Math.round(p.lon * 1e5) / 1e5, rounded_m: 500 },
+    note: String(body?.note ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 500),
+    area_id: body?.area_id == null ? null : String(body.area_id).slice(0, 64),
+  };
+}
+
+function pruneReports(now) {
+  while (reports.length && (reports.length > MAX_REPORTS || now - reports[0].received_at > REPORT_KEEP_MS)) reports.shift();
+}
+
+/** Stores a cleaned report. The id is random (128 bit): it is the only key that can withdraw it. */
 export function addReport(body) {
-  const id = `r-${Date.now().toString(36)}`;
-  const withdraw_until = new Date(Date.now() + 10 * 60_000).toISOString();
-  reports.push({ id, ...body, state: "sent", withdraw_until });
-  return { id, withdraw_until };
+  const clean = cleanReport(body);
+  const now = Date.now();
+  pruneReports(now);
+  const id = `r-${crypto.randomUUID()}`;
+  const withdraw_until = new Date(now + WITHDRAW_MS).toISOString();
+  reports.push({ ...clean, id, state: "sent", received_at: now, withdraw_until });
+  return { id, withdraw_until, report: clean };
 }
 
 export function withdrawReport(id) {

@@ -1,0 +1,163 @@
+import { useState } from "react";
+import { useShallow } from "zustand/react/shallow";
+import { useStore } from "../store";
+import { MAPAUA_URL } from "../mapaua";
+import { LOCAL_META, LOCAL_ORDER, visibleLocal } from "../overlays";
+import type { LocalCategory } from "../types";
+
+/** Always-visible shortcuts: NOTAM list and local alerts list, with live counts. */
+export function QuickChips() {
+  const air = useStore((s) => s.airspace);
+  const local = useStore((s) => s.localAlerts);
+  const cats = useStore((s) => s.localCats);
+  const panel = useStore((s) => s.listPanel);
+  const open = useStore((s) => s.setListPanel);
+  const notams = air?.notam.enabled ? air.notam.items : null;
+  const zones = notams?.filter((n) => n.map).length ?? 0;
+  const loc = visibleLocal(local, cats);
+  const active = loc.filter((a) => a.state === "active").length;
+  return (
+    <div className="map-quick" role="group" aria-label="Przestrzeń powietrzna i alerty lokalne">
+      {notams && (
+        <button
+          type="button"
+          className={`mq-chip ${panel === "notam" ? "on" : ""}`}
+          aria-pressed={panel === "notam"}
+          onClick={() => open(panel === "notam" ? null : "notam")}
+          title={air?.notam.ok ? "NOTAM dla polskiej przestrzeni (FIR EPWW)" : `NOTAM: brak świeżych danych (${air?.notam.error ?? "?"})`}
+        >
+          <span className="mq-ic notam" aria-hidden="true" />
+          NOTAM <b>{notams.length}</b>
+          {zones > 0 && <span className="mq-sub">· {zones} stref</span>}
+          {!air?.notam.ok && <span className="mq-warn" aria-label="dane nieaktualne">!</span>}
+        </button>
+      )}
+      <button
+        type="button"
+        className={`mq-chip ${panel === "local" ? "on" : ""}`}
+        aria-pressed={panel === "local"}
+        onClick={() => open(panel === "local" ? null : "local")}
+        title="Awarie i planowane wyłączenia wody, prądu, gazu oraz ćwiczenia (RSO)"
+      >
+        {LOCAL_ORDER.filter((c) => loc.some((a) => a.categories.includes(c))).map((c) => (
+          <span key={c} className="mq-dot" style={{ background: LOCAL_META[c].color }} aria-hidden="true" />
+        ))}
+        Lokalne <b>{loc.length}</b>
+        {active > 0 && <span className="mq-sub">· {active} trwa</span>}
+      </button>
+    </div>
+  );
+}
+
+/** Layer menu: airspace (NOTAM + permanent areas), local alerts by category, MAPA.UA. */
+export function MapLayers() {
+  const snap = useStore((s) => s.uaThreats);
+  const air = useStore((s) => s.airspace);
+  const local = useStore((s) => s.localAlerts);
+  // Only the fields this menu shows: a whole-store subscription would re-render on every map hover.
+  const st = useStore(
+    useShallow((s) => ({
+      notamOn: s.notamOn,
+      zonesOn: s.zonesOn,
+      localOn: s.localOn,
+      localCats: s.localCats,
+      uaMissilesOn: s.uaMissilesOn,
+      uaBombsOn: s.uaBombsOn,
+      uaDronesOn: s.uaDronesOn,
+      setOverlay: s.setOverlay,
+      setLocalCat: s.setLocalCat,
+      setUaLayer: s.setUaLayer,
+      setListPanel: s.setListPanel,
+    }))
+  );
+  const [open, setOpen] = useState(false);
+  const objs = snap?.objects ?? [];
+  const count = (pred: (k: string) => boolean) => objs.filter((o) => pred(o.kind)).length;
+  const nm = count((k) => k.startsWith("missile"));
+  const nb = count((k) => k === "bomb");
+  const nd = count((k) => k.startsWith("drone"));
+  const uaOn = !!snap?.enabled && (st.uaMissilesOn || st.uaBombsOn || st.uaDronesOn);
+  const notamZones = air?.notam.items.filter((n) => n.map).length ?? 0;
+  const allLocal = (local?.items ?? []).filter((a) => a.state !== "ended");
+  const nLocal = (c: LocalCategory) => allLocal.filter((a) => a.categories.includes(c)).length;
+
+  return (
+    <>
+      <div className="ua-layers">
+        <button type="button" className="ua-layers-btn" aria-expanded={open} onClick={() => setOpen((x) => !x)} title="Warstwy mapy">
+          Warstwy{nm ? ` · ${nm} rak.` : ""}
+        </button>
+        {open && (
+          <div className="ua-layers-pop" role="group" aria-label="Warstwy mapy">
+            <div className="ly-h">Przestrzeń powietrzna</div>
+            {air?.notam.enabled !== false && (
+              <label>
+                <input type="checkbox" checked={st.notamOn} onChange={(e) => st.setOverlay("notamOn", e.target.checked)} />
+                <span className="ua-sw notam" /> Strefy z NOTAM <span className="muted">{notamZones}</span>
+              </label>
+            )}
+            {air?.zones.enabled && (
+              <label>
+                <input type="checkbox" checked={st.zonesOn} onChange={(e) => st.setOverlay("zonesOn", e.target.checked)} />
+                <span className="ua-sw zone" /> Strefy stałe P/R/D/TSA/TRA <span className="muted">{air.zones.items.length}</span>
+              </label>
+            )}
+            <button type="button" className="ly-link" onClick={() => (setOpen(false), st.setListPanel("notam"))}>
+              Lista NOTAM ({air?.notam.items.length ?? 0}) →
+            </button>
+
+            <div className="ly-h">Lokalne: awarie, wyłączenia, ćwiczenia</div>
+            <label>
+              <input type="checkbox" checked={st.localOn} onChange={(e) => st.setOverlay("localOn", e.target.checked)} />
+              Pokaż na mapie <span className="muted">{allLocal.length}</span>
+            </label>
+            <div className="ly-cats">
+              {LOCAL_ORDER.map((c) => (
+                <label key={c} className="ly-cat">
+                  <input type="checkbox" checked={st.localCats[c]} onChange={(e) => st.setLocalCat(c, e.target.checked)} />
+                  <span className="ua-sw" style={{ background: LOCAL_META[c].color }} /> {LOCAL_META[c].short}{" "}
+                  <span className="muted">{nLocal(c)}</span>
+                </label>
+              ))}
+            </div>
+            <button type="button" className="ly-link" onClick={() => (setOpen(false), st.setListPanel("local"))}>
+              Lista alertów lokalnych →
+            </button>
+
+            {snap?.enabled !== false && (
+              <>
+                <div className="ly-h">Nad Ukrainą (MAPA.UA)</div>
+                <label>
+                  <input type="checkbox" checked={st.uaMissilesOn} onChange={(e) => st.setUaLayer("uaMissilesOn", e.target.checked)} />
+                  <span className="ua-sw cruise" /> Rakiety <span className="muted">{nm}</span>
+                </label>
+                <label>
+                  <input type="checkbox" checked={st.uaBombsOn} onChange={(e) => st.setUaLayer("uaBombsOn", e.target.checked)} />
+                  <span className="ua-sw bomb" /> Bomby KAB <span className="muted">{nb}</span>
+                </label>
+                <label>
+                  <input type="checkbox" checked={st.uaDronesOn} onChange={(e) => st.setUaLayer("uaDronesOn", e.target.checked)} />
+                  <span className="ua-sw drone" /> Drony <span className="muted">{nd}</span>
+                </label>
+              </>
+            )}
+            <div className="tiny">
+              {air && !air.notam.ok && air.notam.enabled ? `NOTAM: brak świeżych danych (${air.notam.error}). ` : ""}
+              {snap?.ok === false && snap.error ? `MAPA.UA: brak świeżych danych (${snap.error}). ` : ""}
+              Warstwy informacyjne — nie zmieniają poziomu zagrożenia województw.
+            </div>
+          </div>
+        )}
+      </div>
+      {uaOn && (
+        <div className="ua-attr">
+          Dane o rakietach:{" "}
+          <a href={MAPAUA_URL} target="_blank" rel="noopener noreferrer">
+            MAPA.UA
+          </a>
+          <span className="ua-note">Szacunkowe pozycje z komunikatów, to nie jest oficjalne ostrzeżenie.</span>
+        </div>
+      )}
+    </>
+  );
+}

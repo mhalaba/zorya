@@ -14,6 +14,14 @@ services:
       ZORYA_ARCHIVE_DAYS: "180"
       # MAPA.UA missile layer; set MAPAUA_ENABLED=0 in .env and `docker compose up -d` to switch it off.
       MAPAUA_ENABLED: ${MAPAUA_ENABLED:-1}
+      # NOTAM layer (FAA NOTAM Search, FIR EPWW, every 30 min); 0 switches it off.
+      ZORYA_NOTAM_ENABLED: ${ZORYA_NOTAM_ENABLED:-1}
+      ZORYA_NOTAM_LOCATIONS: ${ZORYA_NOTAM_LOCATIONS:-EPWW}
+      # Optional: permanent P/R/D/TSA/TRA areas from OpenAIP (free key), extra local-alert feeds (JSON),
+      # and a shared secret for the LAN-only drone archive. Keep the values in .env, not here.
+      OPENAIP_API_KEY: ${OPENAIP_API_KEY:-}
+      ZORYA_LOCAL_FEEDS: ${ZORYA_LOCAL_FEEDS:-}
+      ZORYA_ARCHIVE_TOKEN: ${ZORYA_ARCHIVE_TOKEN:-}
     volumes:
       - ./data:/app/data
 

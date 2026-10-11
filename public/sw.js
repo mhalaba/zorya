@@ -1,5 +1,5 @@
 /* Zorya service worker — shell, fonts, last state; Web Push */
-const CACHE = "zorya-v4";
+const CACHE = "zorya-v5";
 const PRECACHE = [
   "/",
   "/app",
@@ -28,6 +28,8 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (event.request.method !== "GET") return;
+  // Only our own origin: map tiles and glyphs from other hosts would otherwise pile up in the cache forever.
+  if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/api") || url.pathname.startsWith("/ws")) {
     if (url.pathname === "/api/status" || url.pathname === "/api/horizon") {
       event.respondWith(
@@ -49,7 +51,8 @@ self.addEventListener("fetch", (event) => {
       const cached = await cache.match(event.request);
       const fresh = fetch(event.request)
         .then((res) => {
-          if (res.ok) cache.put(event.request, res.clone());
+          // Static files only; never cache a range response or an error page.
+          if (res.ok && res.status === 200 && res.type === "basic") cache.put(event.request, res.clone());
           return res;
         })
         .catch(() => cached);

@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
+import { VOIV } from "./fusion.mjs";
 
 const require = createRequire(import.meta.url);
 const webpush = require("web-push");
@@ -16,6 +17,11 @@ const vapidPath = path.join(dataDir, "vapid.json");
 const subsPath = path.join(dataDir, "push-subs.json");
 const COOLDOWN_MS = 10 * 60 * 1000;
 const MAX_SUBS = 10_000;
+const VOIV_IDS = new Set(VOIV.map((v) => v.id));
+/** A push older than this is noise, not a warning: the push service drops it instead of delivering it late. */
+const TTL_S = { priority: 15 * 60, watch: 30 * 60 };
+const SEND_CONCURRENCY = 16;
+const SEND_TIMEOUT_MS = 10_000;
 // Browser push services only — the server POSTs to this URL, so an arbitrary endpoint would be an SSRF hole.
 const PUSH_HOSTS = [
   "fcm.googleapis.com",
@@ -71,31 +77,38 @@ export function pushPublicKey() {
   return vapid.publicKey;
 }
 
+const B64URL = /^[A-Za-z0-9_-]+=*$/;
+
 export function upsertPushSub(body) {
   const subscription = body?.subscription;
   if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
     throw new Error("zły endpoint");
   }
-  if (!isPushEndpoint(subscription.endpoint)) throw new Error("endpoint spoza usług Web Push");
+  const { endpoint } = subscription;
+  const { p256dh, auth } = subscription.keys;
+  if (typeof endpoint !== "string" || endpoint.length > 1024 || !isPushEndpoint(endpoint)) throw new Error("endpoint spoza usług Web Push");
+  // P-256 public key (65 B → 87 chars) and 16-byte auth secret (→ 22 chars), base64url.
+  if (typeof p256dh !== "string" || p256dh.length < 80 || p256dh.length > 100 || !B64URL.test(p256dh)) throw new Error("zły klucz p256dh");
+  if (typeof auth !== "string" || auth.length < 16 || auth.length > 32 || !B64URL.test(auth)) throw new Error("zły klucz auth");
   if (!Array.isArray(body.places)) throw new Error("places musi być tablicą");
-  const known = subs.some((s) => s.subscription.endpoint === subscription.endpoint);
+  const known = subs.some((s) => s.subscription.endpoint === endpoint);
   if (!known && subs.length >= MAX_SUBS) throw new Error("limit subskrypcji");
   const places = body.places
     .slice(0, 8)
     .map((p) => ({
-      voivodeship: String(p.voivodeship || "").slice(0, 40),
-      notifyWatch: !!p.notifyWatch,
-      notifyPriority: p.notifyPriority !== false,
-      name: String(p.name || "").slice(0, 80),
+      voivodeship: String(p?.voivodeship || "").slice(0, 40),
+      notifyWatch: !!p?.notifyWatch,
+      notifyPriority: p?.notifyPriority !== false,
+      name: String(p?.name || "").slice(0, 80),
     }))
-    .filter((p) => p.voivodeship);
+    .filter((p) => VOIV_IDS.has(p.voivodeship));
   subs = subs.filter((s) => s.subscription.endpoint !== subscription.endpoint);
   if (places.length) {
     subs.push({
       subscription: {
-        endpoint: String(subscription.endpoint),
-        expirationTime: subscription.expirationTime ?? null,
-        keys: { p256dh: String(subscription.keys.p256dh), auth: String(subscription.keys.auth) },
+        endpoint,
+        expirationTime: Number.isFinite(subscription.expirationTime) ? subscription.expirationTime : null,
+        keys: { p256dh, auth },
       },
       places,
       lang: body.lang === "en" ? "en" : "pl",
@@ -107,17 +120,31 @@ export function upsertPushSub(body) {
 }
 
 export function removePushSub(endpoint) {
-  if (!endpoint) return;
+  if (typeof endpoint !== "string" || !endpoint) return;
+  const before = subs.length;
   subs = subs.filter((s) => s.subscription.endpoint !== endpoint);
-  saveSubs();
+  // Only a real change touches the disk: unknown endpoints must not turn into free file writes.
+  if (subs.length !== before) saveSubs();
 }
 
+let notifying = false;
+
 export async function notifyFromState(state) {
-  if (!subs.length || !state?.voivodeships) return;
+  if (notifying || !subs.length || !state?.voivodeships) return;
+  notifying = true;
+  try {
+    await notifyOnce(state);
+  } finally {
+    notifying = false;
+  }
+}
+
+async function notifyOnce(state) {
   const now = Date.now();
   const byId = Object.fromEntries(state.voivodeships.map((v) => [v.id, v]));
+  const jobs = [];
   let dirty = false;
-  for (const sub of [...subs]) {
+  for (const sub of subs) {
     if (!sub.places?.length) continue;
     for (const place of sub.places) {
       const v = byId[place.voivodeship];
@@ -131,27 +158,40 @@ export async function notifyFromState(state) {
       sub.last = sub.last || {};
       sub.last[key] = now;
       dirty = true;
-      const name = sub.lang === "en" ? v.nameEn : v.name;
-      const why = sub.lang === "en" ? v.whyEn : v.whyPl;
-      const lvlWord =
-        level === "priority" ? (sub.lang === "en" ? "PRIORITY" : "PRIORYTET") : sub.lang === "en" ? "WATCH" : "UWAGA";
+      const en = sub.lang === "en";
+      const name = en ? v.nameEn : v.name;
+      const why = en ? v.whyEn : v.whyPl;
+      const lvlWord = level === "priority" ? (en ? "PRIORITY" : "PRIORYTET") : en ? "WATCH" : "UWAGA";
       const payload = JSON.stringify({
         title: `Zorya · ${name} · ${lvlWord}`,
-        body: `${Number(v.points).toFixed(1)} ${sub.lang === "en" ? "pts" : "pkt"}${why ? ` — ${why}` : ""}`,
+        body: `${Number(v.points).toFixed(1)} ${en ? "pts" : "pkt"}${why ? ` — ${why}` : ""}`,
         level,
         tag: `zorya-${v.id}-${level}`,
       });
-      try {
-        await webpush.sendNotification(sub.subscription, payload);
-      } catch (err) {
-        if (err.statusCode === 404 || err.statusCode === 410) {
-          subs = subs.filter((s) => s.subscription.endpoint !== sub.subscription.endpoint);
-          dirty = true;
-        } else {
-          console.error("Zorya push", err.statusCode || err.message);
-        }
-      }
+      // Topic (≤ 32 chars, base64url): a newer alert for the same region replaces an undelivered older one.
+      jobs.push({ sub, payload, level, topic: `z-${v.id}-${level}` });
     }
   }
-  if (dirty) saveSubs();
+  const gone = new Set();
+  // Bounded parallelism: thousands of subscribers must not be sent one by one, nor all at once.
+  for (let i = 0; i < jobs.length; i += SEND_CONCURRENCY) {
+    await Promise.all(
+      jobs.slice(i, i + SEND_CONCURRENCY).map(async ({ sub, payload, level, topic }) => {
+        if (gone.has(sub.subscription.endpoint)) return;
+        try {
+          await webpush.sendNotification(sub.subscription, payload, {
+            TTL: TTL_S[level],
+            urgency: level === "priority" ? "high" : "normal",
+            topic,
+            timeout: SEND_TIMEOUT_MS,
+          });
+        } catch (err) {
+          if (err.statusCode === 404 || err.statusCode === 410) gone.add(sub.subscription.endpoint);
+          else console.error("Zorya push", err.statusCode || err.message);
+        }
+      })
+    );
+  }
+  if (gone.size) subs = subs.filter((s) => !gone.has(s.subscription.endpoint));
+  if (dirty || gone.size) saveSubs();
 }
