@@ -94,11 +94,15 @@ Na mapie: obowiązujące strefy wypełnione i obrysowane ciągłą linią, zapow
 
 Zmienne: `ZORYA_NOTAM_ENABLED=0` wyłącza, `ZORYA_NOTAM_LOCATIONS=EPWW,EPWA` (kody ICAO), `ZORYA_NOTAM_URL` (np. lustro/test). Opcjonalnie `OPENAIP_API_KEY` (darmowy klucz openaip.net) włącza warstwę stref stałych P/R/D/TSA/TRA (odświeżana raz na dobę).
 
-## Alerty lokalne: woda, prąd, gaz, ćwiczenia
+**PAŻP AUP/UUP.** Niezależnie od NOTAM-ów serwer co 20 min czyta publiczną mapę planu użycia przestrzeni PAŻP (`airspace.pansa.pl/map-configuration/uup` — bieżący UUP, oraz `…/nextAup` — AUP na jutro, gdy już opublikowany): rezerwacje TSA/TRA, D, R, stref ad hoc i ATZ z granicami strefy, wysokościami (GND / `A061` = 6100 ft AMSL / `F145` = FL145), godzinami (UTC w API, na stronie Europa/Warszawa), jednostką i uwagami. Trafiają do tej samej listy `notam.items` w `/api/airspace` (`geometry_source: "aup"`, ATZ tylko na liście), a wiersz `pazp` w `/api/status` pokazuje stan źródła. Rezerwacje **nie są punktowane** (nie wchodzą do fuzji). `ZORYA_AUP_ENABLED=0` wyłącza, `ZORYA_AUP_BASE` — lustro/test.
 
-Z tego samego pobrania RSO (co minutę) serwer wybiera komunikaty o awariach i planowanych wyłączeniach wody, prądu i gazu oraz o ćwiczeniach i testach syren, przypisuje je do województw (pole RSO, a w razie braku — nazwy w treści) i odczytuje z treści okno czasowe („15.10.2026 w godz. 8:00–14:00”, „14–15 października”). Bez daty w treści komunikat jest pokazywany przez 24 h (awaria) lub 3 dni (planowane, ćwiczenia) od publikacji. Komunikaty, które zniknęły z pierwszej strony RSO, zostają do końca swojego okna (`data/local-alerts.json`). Ostrzeżenia IMGW, hydrologiczne, smog i kąpieliska są pomijane.
+**Źródło NOTAM.** Publiczna wyszukiwarka FAA (`notams.aim.faa.gov`) od wiosny 2026 odpowiada 403 (FAA przeszło na NMS). Działające ścieżki wymagają rejestracji, więc nie są wbudowane: FAA NMS API (wniosek o dostęp: 7-AWA-NAIMES@faa.gov, potem `client_id`/`client_secret`), ICAO API Data Service (klucz z api.icao.int), autorouter.aero API (konto + OAuth) lub EUROCONTROL EAD Basic (konto; NOTAM-y PL wg AIS PAŻP). Do czasu dostępu ustaw `ZORYA_NOTAM_ENABLED=0` — warstwa przestrzeni działa wtedy na AUP/UUP.
 
-Na mapie: znaczki pod środkiem województwa (żółty — prąd, niebieski — woda, pomarańczowy — gaz, fioletowy — ćwiczenia; przygaszony = zaplanowane), liczba przy znaczku. Przycisk „Lokalne” otwiera listę z filtrem rodzajów; panel województwa ma sekcje „Lokalne” i „NOTAM nad województwem”. Nie zmieniają poziomu zagrożenia.
+## Alerty lokalne: woda, prąd, gaz, ćwiczenia, ostrzeżenia IMGW
+
+Z tego samego pobrania RSO (co minutę) serwer wybiera komunikaty o awariach i planowanych wyłączeniach wody, prądu i gazu oraz o ćwiczeniach i testach syren, przypisuje je do województw (pole RSO, a w razie braku — nazwy w treści) i odczytuje z treści okno czasowe („15.10.2026 w godz. 8:00–14:00”, „14–15 października”). Bez daty w treści komunikat jest pokazywany przez 24 h (awaria) lub 3 dni (planowane, ćwiczenia) od publikacji. Komunikaty, które zniknęły z pierwszej strony RSO, zostają do końca swojego okna (`data/local-alerts.json`). Ostrzeżenia IMGW, hydrologiczne, smog i kąpieliska z RSO są pomijane (ostrzeżenia IMGW przychodzą wprost z API IMGW, niżej).
+
+Na mapie: znaczki pod środkiem województwa (żółty — prąd, niebieski — woda, pomarańczowy — gaz, fioletowy — ćwiczenia, jasnoniebieski — pogoda IMGW, granatowy — hydro IMGW; przygaszony = zaplanowane), liczba przy znaczku. Przycisk „Lokalne” otwiera listę z filtrem rodzajów; panel województwa ma sekcje „Lokalne” i „NOTAM nad województwem”. Nie zmieniają poziomu zagrożenia.
 
 Dodatkowe kanały (operatorzy sieci, wodociągi, BIP gmin) przez `ZORYA_LOCAL_FEEDS` — tablica JSON RSS/Atom, czytana co 10 min:
 
@@ -107,6 +111,17 @@ ZORYA_LOCAL_FEEDS='[{"url":"https://example.pl/wylaczenia.rss","name":"Operator 
 ```
 
 `category` (`power|water|gas|exercise`) przypisuje wszystkie wpisy kanału do jednego rodzaju; bez niej wpisy są klasyfikowane jak komunikaty RSO.
+
+Kanały z kategorią mają skrócony opis (300 znaków) i tylko wpisy zaczynające się w najbliższych `ZORYA_OPERATOR_HORIZON_H` godzinach (domyślnie 72); limit wpisów na kanał: `ZORYA_FEED_ITEM_LIMIT` (domyślnie 250).
+
+**Operatorzy sieci (JSON).** Wbudowane adaptery list wyłączeń z serwisów operatorów (kategoria „prąd”, okno czasowe wprost ze źródła, każdy odczyt zastępuje poprzedni — wycofane wyłączenia znikają):
+
+- TAURON Dystrybucja — `www.tauron-dystrybucja.pl/waapi/outages/items?fromDate=…&toDate=…`, co 15 min; cały obszar Taurona (śląskie z Zabrzem i Gliwicami, małopolskie, opolskie, dolnośląskie, część podkarpackiego); województwo z współrzędnych wpisu. `ZORYA_TAURON_ENABLED=0` wyłącza, `ZORYA_TAURON_URL` — lustro.
+- PGE Dystrybucja — `power-outage.gkpge.pl/api/power-outage` (lista za pgedystrybucja.pl/wylaczenia), co 30 min; ~3,5 MB i bywa wolne (timeout 150 s), wycofane (`revoked`) pomijane, województwo z TERYT adresów lub współrzędnych. `ZORYA_PGE_ENABLED=0` wyłącza, `ZORYA_PGE_URL` — lustro.
+
+Do `/api/local-alerts` trafiają tylko wyłączenia trwające lub zaczynające się w horyzoncie (`ZORYA_OPERATOR_HORIZON_H`), z opisem przyciętym do 300 znaków.
+
+**Ostrzeżenia IMGW-PIB.** Co 10 min z publicznego API `danepubliczne.imgw.pl/api/data/warningsmeteo` i `…/warningshydro`: ostrzeżenia meteorologiczne (zjawisko, stopień 1–3, prawdopodobieństwo, okno, powiaty TERYT → województwa) i hydrologiczne (wezbrania 1–3, susza hydrologiczna „do odwołania”, zlewnie → województwa). Kategorie „pogoda” i „hydro” w warstwie lokalnej, link do meteo.imgw.pl / hydro.imgw.pl. **Tylko informacyjnie**: nie zmieniają poziomu województw, nie wchodzą do alertu RCB/RSO ani do powiadomień (również bota SimpleX). Repostów IMGW z RSO parser nie bierze, więc nie ma duplikatów. `ZORYA_IMGW_ENABLED=0` wyłącza.
 
 ## Bezpieczeństwo
 

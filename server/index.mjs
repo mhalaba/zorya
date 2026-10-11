@@ -14,6 +14,9 @@ import { archiveReport, archiveState, archiveStats, markReportWithdrawn, openArc
 import { localStore, startLocalFeeds } from "./local.mjs";
 import { notamSnapshot, startNotams } from "./notam.mjs";
 import { airspaceSnapshot, startAirspace } from "./airspace.mjs";
+import { aupSnapshot, mergeAirspace, startAup } from "./aup.mjs";
+import { startOperators } from "./operators.mjs";
+import { startImgw } from "./imgw.mjs";
 import { rateLimit, safeEqual, securityHeaders } from "./security.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -150,13 +153,19 @@ app.get("/api/local-alerts", (req, res) => {
   sendCached(req, res, "local", localStore.snapshot(), "public, max-age=30");
 });
 
-/** NOTAMs (FIR EPWW) with zone geometry, plus the optional permanent P/R/D/TSA/TRA structure. */
+/**
+ * Airspace layer: PAŻP AUP/UUP reservations (TSA/TRA/D/R/ad hoc, today and tomorrow) and FAA NOTAMs (FIR EPWW,
+ * if enabled and reachable) in one "notam" list with zone geometry, plus the optional permanent P/R/D/TSA/TRA structure.
+ */
 let airspaceBody = null;
+let airspaceKey = null;
 app.get("/api/airspace", (req, res) => {
   const notam = notamSnapshot();
+  const aup = aupSnapshot();
   const zones = airspaceSnapshot();
-  if (!airspaceBody || airspaceBody.notam !== notam || airspaceBody.zones !== zones) {
-    airspaceBody = { notam, zones, generated_at: new Date().toISOString() };
+  if (!airspaceBody || airspaceKey.notam !== notam || airspaceKey.aup !== aup || airspaceKey.zones !== zones) {
+    airspaceKey = { notam, aup, zones };
+    airspaceBody = { notam: mergeAirspace(notam, aup), zones, generated_at: new Date().toISOString() };
   }
   sendCached(req, res, "airspace", airspaceBody, "public, max-age=60");
 });
@@ -431,8 +440,11 @@ server.listen(PORT, HOST, () => {
   setInterval(() => void cycle(), INGEST_EVERY_MS);
   startMapaUa();
   startNotams();
+  startAup();
   startAirspace();
   startLocalFeeds();
+  startOperators(localStore);
+  startImgw(localStore);
 });
 
 function shutdown() {

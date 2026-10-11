@@ -3,6 +3,7 @@
 import { toLocalItems } from "./local.mjs";
 import { safeHttpUrl } from "./security.mjs";
 import { getJson, getText, parseFeed, parseWarsawTime, stripHtml, voivFromText } from "./util.mjs";
+import { aupStatusRow } from "./aup.mjs";
 
 export { parseWarsawTime };
 
@@ -475,7 +476,8 @@ export async function ingestLive() {
       rso.rcb?.active ? rso.rcb.title : "RSO · brak alertu powietrznego",
       rso.rcb?.active ? 1 : 0
     ),
-    { id: "pazp", ok: true, age_s: 0, message: "brak publicznego AUP w tym cyklu — warstwa pusta", records: 0, diode: "late" },
+    // PAŻP AUP/UUP: status only; reservations go to the airspace layer, never to the scoring (input.zones).
+    aupStatusRow(now),
   ];
 
   // Local alerts ride on the RSO fetch; only a fresh, successful fetch updates them.
