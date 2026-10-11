@@ -10,8 +10,9 @@ import { fileURLToPath } from "node:url";
 import { safeHttpUrl } from "./security.mjs";
 import { envFlag, getText, parseFeed, voivFromText, warsawDate, warsawToUtc } from "./util.mjs";
 
-export const LOCAL_CATEGORIES = ["power", "water", "gas", "exercise"];
-const VOIV_IDS = new Set([
+/** meteo / hydro: IMGW warnings (server/imgw.mjs). */
+export const LOCAL_CATEGORIES = ["power", "water", "gas", "exercise", "meteo", "hydro"];
+export const VOIV_IDS = new Set([
   "dolnoslaskie", "kujawsko-pomorskie", "lubelskie", "lubuskie", "lodzkie", "malopolskie", "mazowieckie", "opolskie",
   "podkarpackie", "podlaskie", "pomorskie", "slaskie", "swietokrzyskie", "warminsko-mazurskie", "wielkopolskie", "zachodniopomorskie",
 ]);
@@ -23,7 +24,11 @@ const DEFAULT_TTL = { outage: 24 * H, planned: 3 * DAY, exercise: 3 * DAY };
 /** Ended items linger briefly ("zakończone"), then go. Nothing older than this is kept at all. */
 const LINGER_MS = 2 * H;
 const MAX_AGE_MS = 21 * DAY;
-const MAX_ITEMS = 1500;
+const MAX_ITEMS = 4000;
+/** Operator outage lists (Tauron, PGE, Energa feeds) run a week ahead; only this much is published. */
+export const OPERATOR_HORIZON_MS = Math.max(6, Number(process.env.ZORYA_OPERATOR_HORIZON_H) || 72) * H;
+/** Items per RSS/Atom feed read (Energa's planned-outage feeds carry 40–140). */
+const FEED_ITEM_LIMIT = Math.max(25, Number(process.env.ZORYA_FEED_ITEM_LIMIT) || 250);
 
 // ---- classification -------------------------------------------------------------------------------
 
@@ -276,7 +281,9 @@ export function createLocalStore({ file = null } = {}) {
 
   const prune = (now) => {
     for (const [id, it] of items) {
-      if (now - Date.parse(it.ends_at) > LINGER_MS || now - Date.parse(it.published_at) > MAX_AGE_MS) {
+      // Items with a window from the source live until it ends; only undated ones age out by publication.
+      const stale = it.window === "default" && now - Date.parse(it.published_at) > MAX_AGE_MS;
+      if (now - Date.parse(it.ends_at) > LINGER_MS || stale) {
         items.delete(id);
         dirty = true;
       }
@@ -304,6 +311,21 @@ export function createLocalStore({ file = null } = {}) {
         dirty = true;
         snap = null;
       }
+    },
+    /**
+     * Replaces everything from one source (operator APIs, IMGW): withdrawn or revoked entries disappear at once,
+     * unlike RSO notices, which are kept after they scroll off the first page.
+     */
+    replaceSource(source, list, now = Date.now()) {
+      const keep = new Set((list || []).map((it) => it.id));
+      for (const [id, it] of items) {
+        if (it.source === source && !keep.has(id)) {
+          items.delete(id);
+          dirty = true;
+          snap = null;
+        }
+      }
+      store.merge(list, now);
     },
     setStatus(id, s) {
       status.set(id, s);
@@ -360,7 +382,7 @@ export const localStore = createLocalStore({ file: path.join(DATA_DIR, "local-al
 // ---- optional extra feeds ------------------------------------------------------------------------
 
 /**
- * ZORYA_LOCAL_FEEDS = JSON array of { "url", "name"?, "category"?: power|water|gas|exercise,
+ * ZORYA_LOCAL_FEEDS = JSON array of { "url", "name"?, "category"?: power|water|gas|exercise|meteo|hydro,
  * "voivodeships"?: [ids] }. Each feed is read every 10 min; items are classified like RSO notices
  * (or all filed under `category` when the feed is single-purpose, e.g. an operator's outage feed).
  */
@@ -395,10 +417,10 @@ export function startLocalFeeds(store = localStore) {
       try {
         const { text } = await getText(f.url, 15000);
         const now = Date.now();
-        const rows = parseFeed(text, f.id, 60).map((it) => ({
+        const rows = parseFeed(text, f.id, FEED_ITEM_LIMIT).map((it) => ({
           id: it.id,
           title: it.title,
-          summary: it.desc.slice(0, 600),
+          summary: it.desc.slice(0, f.category ? 300 : 600),
           text: it.desc,
           ts: it.ts,
           url: it.url,
@@ -406,7 +428,8 @@ export function startLocalFeeds(store = localStore) {
           source: f.id,
           source_name: f.name,
         }));
-        const items = toLocalItems(rows, now, f.category);
+        // Single-purpose operator feeds list a week or more ahead; keep the next OPERATOR_HORIZON_MS only.
+        const items = toLocalItems(rows, now, f.category).filter((it) => !f.category || Date.parse(it.starts_at) <= now + OPERATOR_HORIZON_MS);
         store.merge(items, now);
         store.setStatus(f.id, { name: f.name, ok: true, at: new Date(now).toISOString(), records: items.length, error: null });
       } catch (err) {

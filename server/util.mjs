@@ -178,3 +178,21 @@ export function envFlag(name, dflt = true) {
   if (v == null || v === "") return dflt;
   return !/^(0|false|off|no)$/i.test(String(v).trim());
 }
+
+/** TERYT voivodeship code (first two digits of any TERYT unit code) → Zorya voivodeship id. */
+export const TERYT_VOIV = {
+  "02": "dolnoslaskie", "04": "kujawsko-pomorskie", "06": "lubelskie", "08": "lubuskie",
+  "10": "lodzkie", "12": "malopolskie", "14": "mazowieckie", "16": "opolskie",
+  "18": "podkarpackie", "20": "podlaskie", "22": "pomorskie", "24": "slaskie",
+  "26": "swietokrzyskie", "28": "warminsko-mazurskie", "30": "wielkopolskie", "32": "zachodniopomorskie",
+};
+
+/** Voivodeship ids for TERYT codes ("2212", "24", "246901"…), de-duplicated, in input order. */
+export function voivFromTeryt(codes) {
+  const out = [];
+  for (const c of codes || []) {
+    const id = TERYT_VOIV[String(c ?? "").trim().padStart(2, "0").slice(0, 2)];
+    if (id && !out.includes(id)) out.push(id);
+  }
+  return out;
+}
