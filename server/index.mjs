@@ -1,4 +1,5 @@
 import http from "node:http";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,32 +11,62 @@ import { notifyFromState, pushPublicKey, upsertPushSub, removePushSub } from "./
 import { addReport, horizonFromFusion, loadFixtures, statusFromFusion, withdrawReport } from "./horizon.mjs";
 import { mapaUaSnapshot, startMapaUa } from "./mapaua.mjs";
 import { archiveReport, archiveState, archiveStats, markReportWithdrawn, openArchive, queryArchive, startPruneTimer, toCsv, trackById } from "./archive.mjs";
+import { localStore, startLocalFeeds } from "./local.mjs";
+import { notamSnapshot, startNotams } from "./notam.mjs";
+import { airspaceSnapshot, startAirspace } from "./airspace.mjs";
+import { aupSnapshot, mergeAirspace, startAup } from "./aup.mjs";
+import { startOperators } from "./operators.mjs";
+import { startImgw } from "./imgw.mjs";
+import { rateLimit, safeEqual, securityHeaders } from "./security.mjs";
+import { search } from "./search.mjs";
+import { ADMIN_READY, gminaAt, gminaById, gminaInfo, powiatById, powiatInfo } from "./admin.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
 const PORT = Number(process.env.PORT || 8787);
 const HOST = process.env.HOST || "0.0.0.0";
 const isProd = process.env.NODE_ENV === "production";
+/** Optional shared secret for the archive, on top of the LAN-only rule. */
+const ARCHIVE_TOKEN = String(process.env.ZORYA_ARCHIVE_TOKEN || "").trim();
+const WS_MAX_CLIENTS = Math.max(100, Number(process.env.ZORYA_WS_MAX_CLIENTS) || 5000);
 
 const app = express();
 app.disable("x-powered-by");
+app.set("etag", false);
+app.use(securityHeaders({ isProd }));
+// Generous backstop only: a mobile carrier's CGNAT puts hundreds of real users behind one address,
+// and during an alarm they all poll at once. Floods are Cloudflare's job; writes have tight limits below.
+app.use("/api", rateLimit({ windowMs: 60_000, max: 3000, name: "api" }));
 app.use(express.json({ limit: "32kb" }));
-app.use((req, res, next) => {
-  if (req.path.startsWith("/api")) res.setHeader("X-Robots-Tag", "noindex, nofollow");
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS");
-  if (isProd) {
-    res.setHeader(
-      "Content-Security-Policy",
-      "default-src 'self'; img-src 'self' data: blob: https://tiles.openfreemap.org; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://tiles.openfreemap.org; worker-src 'self' blob:"
-    );
-  }
-  next();
-});
+
+const writeLimit = rateLimit({ windowMs: 10 * 60_000, max: 20, name: "zapis" });
+const pushLimit = rateLimit({ windowMs: 10 * 60_000, max: 120, name: "push" });
+// Address look-ups reach GUGiK / OpenStreetMap: a person searches a few times, a scraper many.
+const geocodeLimit = rateLimit({ windowMs: 60_000, max: 20, name: "wyszukiwanie" });
 
 let state = buildState(Date.now(), emptyInput(), null);
 let historyBundle = emptyHistory(12);
+
+/**
+ * JSON bodies that many clients poll: serialised once per change, served with an ETag so an unchanged
+ * answer costs a 304 instead of re-sending (and re-stringifying) the same megabyte.
+ */
+const bodies = new Map();
+function cachedJson(key, value) {
+  const hit = bodies.get(key);
+  if (hit && hit.value === value) return hit;
+  const body = JSON.stringify(value);
+  const entry = { value, body, etag: `"${crypto.createHash("sha1").update(body).digest("base64url")}"` };
+  bodies.set(key, entry);
+  return entry;
+}
+function sendCached(req, res, key, value, cacheControl = "no-cache") {
+  const { body, etag } = cachedJson(key, value);
+  res.setHeader("ETag", etag);
+  res.setHeader("Cache-Control", cacheControl);
+  if (req.headers["if-none-match"] === etag) return res.status(304).end();
+  res.type("application/json").send(body);
+}
 
 // Drone archive (180 days, SQLite in ZORYA_DATA_DIR). A broken archive must never take the site down.
 let archiveOn = false;
@@ -47,14 +78,20 @@ try {
   console.error("Zorya archive disabled", err.message || err);
 }
 
-/** Archive endpoints are LAN-only: no auth exists, so anything via the Cloudflare tunnel / zorya.website is refused. */
+localStore.load();
+
+/** Archive endpoints are LAN-only: anything via the Cloudflare tunnel / zorya.website is refused. */
 function archiveAllowed(req) {
   const h = req.headers;
   if (h["cf-connecting-ip"] || h["cf-ray"] || h["cdn-loop"] || h["x-forwarded-for"] || h["x-forwarded-host"]) return false;
   const host = String(h.host || "").toLowerCase().replace(/:\d+$/, "");
   if (!host || host.endsWith("zorya.website") || host.endsWith("halaba.online")) return false;
   const ip = String(req.socket.remoteAddress || "").replace(/^::ffff:/, "");
-  return /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|f[cd][0-9a-f]{2}:|fe80:)/i.test(ip);
+  if (!/^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|f[cd][0-9a-f]{2}:|fe80:)/i.test(ip)) return false;
+  if (!ARCHIVE_TOKEN) return true;
+  const auth = String(h.authorization || "");
+  const given = auth.startsWith("Bearer ") ? auth.slice(7) : String(req.query.token || "");
+  return safeEqual(given, ARCHIVE_TOKEN);
 }
 
 function archiveGuard(req, res) {
@@ -95,7 +132,7 @@ app.get(["/api/archive", "/api/archive.csv"], (req, res) => {
 /** Archived route of one drone. Public only for objects on the live map now; older tracks stay LAN-only like /api/archive. */
 app.get("/api/track/:id", (req, res) => {
   res.setHeader("Cache-Control", "no-store");
-  const id = String(req.params.id || "");
+  const id = String(req.params.id || "").slice(0, 120);
   const live = (state.objects || []).some((o) => String(o.id) === id);
   if (!live && !archiveAllowed(req)) return res.status(403).json({ error: "only live objects are public" });
   if (!archiveOn) return res.status(503).json({ error: "archive disabled" });
@@ -104,7 +141,8 @@ app.get("/api/track/:id", (req, res) => {
     if (!t) return res.status(404).json({ error: "track not in archive" });
     res.json(t);
   } catch (err) {
-    res.status(500).json({ error: err.message || "archive" });
+    console.error("Zorya track", err.message || err);
+    res.status(500).json({ error: "archive" });
   }
 });
 
@@ -114,12 +152,67 @@ app.get("/api/ua-threats", (_req, res) => {
   res.json(mapaUaSnapshot());
 });
 
+/** Water / power / gas outages and exercises per voivodeship (RSO + optional feeds). Informational. */
+app.get("/api/local-alerts", (req, res) => {
+  sendCached(req, res, "local", localStore.snapshot(), "public, max-age=30");
+});
+
+/**
+ * Airspace layer: PAŻP AUP/UUP reservations (TSA/TRA/D/R/ad hoc, today and tomorrow) and FAA NOTAMs (FIR EPWW,
+ * if enabled and reachable) in one "notam" list with zone geometry, plus the optional permanent P/R/D/TSA/TRA structure.
+ */
+let airspaceBody = null;
+let airspaceKey = null;
+app.get("/api/airspace", (req, res) => {
+  const notam = notamSnapshot();
+  const aup = aupSnapshot();
+  const zones = airspaceSnapshot();
+  if (!airspaceBody || airspaceKey.notam !== notam || airspaceKey.aup !== aup || airspaceKey.zones !== zones) {
+    airspaceKey = { notam, aup, zones };
+    airspaceBody = { notam: mergeAirspace(notam, aup), zones, generated_at: new Date().toISOString() };
+  }
+  sendCached(req, res, "airspace", airspaceBody, "public, max-age=60");
+});
+
+/**
+ * Administrative unit of a point or code: ?lat=&lon= (map click, search result, "my location") or ?gmina=TERYT.
+ * Answers gmina + powiat + voivodeship, or 404 outside Poland. Pure lookup — no personal data is kept.
+ */
+app.get("/api/place", (req, res) => {
+  if (!ADMIN_READY) {
+    res.setHeader("Cache-Control", "no-store");
+    return res.status(503).json({ error: "brak granic gmin" });
+  }
+  res.setHeader("Cache-Control", "public, max-age=86400");
+  const code = String(req.query.gmina || "").replace(/\D/g, "").slice(0, 7);
+  const lat = Number(req.query.lat);
+  const lon = Number(req.query.lon);
+  const g = code ? gminaById(code) : Number.isFinite(lat) && Number.isFinite(lon) ? gminaAt(lat, lon) : null;
+  if (!g) return res.status(404).json({ error: "poza Polską lub nieznana gmina" });
+  const info = gminaInfo(g);
+  res.json({ gmina: info, powiat: powiatInfo(powiatById(g.pow)), voivodeship: g.woj });
+});
+
+/** Search: ?q=…&mode=quick (names, while typing) | full (with address geocoding, on Enter). */
+app.get("/api/search", (req, res, next) => {
+  const full = req.query.mode === "full";
+  const run = () =>
+    search(typeof req.query.q === "string" ? req.query.q : "", full ? "full" : "quick")
+      .then((out) => {
+        res.setHeader("Cache-Control", full ? "private, max-age=300" : "public, max-age=3600");
+        res.json(out);
+      })
+      .catch(next);
+  return full ? geocodeLimit(req, res, run) : run();
+});
+
 app.get("/api/health", (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
   res.json({ ok: true, name: "zorya", live: !state.demo, generated_at: state.generated_at });
 });
 
-app.get("/api/state", (_req, res) => {
-  res.json(state);
+app.get("/api/state", (req, res) => {
+  sendCached(req, res, "state", state);
 });
 
 app.get("/api/history/bundle", (req, res) => {
@@ -155,7 +248,7 @@ app.get("/api/push/key", (_req, res) => {
   res.json({ publicKey: pushPublicKey() });
 });
 
-app.post("/api/push/subscribe", (req, res) => {
+app.post("/api/push/subscribe", pushLimit, (req, res) => {
   try {
     res.json(upsertPushSub(req.body || {}));
   } catch (err) {
@@ -163,7 +256,7 @@ app.post("/api/push/subscribe", (req, res) => {
   }
 });
 
-app.post("/api/push/unsubscribe", (req, res) => {
+app.post("/api/push/unsubscribe", pushLimit, (req, res) => {
   removePushSub(req.body?.endpoint);
   res.json({ ok: true });
 });
@@ -183,7 +276,7 @@ app.get("/api/horizon", (req, res) => {
     const status = (fx.status.area_status || []).find((s) => s.area.id === area.id) || fx.status.area_status[0];
     return res.json({ status, events: fx.events, signals: fx.signals.filter((s) => !s.event_id), sources: fx.sources, sample: true });
   }
-  res.json(horizonFromFusion(state, req.query.area || null));
+  res.json(horizonFromFusion(state, typeof req.query.area === "string" ? req.query.area : null));
 });
 
 app.get("/api/events/:id", (req, res) => {
@@ -207,31 +300,34 @@ app.get("/api/areas", (_req, res) => {
   res.json({ areas: loadFixtures().areas, voivodeships: VOIV });
 });
 
-app.post("/api/reports", (req, res) => {
+app.post("/api/reports", writeLimit, (req, res) => {
   try {
     const out = addReport(req.body || {});
     try {
-      archiveReport(out.id, req.body || {});
+      archiveReport(out.id, out.report);
     } catch (err) {
       console.error("Zorya archive report", err.message || err);
     }
-    res.json(out);
+    res.json({ id: out.id, withdraw_until: out.withdraw_until });
   } catch (err) {
     res.status(400).json({ error: err.message || "report" });
   }
 });
 
-app.delete("/api/reports/:id", (req, res) => {
-  const ok = withdrawReport(req.params.id);
+app.delete("/api/reports/:id", writeLimit, (req, res) => {
+  const id = String(req.params.id || "").slice(0, 64);
+  const ok = withdrawReport(id);
   if (ok) {
     try {
-      markReportWithdrawn(req.params.id);
+      markReportWithdrawn(id);
     } catch {
       /* archive is best effort */
     }
   }
   res.status(ok ? 200 : 404).json({ ok });
 });
+
+app.use("/api", (_req, res) => res.status(404).json({ error: "brak" }));
 
 if (isProd) {
   const dist = path.join(root, "dist");
@@ -275,9 +371,8 @@ if (isProd) {
         },
       })
     );
-    app.get(["/bron", "/bron/"], (_req, res) => {
-      res.sendFile(path.join(dist, "bron", "index.html"));
-    });
+    const bron = path.join(dist, "bron", "index.html");
+    app.get(["/bron", "/bron/"], (_req, res, next) => (fs.existsSync(bron) ? sendHtml(res, bron) : next()));
     app.get("*", (req, res, next) => {
       if (req.path.startsWith("/api") || req.path.startsWith("/ws")) return next();
       const f = pageFor(req.path);
@@ -294,19 +389,57 @@ if (isProd) {
   }
 }
 
-const server = http.createServer(app);
-const wss = new WebSocketServer({ server, path: "/api/ws" });
+// Malformed JSON, oversized bodies and anything unexpected: a short JSON error, never a stack trace.
+app.use((err, _req, res, _next) => {
+  const status = Number(err?.status || err?.statusCode) || 500;
+  if (status >= 500) console.error("Zorya http", err?.message || err);
+  if (res.headersSent) return;
+  res.status(status).json({ error: status === 413 ? "za duże zapytanie" : status < 500 ? "złe zapytanie" : "błąd serwera" });
+});
 
-function broadcast(msg) {
-  const data = JSON.stringify(msg);
+const server = http.createServer(app);
+server.headersTimeout = 20_000;
+server.requestTimeout = 30_000;
+// Clients never send anything over the socket: tiny frames only, no compression bombs.
+const wss = new WebSocketServer({ server, path: "/api/ws", maxPayload: 1024, perMessageDeflate: false });
+
+function broadcast(data) {
   for (const c of wss.clients) {
-    if (c.readyState === 1) c.send(data);
+    // A client that cannot keep up (several MB queued) is dropped rather than buffered without bound.
+    if (c.readyState === 1 && c.bufferedAmount < 8 * 1024 * 1024) c.send(data);
   }
 }
 
+/** The WS frame reuses the cached /api/state body: one JSON.stringify of the state per cycle. */
+const frameFor = (st) => `{"type":"state","state":${cachedJson("state", st).body}}`;
+let stateFrame = frameFor(state);
+
 wss.on("connection", (socket) => {
-  socket.send(JSON.stringify({ type: "state", state }));
+  if (wss.clients.size > WS_MAX_CLIENTS) {
+    socket.close(1013, "busy");
+    return;
+  }
+  socket.isAlive = true;
+  socket.on("pong", () => {
+    socket.isAlive = true;
+  });
+  socket.on("message", () => undefined);
+  socket.on("error", () => socket.terminate());
+  socket.send(stateFrame);
 });
+
+// Heartbeat: half-open sockets (phone slept, NAT dropped) are terminated instead of piling up.
+const heartbeat = setInterval(() => {
+  for (const c of wss.clients) {
+    if (c.isAlive === false) {
+      c.terminate();
+      continue;
+    }
+    c.isAlive = false;
+    c.ping();
+  }
+}, 30_000);
+heartbeat.unref();
 
 let cycling = false;
 async function cycle() {
@@ -314,8 +447,12 @@ async function cycle() {
   cycling = true;
   try {
     const live = await ingestLive();
-    state = buildState(Date.now(), live.input, live.sources);
+    const now = Date.now();
+    state = buildState(now, live.input, live.sources);
     stampHistory(historyBundle, state);
+    if (live.local) localStore.merge(live.local, now);
+    localStore.setStatus("rso", { name: "RSO (komunikaty.tvp.pl)", ...live.localStatus, records: live.local?.length ?? 0 });
+    localStore.save();
     if (archiveOn) {
       try {
         archiveState(state);
@@ -323,8 +460,9 @@ async function cycle() {
         console.error("Zorya archive", err.message || err);
       }
     }
-    broadcast({ type: "state", state });
-    void notifyFromState(state);
+    stateFrame = frameFor(state);
+    broadcast(stateFrame);
+    void notifyFromState(state).catch((err) => console.error("Zorya push", err.message || err));
   } catch (err) {
     console.error("Zorya ingest", err.message || err);
   } finally {
@@ -337,4 +475,19 @@ server.listen(PORT, HOST, () => {
   void cycle();
   setInterval(() => void cycle(), INGEST_EVERY_MS);
   startMapaUa();
+  startNotams();
+  startAup();
+  startAirspace();
+  startLocalFeeds();
+  startOperators(localStore);
+  startImgw(localStore);
 });
+
+function shutdown() {
+  localStore.save();
+  server.close();
+  for (const c of wss.clients) c.terminate();
+  setTimeout(() => process.exit(0), 500).unref();
+}
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);

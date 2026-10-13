@@ -255,7 +255,8 @@ export function toCsv(rows) {
   const cols = Object.keys(rows[0]);
   const esc = (v) => {
     if (v == null) return "";
-    const s = String(v);
+    // Text that a spreadsheet would run as a formula (=, +, -, @) is neutralised; numbers stay numbers.
+    const s = typeof v === "string" && /^[=+\-@\t\r]/.test(v) ? `'${v}` : String(v);
     return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   return [cols.join(","), ...rows.map((r) => cols.map((c) => esc(r[c])).join(","))].join("\n") + "\n";

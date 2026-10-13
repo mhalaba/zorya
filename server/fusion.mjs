@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { allPowiaty } from "./admin.mjs";
 
 export const SOURCE_IDS = ["neptun", "ua", "adsb", "rss", "rcb", "pazp"];
 
@@ -93,21 +94,43 @@ function loadPlGeometry() {
   try {
     const fc = JSON.parse(fs.readFileSync(PL_GEO_PATH, "utf8"));
     const polygons = [];
+    /** Per voivodeship: its polygons and a bounding box, for point → voivodeship lookups. */
+    const regions = [];
     for (const f of fc.features || []) {
       const g = f.geometry;
-      if (g?.type === "Polygon") polygons.push(g.coordinates);
-      else if (g?.type === "MultiPolygon") polygons.push(...g.coordinates);
+      const own = g?.type === "Polygon" ? [g.coordinates] : g?.type === "MultiPolygon" ? g.coordinates : [];
+      polygons.push(...own);
+      const id = String(f.properties?.id ?? f.id ?? "");
+      if (id && own.length) regions.push({ id, polygons: own, bbox: bboxOf(own.flatMap((rings) => rings[0])) });
     }
     const vertices = polygons.flatMap((rings) => rings.flat());
     if (!vertices.length) throw new Error("pusta geometria");
-    return { polygons, vertices };
+    return { polygons, vertices, regions, bbox: bboxOf(vertices) };
   } catch (err) {
     console.error("Zorya: brak granic PL z GeoJSON, używam przybliżenia —", err.message || err);
-    return { polygons: [], vertices: PL_BORDER_FALLBACK };
+    return { polygons: [], vertices: PL_BORDER_FALLBACK, regions: [], bbox: null };
   }
 }
 
+function bboxOf(points) {
+  let minLon = Infinity, minLat = Infinity, maxLon = -Infinity, maxLat = -Infinity;
+  for (const [lon, lat] of points) {
+    if (lon < minLon) minLon = lon;
+    if (lon > maxLon) maxLon = lon;
+    if (lat < minLat) minLat = lat;
+    if (lat > maxLat) maxLat = lat;
+  }
+  return { minLon, minLat, maxLon, maxLat };
+}
+
+function inBbox(lat, lon, b) {
+  return !!b && lon >= b.minLon && lon <= b.maxLon && lat >= b.minLat && lat <= b.maxLat;
+}
+
 const PL_GEOMETRY = loadPlGeometry();
+// Flat copy of the boundary for the nearest-vertex scan (no per-call destructuring).
+const VERT_LON = Float64Array.from(PL_GEOMETRY.vertices, (v) => v[0]);
+const VERT_LAT = Float64Array.from(PL_GEOMETRY.vertices, (v) => v[1]);
 
 function inRing(lon, lat, ring) {
   let inside = false;
@@ -119,8 +142,32 @@ function inRing(lon, lat, ring) {
   return inside;
 }
 
+function inPolygons(lat, lon, polygons) {
+  return polygons.some(([outer, ...holes]) => inRing(lon, lat, outer) && !holes.some((h) => inRing(lon, lat, h)));
+}
+
 export function insidePl(lat, lon) {
-  return PL_GEOMETRY.polygons.some(([outer, ...holes]) => inRing(lon, lat, outer) && !holes.some((h) => inRing(lon, lat, h)));
+  if (PL_GEOMETRY.bbox && !inBbox(lat, lon, PL_GEOMETRY.bbox)) return false;
+  return inPolygons(lat, lon, PL_GEOMETRY.polygons);
+}
+
+/** Voivodeship id containing the point, or null outside Poland. */
+export function voivodeshipAt(lat, lon) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  for (const r of PL_GEOMETRY.regions) {
+    if (inBbox(lat, lon, r.bbox) && inPolygons(lat, lon, r.polygons)) return r.id;
+  }
+  return null;
+}
+
+/** Voivodeships touched by a set of [lon, lat] points (polygon vertices, centre…), in VOIV order. */
+export function voivodeshipsForPoints(points) {
+  const hit = new Set();
+  for (const p of points || []) {
+    const id = voivodeshipAt(p[1], p[0]);
+    if (id) hit.add(id);
+  }
+  return VOIV.map((v) => v.id).filter((id) => hit.has(id));
 }
 
 export function haversine(lon1, lat1, lon2, lat2) {
@@ -136,11 +183,21 @@ export function haversine(lon1, lat1, lon2, lat2) {
 /** 0 inside Poland; otherwise distance (km) to the nearest point of the Polish border. */
 export function distToPlBorder(lat, lon) {
   if (insidePl(lat, lon)) return 0;
-  let min = Infinity;
-  for (const [blon, blat] of PL_GEOMETRY.vertices) {
-    min = Math.min(min, haversine(lon, lat, blon, blat));
+  // Nearest vertex by a flat (equirectangular) metric, then one exact haversine: same answer at
+  // these distances, without ~8000 trigonometric calls per object per minute.
+  const k = Math.cos((lat * Math.PI) / 180);
+  let best = -1;
+  let bestD = Infinity;
+  for (let i = 0; i < VERT_LON.length; i++) {
+    const dx = (VERT_LON[i] - lon) * k;
+    const dy = VERT_LAT[i] - lat;
+    const d = dx * dx + dy * dy;
+    if (d < bestD) {
+      bestD = d;
+      best = i;
+    }
   }
-  return min;
+  return best < 0 ? Infinity : haversine(lon, lat, VERT_LON[best], VERT_LAT[best]);
 }
 
 export function azimuthToPl(lat, lon) {
@@ -215,6 +272,8 @@ export function scoreWorld(now, input) {
 
   const objectsOut = [];
   const signals = [];
+  /** Scored (non-observation) objects with their raw value, reused for the powiat level. */
+  const rawObjects = [];
 
   for (const obj of input.objects) {
     const dist = distToPlBorder(obj.lat, obj.lon);
@@ -238,6 +297,7 @@ export function scoreWorld(now, input) {
         else if (obj.eta_min <= 10) raw = Math.max(raw, 2);
       }
     }
+    if (!observation && raw > 0) rawObjects.push({ lat: obj.lat, lon: obj.lon, raw, type: obj.type, n: obj.count || 1, toward: fHead >= 1 });
     for (const v of VOIV) {
       if (observation || raw <= 0) {
         contrib.push({ id: v.id, points: 0 });
@@ -465,6 +525,8 @@ export function scoreWorld(now, input) {
       name: v.name,
       nameEn: v.nameEn,
       eastRank: v.eastRank,
+      lat: v.lat,
+      lon: v.lon,
       points,
       own: round2(ownSum),
       transfer,
@@ -484,7 +546,75 @@ export function scoreWorld(now, input) {
     }
   }
 
-  return { voivodeships, objects: objectsOut, signals, objectContribByVoiv };
+  const powiaty = scorePowiaty(input, rawObjects, buckets, voivodeships);
+  return { voivodeships, powiaty, objects: objectsOut, signals, objectContribByVoiv };
+}
+
+const LEVELS = ["info", "watch", "priority"];
+
+/**
+ * Powiat level (380 units). Only NEPTUN and the UA oblast alerts are measured from the powiat's own centre — the
+ * sources whose position is real; RSO/RCB, media and the rest stay voivodeship-wide (copied from the voivodeship's
+ * capped breakdown), never sharper than the source. Same kernel, caps and thresholds as for voivodeships.
+ * Safety band: a powiat is at most one step above its voivodeship (unless RSO forced it), and never below "watch"
+ * while its voivodeship is "priority". No neighbour transfer: the distance kernel already gives the gradient.
+ * The voivodeship level is untouched: existing push subscribers, history and archive see exactly what they saw.
+ */
+export function scorePowiaty(input, rawObjects, buckets, voivodeships) {
+  const units = allPowiaty();
+  if (!units.length) return { why: [], list: [] };
+  const voivById = Object.fromEntries(voivodeships.map((v) => [v.id, v]));
+  const alerts = (input.ua_alerts || [])
+    .filter((a) => a.active)
+    .map((a) => UA_OBLASTS.find((o) => o.id === a.oblast))
+    .filter(Boolean)
+    .map((o) => ({ o, pts: uaAlertWeight(o.distKm) }))
+    .filter((x) => x.pts > 0);
+  const out = [];
+  for (const p of units) {
+    const c = p.centroid || p.anchor;
+    const b = buckets[p.woj];
+    const v = voivById[p.woj];
+    if (!c || !b || !v) continue;
+    let neptun = 0;
+    const hits = new Map();
+    let minDist = Infinity;
+    let toward = false;
+    for (const o of rawObjects) {
+      const d = haversine(o.lon, o.lat, c[0], c[1]);
+      const pts = o.raw * Math.max(0.12, Math.min(1, 1.15 - d / 420));
+      neptun += pts;
+      if (pts > 0.05) {
+        hits.set(o.type, (hits.get(o.type) || 0) + o.n);
+        minDist = Math.min(minDist, d);
+        toward ||= o.toward;
+      }
+    }
+    let ua = 0;
+    for (const { o, pts } of alerts) {
+      const d = haversine(o.lon, o.lat, c[0], c[1]);
+      ua += pts * (d < 220 ? 1 : EAST_IDS.has(p.woj) ? 0.4 : 0.1);
+    }
+    const own = cap(neptun, 8) + cap(ua, 1) + b.own.rcb + b.own.media + b.own.pazp + b.own.other;
+    let lv = LEVELS.indexOf(levelOf(own, b.rcbForce));
+    const vl = LEVELS.indexOf(v.level);
+    if (!b.rcbForce) lv = Math.min(lv, vl + 1);
+    if (vl === 2) lv = Math.max(lv, 1);
+    if (lv === 0) continue; // the client paints every powiat not listed as "info"
+    const why = [];
+    if (hits.size) {
+      // "{km}" is filled per powiat by the reader: the distance differs per row and would defeat the shared table.
+      why.push(`${[...hits].map(([t, n]) => `${n}× ${labelType(t)}`).join(", ")} ~{km} km od powiatu${toward ? ", kurs na PL" : ""}`);
+    }
+    if (ua > 0.04) why.push("alarm w obwodzie UA");
+    if (b.own.rcb > 0) why.push("Alert RCB (całe województwo)");
+    if (b.own.media > 0.04) why.push("wzmianka RSS (województwo)");
+    out.push([p.id, LEVELS[lv] === "priority" ? "p" : "w", round1(own), why.join(" · "), hits.size ? Math.round(minDist / 5) * 5 : null]);
+  }
+  // Compact for the WebSocket frame: [teryt, "w"|"p", points, why#, km to nearest object (5 km steps) | null].
+  const whys = [...new Set(out.map((r) => r[3]))];
+  const idx = new Map(whys.map((w, i) => [w, i]));
+  return { why: whys, list: out.map((r) => [r[0], r[1], r[2], idx.get(r[3]), r[4]]) };
 }
 
 export function labelType(type) {
@@ -762,6 +892,8 @@ export function buildState(now = Date.now(), input, sourceRows) {
     demo: false,
     sources,
     voivodeships: scored.voivodeships,
+    // Powiaty with something to show (level or points); every other powiat is "info".
+    powiaty: scored.powiaty,
     objects: scored.objects.map((o) => ({
       id: o.id,
       type: o.type,

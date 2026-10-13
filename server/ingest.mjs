@@ -1,6 +1,11 @@
 /** Live ingest for Zorya — public OSINT only. Failed source = dead diode, empty data. */
 
-const UA = "Zorya/0.1 (unofficial fusion; not an official warning system)";
+import { toLocalItems } from "./local.mjs";
+import { safeHttpUrl } from "./security.mjs";
+import { getJson, getText, parseFeed, parseWarsawTime, stripHtml, voivFromText } from "./util.mjs";
+import { aupStatusRow } from "./aup.mjs";
+
+export { parseWarsawTime };
 
 const OBLAST_PATTERNS = [
   [/м\.?\s*київ|місто київ|kyiv city/i, "kyiv-city"],
@@ -32,27 +37,6 @@ const OBLAST_PATTERNS = [
   [/луганськ/i, "luhansk"],
 ];
 
-// Stems must not match inside other names: "opolsk" ⊂ "małopolsk"/"wielkopolsk", "śląsk" ⊂ "dolnośląsk",
-// "pomorsk" ⊂ "kujawsko-pomorsk"/"zachodniopomorsk", "podlask" ⊂ "Biała Podlaska" (lubelskie).
-const VOIV_FROM_TEXT = [
-  [/podkarpack|rzesz[oó]w|przemy[sś]l/iu, "podkarpackie"],
-  [/lubelsk|lublin(?!iec)|zamo[sś][cć]|che[lł]m(?![nżz]|ek|ku)|bia[lł]\p{L}{0,3}\s+podlask/iu, "lubelskie"],
-  [/(?<!bia[lł]\p{L}{0,3}\s+)podlask|bia[lł]\p{L}{0,3}stok|suwa[lł]k/iu, "podlaskie"],
-  [/mazowieck|warszaw/iu, "mazowieckie"],
-  [/warmińsk|warminsk|mazursk|olsztyn/iu, "warminsko-mazurskie"],
-  [/świętokrzysk|swietokrzysk|kielc/iu, "swietokrzyskie"],
-  [/małopolsk|malopolsk|krak[oó]w/iu, "malopolskie"],
-  [/(?<!dolno|doln\p{L}{0,3}\s+)(?:śląsk|slask)|katowic/iu, "slaskie"],
-  [/łódzk|lodzk/iu, "lodzkie"],
-  [/kujawsk|bydgoszcz/iu, "kujawsko-pomorskie"],
-  [/zachodniopomorsk|szczecin/iu, "zachodniopomorskie"],
-  [/(?<!\p{L}|kujawsko[-\s])pomorsk|gda[nń]sk|gdyni/iu, "pomorskie"],
-  [/wielkopolsk|pozna[nń]/iu, "wielkopolskie"],
-  [/dolnośląsk|dolnoslask|doln\p{L}{0,3}\s+(?:śląsk|slask)|wroc[lł]aw/iu, "dolnoslaskie"],
-  [/(?<!\p{L})opolsk/iu, "opolskie"],
-  [/lubusk/iu, "lubuskie"],
-];
-
 export function emptyInput() {
   return {
     objects: [],
@@ -66,44 +50,12 @@ export function emptyInput() {
   };
 }
 
-async function getJson(url, timeout = 12000) {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), timeout);
-  try {
-    const r = await fetch(url, { signal: ctrl.signal, headers: { "User-Agent": UA, Accept: "application/json" } });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return { json: await r.json(), at: Date.now() };
-  } finally {
-    clearTimeout(t);
-  }
-}
-
-async function getText(url, timeout = 12000) {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), timeout);
-  try {
-    const r = await fetch(url, { signal: ctrl.signal, headers: { "User-Agent": UA, Accept: "application/rss+xml, application/xml, text/xml, */*" } });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return { text: await r.text(), at: Date.now() };
-  } finally {
-    clearTimeout(t);
-  }
-}
-
 function matchOblast(name) {
   if (!name) return null;
   for (const [re, id] of OBLAST_PATTERNS) {
     if (re.test(name)) return id;
   }
   return null;
-}
-
-function voivFromText(text) {
-  const ids = [];
-  for (const [re, id] of VOIV_FROM_TEXT) {
-    if (re.test(text) && !ids.includes(id)) ids.push(id);
-  }
-  return ids;
 }
 
 function mapType(t, title = "") {
@@ -246,40 +198,18 @@ function provincesFromRso(item) {
   return ids;
 }
 
-const WARSAW_PARTS = new Intl.DateTimeFormat("en-US", {
-  timeZone: "Europe/Warsaw",
-  hourCycle: "h23",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-});
-
-function warsawOffsetMs(utcMs) {
-  const p = Object.fromEntries(WARSAW_PARTS.formatToParts(new Date(utcMs)).map((x) => [x.type, x.value]));
-  const asUtc = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
-  return asUtc - Math.floor(utcMs / 1000) * 1000;
+function rsoUrl(id) {
+  return `https://komunikaty.tvp.pl/komunikaty/${encodeURIComponent(String(id))}/detale`;
 }
 
-/** RSO stamps are Polish wall-clock time without a zone ("2026-09-18 11:42:38"); parse them independent of the server TZ. */
-export function parseWarsawTime(s) {
-  const str = String(s || "").trim();
-  if (/(?:Z|[+-]\d{2}:?\d{2})$/i.test(str)) return Date.parse(str) || 0;
-  const m = str.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
-  if (!m) return 0;
-  const wall = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0));
-  const guess = wall - warsawOffsetMs(wall);
-  return wall - warsawOffsetMs(guess);
-}
-
-export function mapRso(payload) {
+export function mapRso(payload, now = Date.now()) {
   const rows = (payload?.newses || [])
+    .filter((n) => n && n.id != null)
     .map((n) => {
-      const text = `${n.title || ""} ${n.shortcut || ""} ${stripHtml(n.content || "")}`;
+      const body = stripHtml(n.content || "");
+      const text = `${n.title || ""} ${n.shortcut || ""} ${body}`;
       const ts = parseWarsawTime(n.updated_at || n.created_at);
-      return { n, text, ts, voiv: provincesFromRso(n) };
+      return { n, body, text, ts, voiv: provincesFromRso(n) };
     })
     .sort((a, b) => b.ts - a.ts);
 
@@ -289,7 +219,7 @@ export function mapRso(payload) {
     const ageMin = (Date.now() - it.ts) / 60000;
     if (ageMin > 180) continue;
     if (!isAirThreat(it.text) || isExercise(it.text)) continue;
-    const url = `https://komunikaty.tvp.pl/komunikaty/${it.n.id}/detale`;
+    const url = rsoUrl(it.n.id);
     rcb = {
       active: !isCancel(it.text),
       ts: it.ts,
@@ -304,7 +234,7 @@ export function mapRso(payload) {
   for (const it of rows) {
     const ageH = (Date.now() - it.ts) / 3600000;
     if (ageH > 2) continue;
-    const url = `https://komunikaty.tvp.pl/komunikaty/${it.n.id}/detale`;
+    const url = rsoUrl(it.n.id);
     let score = 0;
     if (isExercise(it.text) || isPollution(it.text) || /jakość wody|wodociąg|wściekliź|żeglug/i.test(it.text)) score = 0;
     else if (isAirThreat(it.text) && /syren|wybuch|naruszen|alert rcb/i.test(it.text)) score = 1;
@@ -320,57 +250,22 @@ export function mapRso(payload) {
       });
     }
   }
-  return { rcb, rss };
-}
-
-function stripHtml(html) {
-  return String(html).replace(/<[^>]+>/g, " ").replace(/&[a-z]+;/gi, " ").replace(/\s+/g, " ").trim();
-}
-
-function parseRss(xml, sourceId) {
-  // A dead feed may answer 200 with an HTML page ("Not found.") — that is a failure, not an empty feed.
-  if (!/<(?:rss|rdf:RDF)[\s>]/i.test(xml)) throw new Error("odpowiedź nie jest kanałem RSS");
-  const items = [];
-  const blocks = xml.match(/<item[\s\S]*?<\/item>/gi) || [];
-  for (const b of blocks.slice(0, 25)) {
-    const title = decode(tag(b, "title"));
-    const desc = decode(tag(b, "description") || tag(b, "content:encoded"));
-    const link = decode(tag(b, "link"));
-    const date = tag(b, "pubDate") || tag(b, "dc:date");
-    // No parseable date = unknown age; never treat it as fresh.
-    const ts = Date.parse(date) || 0;
-    items.push({ id: `${sourceId}-${hash(link || title)}`, title, desc, url: link, ts });
-  }
-  return items;
-}
-
-function tag(block, name) {
-  const m = block.match(new RegExp(`<${name}[^>]*><\\!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/${name}>`, "i"))
-    || block.match(new RegExp(`<${name}[^>]*>([\\s\\S]*?)<\\/${name}>`, "i"));
-  return m ? m[1].trim() : "";
-}
-
-function codePoint(n) {
-  return n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : " ";
-}
-
-function decode(s) {
-  // &amp; last, so "&amp;lt;" stays the literal text "&lt;" instead of becoming a tag.
-  return stripHtml(
-    s
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"')
-      .replace(/&#(\d+);/g, (_, n) => codePoint(Number(n)))
-      .replace(/&#x([0-9a-f]+);/gi, (_, n) => codePoint(parseInt(n, 16)))
-      .replace(/&amp;/g, "&")
+  // The same notices, read for water / power / gas outages and exercises (local alerts layer).
+  const local = toLocalItems(
+    rows.map((it) => ({
+      id: `rso-${it.n.id}`,
+      title: it.n.title || it.n.shortcut || "",
+      summary: it.n.title && it.n.shortcut && it.n.shortcut !== it.n.title ? it.n.shortcut : "",
+      text: it.body,
+      ts: it.ts,
+      url: rsoUrl(it.n.id),
+      voivodeships: it.voiv,
+      source: "rso",
+      source_name: "RSO",
+    })),
+    now
   );
-}
-
-function hash(s) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return h.toString(36);
+  return { rcb, rss, local };
 }
 
 function scoreRssItem(item) {
@@ -511,7 +406,7 @@ export async function ingestLive() {
         const sourceId = url.includes("pap") ? "pap" : "rmf";
         try {
           const { text } = await getText(url);
-          collected.push(...parseRss(text, sourceId));
+          collected.push(...parseFeed(text, sourceId));
           ok += 1;
         } catch (e) {
           /* one feed may fail */
@@ -524,7 +419,7 @@ export async function ingestLive() {
           const score = scoreRssItem(it);
           if (score <= 0) return null;
           const voiv = voivFromText(`${it.title} ${it.desc}`);
-          return { id: it.id, title: it.title, url: it.url, ts: it.ts, score, voivodeships: voiv.length ? voiv : ["lubelskie"] };
+          return { id: it.id, title: it.title, url: safeHttpUrl(it.url), ts: it.ts, score, voivodeships: voiv.length ? voiv : ["lubelskie"] };
         })
         .filter(Boolean);
     }),
@@ -581,8 +476,17 @@ export async function ingestLive() {
       rso.rcb?.active ? rso.rcb.title : "RSO · brak alertu powietrznego",
       rso.rcb?.active ? 1 : 0
     ),
-    { id: "pazp", ok: true, age_s: 0, message: "brak publicznego AUP w tym cyklu — warstwa pusta", records: 0, diode: "late" },
+    // PAŻP AUP/UUP: status only; reservations go to the airspace layer, never to the scoring (input.zones).
+    aupStatusRow(now),
   ];
 
-  return { input, sources, demo: false };
+  // Local alerts ride on the RSO fetch; only a fresh, successful fetch updates them.
+  const local = cache.rso.err ? null : fresh("rso")?.local ?? null;
+  const localStatus = {
+    ok: !cache.rso.err && cache.rso.data !== null,
+    at: cache.rso.at ? new Date(cache.rso.at).toISOString() : null,
+    error: cache.rso.err,
+  };
+
+  return { input, sources, local, localStatus, demo: false };
 }

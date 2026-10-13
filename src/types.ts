@@ -1,3 +1,5 @@
+import type { MultiPolygon, Polygon } from "geojson";
+
 export type Lang = "pl" | "en";
 export type ViewId = "map" | "signals" | "history" | "more";
 export type Level = "info" | "watch" | "priority";
@@ -38,6 +40,9 @@ export interface VoivodeshipState {
   name: string;
   nameEn: string;
   eastRank: number;
+  /** Centre used for scoring; the map hangs local-alert badges here. */
+  lat: number;
+  lon: number;
   points: number;
   own: number;
   transfer: number;
@@ -125,11 +130,29 @@ export interface CameraSite {
   note: string;
 }
 
+/**
+ * Powiat levels (server/fusion.mjs scorePowiaty), compact: [teryt, "w" (watch) | "p" (priority), points, why index].
+ * Powiaty not listed are "info".
+ */
+export interface PowiatLevels {
+  why: string[];
+  /** [teryt, "w" | "p", points, why index, km to the nearest object (5 km steps) or null]; why may hold "{km}". */
+  list: [string, "w" | "p", number, number, number | null][];
+}
+
+export interface PowiatState {
+  id: string;
+  level: Level;
+  points: number;
+  whyPl: string;
+}
+
 export interface FusionState {
   generated_at: string;
   demo: boolean;
   sources: SourceStatus[];
   voivodeships: VoivodeshipState[];
+  powiaty?: PowiatLevels;
   objects: TrackedObject[];
   adsb: AdsbCraft[];
   zones: PazpZone[];
@@ -191,4 +214,154 @@ export interface UaThreatsSnapshot {
   attack: { id: number; status: string; started_at: number | null } | null;
   objects: UaThreat[];
   pl_violations: { count: number; hours: number; checked_at: string } | null;
+}
+
+/**
+ * Local alert (server/local.mjs, operators.mjs, imgw.mjs): water / power / gas outage or planned works, an exercise,
+ * or an IMGW meteorological / hydrological warning. Informational only — never part of the threat level.
+ */
+export type LocalCategory = "power" | "water" | "gas" | "exercise" | "meteo" | "hydro";
+
+export interface LocalAlert {
+  id: string;
+  source: string;
+  source_name: string;
+  categories: LocalCategory[];
+  category: LocalCategory;
+  kind: "outage" | "planned" | "exercise" | "warning";
+  /** IMGW warning level: 1–3, or -1 for hydrological drought. */
+  level?: number | null;
+  /** IMGW: valid until cancelled (ends_at is then only a display horizon). */
+  until_cancelled?: boolean;
+  title: string;
+  summary: string;
+  url: string | null;
+  published_at: string;
+  starts_at: string;
+  ends_at: string;
+  /** "text": window read from the notice; "default": no date in it, shown for a fixed time after publication. */
+  window: "text" | "default" | "source";
+  voivodeships: string[];
+  /** TERYT of the gminy (7 digits) / powiaty (4 digits) the source names or locates; empty = whole voivodeship. */
+  gminy?: string[];
+  powiaty?: string[];
+  /** Exact place from the source ([lon, lat]), e.g. an operator's outage point. */
+  point?: [number, number] | null;
+  /** Map position: point, else the gmina's / single powiat's anchor; null = voivodeship only. */
+  at?: [number, number] | null;
+  precision?: "point" | "gmina" | "powiat" | "voivodeship";
+  state: "active" | "upcoming" | "ended";
+}
+
+/** /api/place: the gmina of a point (map click, search, "my location"), with its powiat and voivodeship. */
+export interface PlaceInfo {
+  gmina: {
+    id: string;
+    name: string;
+    kind: string;
+    label: string;
+    powiat: { id: string; name: string; label: string };
+    voivodeship: string;
+    anchor: [number, number];
+    bbox: [number, number, number, number];
+  };
+  powiat: { id: string; name: string; label: string; city: boolean; voivodeship: string; anchor: [number, number]; bbox: [number, number, number, number] } | null;
+  voivodeship: string;
+}
+
+export interface LocalAlertsSnapshot {
+  generated_at: string;
+  sources: { id: string; name?: string; ok: boolean; at: string | null; error: string | null; records: number }[];
+  items: LocalAlert[];
+}
+
+export type NotamCategory =
+  | "prohibited"
+  | "restricted"
+  | "danger"
+  | "temporary"
+  | "reserved"
+  | "military"
+  | "exercise"
+  | "firing"
+  | "uas"
+  | "parachute"
+  | "display"
+  | "warning"
+  | "gnss"
+  | "airspace"
+  | "other";
+
+/** NOTAM (server/notam.mjs). Times are ISO strings in UTC. */
+export interface Notam {
+  id: string;
+  location: string | null;
+  type: "N" | "R" | "C";
+  replaces: string | null;
+  qcode: string | null;
+  category: NotamCategory;
+  label: string;
+  condition: string;
+  condition_label: string;
+  from: string | null;
+  to: string | null;
+  permanent: boolean;
+  estimated: boolean;
+  schedule: string | null;
+  lower: string | null;
+  upper: string | null;
+  text: string;
+  raw: string;
+  center: [number, number] | null;
+  radius_nm: number | null;
+  geometry: Polygon | MultiPolygon | null;
+  geometry_source: "text" | "circle" | "qline" | "aup" | null;
+  bbox: [number, number, number, number] | null;
+  voivodeships: string[];
+  gminy?: string[];
+  powiaty?: string[];
+  map: boolean;
+  state: "active" | "upcoming";
+}
+
+/** Permanent airspace area (server/airspace.mjs, OpenAIP). */
+export interface AirspaceZone {
+  id: string;
+  name: string;
+  kind: "restricted" | "danger" | "prohibited" | "reserved";
+  code: string;
+  label: string;
+  lower: string | null;
+  upper: string | null;
+  by_notam: boolean;
+  geometry: Polygon | MultiPolygon;
+  voivodeships: string[];
+}
+
+export interface AirspaceSnapshot {
+  generated_at: string;
+  notam: {
+    enabled: boolean;
+    ok: boolean;
+    source: string;
+    locations: string[];
+    fetched_at: string | null;
+    error: string | null;
+    total: number;
+    /** NOTAMs not shown (obstacles, lighting, navaids, aerodrome services). */
+    skipped: number;
+    /** The source had more NOTAMs than were read. */
+    truncated: boolean;
+    items: Notam[];
+    /** PAŻP AUP/UUP reservations merged into items (geometry_source "aup"). */
+    aup?: { enabled: boolean; ok: boolean; fetched_at: string | null; error: string | null; count: number; link: string };
+  };
+  zones: {
+    enabled: boolean;
+    ok: boolean;
+    source: string;
+    fetched_at: string | null;
+    error: string | null;
+    items: AirspaceZone[];
+  };
 }

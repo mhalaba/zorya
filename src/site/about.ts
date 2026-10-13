@@ -39,12 +39,14 @@ export const ABOUT_PL: AboutCopy = {
         "**RSO / Alert RCB** (komunikaty.tvp.pl): oficjalne komunikaty dotyczące zagrożeń z powietrza.",
         "**Media**: kanały RSS RMF24 i PAP, filtrowane pod kątem treści o zagrożeniach powietrznych. Ćwiczenia, smog i informacje drogowe są odrzucane.",
         "**MAPA.UA** (mapa.ua): szacunkowe pozycje rakiet, bomb KAB i dronów nad Ukrainą, odtwarzane z publicznych komunikatów. Pokazywane jako osobna warstwa „Rakiety (UA)”, nie wpływają na ocenę województw.",
+        "**NOTAM** (FAA NOTAM Search, FIR EPWW, co 30 minut): komunikaty dla polskiej przestrzeni powietrznej — strefy zakazane, ograniczone i niebezpieczne, ćwiczenia, strzelania, loty dronów. Obszar jest rysowany z treści NOTAM, a gdy jej brak — jako przybliżony okrąg. Warstwa informacyjna: nie wpływa na ocenę województw i nie służy do planowania lotów.",
+        "**Komunikaty lokalne RSO** (komunikaty.tvp.pl): awarie i planowane wyłączenia wody, prądu i gazu oraz zapowiedziane ćwiczenia i testy syren, przypisane do województw. Wybierane automatycznie po treści, z oknem czasowym odczytanym z komunikatu. Nie wpływają na ocenę województw.",
       ],
     },
     { t: "p", text: "Każde źródło ma własny wskaźnik stanu. Dane starsze niż 15 minut nie są brane pod uwagę." },
     {
       t: "p",
-      text: "**2. Ocena.** Dla każdego z 16 województw Zorya liczy punkty w oknie 60 minut. Liczą się: typ obiektu, odległość od polskiej granicy, kierunek lotu względem Polski, wiek i jakość lokalizacji, pewność i liczba potwierdzeń podawane przez źródło, alarmy w przygranicznych obwodach Ukrainy oraz doniesienia medialne. Obiekty oddalone o ponad 250 km od granicy są tylko pokazywane i nie wpływają na ocenę. Oficjalny komunikat o zagrożeniu z powietrza dla danego województwa od razu daje najwyższy poziom. Mapa pokazuje trzy stany: spokój, **uwaga** i **priorytet**.",
+      text: "**2. Ocena.** Dla każdego z 16 województw Zorya liczy punkty w oknie 60 minut. Liczą się: typ obiektu, odległość od polskiej granicy, kierunek lotu względem Polski, wiek i jakość lokalizacji, pewność i liczba potwierdzeń podawane przez źródło, alarmy w przygranicznych obwodach Ukrainy oraz doniesienia medialne. Obiekty oddalone o ponad 250 km od granicy są tylko pokazywane i nie wpływają na ocenę. Oficjalny komunikat o zagrożeniu z powietrza dla danego województwa od razu daje najwyższy poziom. Mapa pokazuje trzy stany: spokój, **uwaga** i **priorytet**. Dokładniej Zorya ocenia też każdy z 380 powiatów: drony i pociski oraz alarmy w obwodach Ukrainy liczone są od środka powiatu, a komunikaty RSO/RCB i media — dla całego województwa, bo tylko tyle mówią. Powiat może być najwyżej o stopień wyżej niż jego województwo. Gmina ma poziom swojego powiatu: dokładniejszych danych o zagrożeniach z powietrza nie ma. Po kliknięciu gminy albo wyszukaniu adresu widać odległość i kierunek najbliższych obiektów oraz komunikaty i strefy dotyczące tej gminy.",
     },
     {
       t: "p",
@@ -121,12 +123,14 @@ export const ABOUT_EN: AboutCopy = {
         "**RSO / RCB Alert** (komunikaty.tvp.pl): Polish official notices about air threats.",
         "**Media**: RMF24 and PAP RSS feeds, filtered for air-threat content. Drills, smog and traffic news are discarded.",
         "**MAPA.UA** (mapa.ua): estimated positions of missiles, KAB glide bombs and drones over Ukraine, reconstructed from public reports. Shown as a separate \"Missiles (UA)\" layer; they do not affect the voivodeship score.",
+        "**NOTAMs** (FAA NOTAM Search, FIR EPWW, every 30 minutes): notices for Polish airspace — prohibited, restricted and danger areas, exercises, firing, drone flights. The area is drawn from the NOTAM text, or as an approximate circle when the text gives none. Informational layer: it does not affect the voivodeship score and is not for flight planning.",
+        "**Local RSO notices** (komunikaty.tvp.pl): water, power and gas failures and planned outages, plus announced exercises and siren tests, assigned to voivodeships. Selected automatically by content, with the time window read from the notice. They do not affect the voivodeship score.",
       ],
     },
     { t: "p", text: "Each source has its own health indicator. Data older than 15 minutes is ignored." },
     {
       t: "p",
-      text: "**2. Assessment.** For each of Poland's 16 voivodeships, Zorya scores a rolling 60-minute window. The score takes into account object type, distance from the Polish border, heading relative to Poland, the age and quality of the location, the confidence and confirmation count reported by the source, alerts in Ukrainian oblasts near the border, and media reports. An official air-threat notice for a voivodeship sets the highest level immediately. Objects more than 250 km from the border are displayed but not scored. The map shows three states: calm, **watch** and **priority**.",
+      text: "**2. Assessment.** For each of Poland's 16 voivodeships, Zorya scores a rolling 60-minute window. The score takes into account object type, distance from the Polish border, heading relative to Poland, the age and quality of the location, the confidence and confirmation count reported by the source, alerts in Ukrainian oblasts near the border, and media reports. An official air-threat notice for a voivodeship sets the highest level immediately. Objects more than 250 km from the border are displayed but not scored. The map shows three states: calm, **watch** and **priority**. Zorya also rates each of the 380 powiaty (counties): drones, missiles and Ukrainian oblast alerts are measured from the county's centre, while RSO/RCB notices and media count for the whole voivodeship, because that is all they say. A county can be at most one step above its voivodeship. A gmina takes its county's level: no source on air threats is more precise. Clicking a gmina or searching an address shows the distance and direction of the nearest objects and the notices and airspace zones for that gmina.",
     },
     {
       t: "p",

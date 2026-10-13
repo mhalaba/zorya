@@ -10,7 +10,11 @@ import type {
   UserReport,
   WatchedArea,
 } from "./model";
-import type { FusionState, HistoryBundle, Lang, Place, UaThreatsSnapshot } from "./types";
+import type { AirspaceSnapshot, FusionState, HistoryBundle, Lang, LocalAlertsSnapshot, LocalCategory, Place, PlaceInfo, UaThreatsSnapshot } from "./types";
+
+export type OverlayKey = "notamOn" | "zonesOn" | "localOn";
+/** Side panel with a full list (opened from the quick chips or the layer menu). */
+export type ListPanel = "notam" | "local" | null;
 
 export type Sheet =
   | { kind: "areas" }
@@ -60,6 +64,13 @@ interface Settings {
   labelDensity: "low" | "dense";
   places: Place[];
   homeVoiv: string | null;
+  /** NOTAM areas, permanent P/R/D/TSA/TRA areas, local alerts (outages + exercises) on the map. */
+  notamOn: boolean;
+  zonesOn: boolean;
+  localOn: boolean;
+  localCats: Record<LocalCategory, boolean>;
+  /** Gminy with push notifications (by their powiat's level). */
+  watchGminy: { id: string; name: string }[];
 }
 
 interface Live {
@@ -82,6 +93,19 @@ interface Live {
   /** MAPA.UA object opened in the detail panel. */
   selectedUa: string | null;
   uaThreats: UaThreatsSnapshot | null;
+  localAlerts: LocalAlertsSnapshot | null;
+  airspace: AirspaceSnapshot | null;
+  /** NOTAMs under the tapped point (one → details, several → short list). */
+  selectedNotams: string[] | null;
+  /** Gmina opened in the panel (map click when zoomed in, search, "my location"). */
+  selectedGmina: PlaceInfo | null;
+  /** Airspace areas under the tap that opened the gmina panel (zoomed in). */
+  tapAreas: string[] | null;
+  /** Found address / "my location" marker ([lon, lat]). */
+  searchPin: [number, number] | null;
+  listPanel: ListPanel;
+  /** One-shot camera request: frame these bounds ([w, s, e, n]); nonce makes repeats count. */
+  focus: { bbox: [number, number, number, number]; nonce: number } | null;
   uaMissilesOn: boolean;
   uaBombsOn: boolean;
   uaDronesOn: boolean;
@@ -141,6 +165,16 @@ interface Actions {
   setSelectedObj: (id: string | null) => void;
   setSelectedUa: (id: string | null) => void;
   setUaThreats: (t: UaThreatsSnapshot | null) => void;
+  setLocalAlerts: (t: LocalAlertsSnapshot | null) => void;
+  setAirspace: (t: AirspaceSnapshot | null) => void;
+  setSelectedNotams: (ids: string[] | null) => void;
+  setSelectedGmina: (p: PlaceInfo | null) => void;
+  setSearchPin: (p: [number, number] | null) => void;
+  setListPanel: (p: ListPanel) => void;
+  focusOn: (bbox: [number, number, number, number]) => void;
+  setOverlay: (k: OverlayKey, v: boolean) => void;
+  setLocalCat: (k: LocalCategory, v: boolean) => void;
+  toggleWatchGmina: (g: { id: string; name: string }) => void;
   setUaLayer: (k: "uaMissilesOn" | "uaBombsOn" | "uaDronesOn", v: boolean) => void;
   setObjTrack: (t: [number, number][] | null) => void;
   setHoverVoiv: (id: string | null) => void;
@@ -188,6 +222,11 @@ export const useStore = create<Store>()(
       labelDensity: "dense",
       places: [],
       homeVoiv: null,
+      notamOn: true,
+      zonesOn: true,
+      localOn: true,
+      watchGminy: [],
+      localCats: { power: true, water: true, gas: true, exercise: true, meteo: true, hydro: true },
       view: "horyzont",
       sheet: null,
       selectedAreaId: null,
@@ -206,6 +245,14 @@ export const useStore = create<Store>()(
       selectedObj: null,
       selectedUa: null,
       uaThreats: null,
+      localAlerts: null,
+      airspace: null,
+      selectedNotams: null,
+      selectedGmina: null,
+      searchPin: null,
+      tapAreas: null,
+      listPanel: null,
+      focus: null,
       uaMissilesOn: true,
       uaBombsOn: false,
       uaDronesOn: false,
@@ -289,12 +336,56 @@ export const useStore = create<Store>()(
       setPlaces: (places) => set({ places }),
       setHomeVoiv: (homeVoiv) => set({ homeVoiv }),
       setDrawer: (drawer) => set({ drawer }),
-      setSelectedVoiv: (selectedVoiv) => set({ selectedVoiv, selectedObj: null, selectedUa: null, objTrack: null }),
-      setSelectedUa: (selectedUa) => set((s) => ({ selectedUa, selectedObj: null, objTrack: null, selectedVoiv: selectedUa ? null : s.selectedVoiv })),
+      // Closing or switching panels also drops the search / "my location" pin.
+      setSelectedVoiv: (selectedVoiv) =>
+        set({ selectedVoiv, selectedObj: null, selectedUa: null, objTrack: null, selectedNotams: null, selectedGmina: null, listPanel: null, searchPin: null, tapAreas: null }),
+      setSearchPin: (searchPin) => set({ searchPin }),
+      setSelectedGmina: (selectedGmina) =>
+        set((s) => ({
+          selectedGmina,
+          tapAreas: null,
+          selectedVoiv: selectedGmina ? null : s.selectedVoiv,
+          selectedObj: null,
+          selectedUa: null,
+          objTrack: null,
+          selectedNotams: null,
+          listPanel: null,
+        })),
+      setSelectedUa: (selectedUa) =>
+        set((s) => ({ selectedUa, selectedObj: null, objTrack: null, selectedNotams: null, selectedGmina: null, listPanel: null, selectedVoiv: selectedUa ? null : s.selectedVoiv })),
       setUaThreats: (uaThreats) => set({ uaThreats }),
+      setLocalAlerts: (localAlerts) => set({ localAlerts }),
+      setAirspace: (airspace) => set({ airspace }),
+      setSelectedNotams: (selectedNotams) =>
+        set((s) => ({
+          selectedNotams: selectedNotams?.length ? selectedNotams : null,
+          selectedGmina: null,
+          selectedObj: null,
+          selectedUa: null,
+          objTrack: null,
+          selectedVoiv: selectedNotams?.length ? null : s.selectedVoiv,
+        })),
+      setListPanel: (listPanel) =>
+        set((s) => ({
+          listPanel,
+          ...(listPanel ? { selectedVoiv: null, selectedObj: null, selectedUa: null, selectedNotams: null, selectedGmina: null, objTrack: null } : {}),
+          // Opening a list turns its layer on, so the items it names are visible on the map.
+          ...(listPanel === "notam" && !s.notamOn ? { notamOn: true } : {}),
+          ...(listPanel === "local" && !s.localOn ? { localOn: true } : {}),
+        })),
+      focusOn: (bbox) => set({ focus: { bbox, nonce: Date.now() } }),
+      setOverlay: (k, v) => set({ [k]: v } as Pick<Store, typeof k>),
+      toggleWatchGmina: (g) =>
+        set((s) => ({
+          watchGminy: s.watchGminy.some((x) => x.id === g.id)
+            ? s.watchGminy.filter((x) => x.id !== g.id)
+            : [...s.watchGminy, g].slice(-8),
+        })),
+      setLocalCat: (k, v) => set((s) => ({ localCats: { ...s.localCats, [k]: v } })),
       setUaLayer: (k, v) => set({ [k]: v } as Pick<Store, typeof k>),
       setObjTrack: (objTrack) => set({ objTrack }),
-      setSelectedObj: (selectedObj) => set((s) => ({ selectedObj, selectedUa: null, objTrack: null, selectedVoiv: selectedObj ? null : s.selectedVoiv })),
+      setSelectedObj: (selectedObj) =>
+        set((s) => ({ selectedObj, selectedUa: null, objTrack: null, selectedNotams: null, selectedGmina: null, listPanel: null, selectedVoiv: selectedObj ? null : s.selectedVoiv })),
       setHoverVoiv: (hoverVoiv) => set({ hoverVoiv }),
       setCameraPreset: (cameraPreset) => set({ cameraPreset, cameraNonce: Date.now() }),
       bumpCamera: () => set({ cameraNonce: Date.now() }),
@@ -341,7 +432,17 @@ export const useStore = create<Store>()(
         labelDensity: s.labelDensity,
         places: s.places,
         homeVoiv: s.homeVoiv,
+        notamOn: s.notamOn,
+        zonesOn: s.zonesOn,
+        localOn: s.localOn,
+        localCats: s.localCats,
+        watchGminy: s.watchGminy,
       }),
+      // New settings added after a user's first visit must get their defaults, not undefined.
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<Store>;
+        return { ...current, ...p, localCats: { ...current.localCats, ...(p.localCats ?? {}) } };
+      },
       onRehydrateStorage: () => (s) => {
         if (s?.lastHorizon?.sample) s.cacheHorizon(null);
       },
