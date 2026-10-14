@@ -1257,3 +1257,11 @@ footer.site-foot .lk a { text-decoration: none; }
 }
 #wojewodztwa p { max-width: 72ch; font-size: 17px; line-height: 26px; color: var(--z-text-2); }
 .md-watch { display: grid; gap: 4px; justify-items: start; }
+
+/* Internet / GNSS layers */
+.ua-attr.net-attr { bottom: calc(max(12px, env(safe-area-inset-bottom)) + 72px); font-size: 11px; }
+.ly-legend .mq-dot { display: inline-block; vertical-align: middle; margin: 0 2px 0 6px; }
+.zx-popup .maplibregl-popup-content { background: #0E1420; color: var(--z-text, #E6EDF5); font-size: 12px; line-height: 1.4; border: 1px solid #263246; }
+.zx-popup .maplibregl-popup-content ul { margin: 4px 0; padding-left: 16px; }
+.zx-popup .maplibregl-popup-content a { color: inherit; }
+.zx-popup .maplibregl-popup-tip { border-top-color: #0E1420; border-bottom-color: #0E1420; }

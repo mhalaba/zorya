@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { fmtDayTime } from "./format";
 import { useStore } from "./store";
+import type { GnssSnapshot, NetOutagesSnapshot } from "./types";
 import type { AirspaceSnapshot, LocalAlert, LocalAlertsSnapshot, LocalCategory, Notam, NotamCategory, UaThreatsSnapshot } from "./types";
 
 /** GET `path` every `ms` while the tab is visible; the last good answer stays on errors. */
@@ -39,6 +40,8 @@ function usePolled<T>(path: string, ms: number, apply: (data: T) => void) {
 
 const applyUa = (d: UaThreatsSnapshot) => useStore.getState().setUaThreats(d);
 const applyLocal = (d: LocalAlertsSnapshot) => useStore.getState().setLocalAlerts(d);
+const applyNet = (d: NetOutagesSnapshot) => useStore.getState().setNetOutages(d);
+const applyGnss = (d: GnssSnapshot) => useStore.getState().setGnss(d);
 const applyAirspace = (d: AirspaceSnapshot) => useStore.getState().setAirspace(d);
 
 /** Map side feeds. The server polls each upstream on its own schedule; these only read its snapshot. */
@@ -46,6 +49,8 @@ export function useMapFeeds() {
   usePolled("/api/ua-threats", 30_000, applyUa);
   usePolled("/api/local-alerts", 120_000, applyLocal);
   usePolled("/api/airspace", 300_000, applyAirspace);
+  usePolled("/api/net-outages", 300_000, applyNet);
+  usePolled("/api/gnss", 120_000, applyGnss);
 }
 
 // ---- local alerts ----------------------------------------------------------------------------
@@ -125,3 +130,11 @@ export function geometrySourceLabel(src: Notam["geometry_source"]): string {
   if (src === "aup") return "granice strefy z mapy PAŻP (AUP/UUP)";
   return "bez geometrii (tylko lista)";
 }
+
+// ---- internet outages + GNSS interference --------------------------------------------------------
+
+export const NET_COLORS = ["#9AA8B8", "#F2C14E", "#F0783A", "#FF3B30"];
+export const NET_LEVEL_PL = ["brak", "drobne", "wyraźne", "poważne"];
+export const GNSS_COLORS = { low: "#F2C14E", high: "#FF3B30", live: "#3FD0E0" };
+export const IODA_URL = "https://ioda.inetintel.cc.gatech.edu/";
+export const GPSJAM_URL = "https://gpsjam.org/";

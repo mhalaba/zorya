@@ -10,9 +10,10 @@ import type {
   UserReport,
   WatchedArea,
 } from "./model";
+import type { GnssSnapshot, NetOutagesSnapshot } from "./types";
 import type { AirspaceSnapshot, FusionState, HistoryBundle, Lang, LocalAlertsSnapshot, LocalCategory, Place, PlaceInfo, UaThreatsSnapshot } from "./types";
 
-export type OverlayKey = "notamOn" | "zonesOn" | "localOn";
+export type OverlayKey = "notamOn" | "zonesOn" | "localOn" | "netOn" | "gnssOn";
 /** Side panel with a full list (opened from the quick chips or the layer menu). */
 export type ListPanel = "notam" | "local" | null;
 
@@ -67,6 +68,12 @@ interface Settings {
   /** NOTAM areas, permanent P/R/D/TSA/TRA areas, local alerts (outages + exercises) on the map. */
   notamOn: boolean;
   zonesOn: boolean;
+  netOn: boolean;
+  gnssOn: boolean;
+  netOutages: NetOutagesSnapshot | null;
+  gnss: GnssSnapshot | null;
+  setNetOutages: (t: NetOutagesSnapshot | null) => void;
+  setGnss: (t: GnssSnapshot | null) => void;
   localOn: boolean;
   localCats: Record<LocalCategory, boolean>;
   /** Gminy with push notifications (by their powiat's level). */
@@ -224,6 +231,12 @@ export const useStore = create<Store>()(
       homeVoiv: null,
       notamOn: true,
       zonesOn: true,
+      netOn: true,
+      gnssOn: true,
+      netOutages: null,
+      gnss: null,
+      setNetOutages: (netOutages) => set({ netOutages }),
+      setGnss: (gnss) => set({ gnss }),
       localOn: true,
       watchGminy: [],
       localCats: { power: true, water: true, gas: true, exercise: true, meteo: true, hydro: true },
@@ -434,6 +447,8 @@ export const useStore = create<Store>()(
         homeVoiv: s.homeVoiv,
         notamOn: s.notamOn,
         zonesOn: s.zonesOn,
+        netOn: s.netOn,
+        gnssOn: s.gnssOn,
         localOn: s.localOn,
         localCats: s.localCats,
         watchGminy: s.watchGminy,

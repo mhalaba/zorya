@@ -4,7 +4,7 @@ import { CAMERA, COLORS } from "../config";
 import { circlePoly, destPoint, prefersReducedMotion } from "../lib";
 import { iconForType, registerMapIcons } from "./icons";
 import { uaDead, uaGroup, uaIcon } from "../mapaua";
-import { LOCAL_META, LOCAL_ORDER, NOTAM_META, visibleLocal } from "../overlays";
+import { GNSS_COLORS, LOCAL_META, LOCAL_ORDER, NET_COLORS, NET_LEVEL_PL, NOTAM_META, visibleLocal } from "../overlays";
 import { loadAdmin, loadGminy, powiatLevels as decodePowiaty, wojInView, type AdminLayers } from "../admin";
 import { openGmina } from "../place";
 import { useStore } from "../store";
@@ -68,6 +68,10 @@ export function MapCanvas() {
   const lang = useStore((s) => s.lang);
   const airspace = useStore((s) => s.airspace);
   const notamOn = useStore((s) => s.notamOn);
+  const netOutages = useStore((s) => s.netOutages);
+  const gnss = useStore((s) => s.gnss);
+  const netOn = useStore((s) => s.netOn);
+  const gnssOn = useStore((s) => s.gnssOn);
   const zonesOn = useStore((s) => s.zonesOn);
   const selectedNotams = useStore((s) => s.selectedNotams);
   const localAlerts = useStore((s) => s.localAlerts);
@@ -131,6 +135,8 @@ export function MapCanvas() {
       map.addSource("notam", { type: "geojson", data: emptyFc() });
       map.addSource("notam-pts", { type: "geojson", data: emptyFc() });
       map.addSource("local", { type: "geojson", data: emptyFc() });
+      map.addSource("gnss", { type: "geojson", data: emptyFc() });
+      map.addSource("net", { type: "geojson", data: emptyFc() });
       // Alerts with an exact place or a gmina/powiat (outage points, named gminy), clustered when zoomed out.
       map.addSource("local-pts", { type: "geojson", data: emptyFc(), cluster: true, clusterRadius: 36, clusterMaxZoom: 11 });
       map.addSource("powiaty", { type: "geojson", data: emptyFc(), promoteId: "id" });
@@ -363,6 +369,110 @@ export function MapCanvas() {
           "line-width": 1.2,
         },
       });
+
+      // GNSS interference hexes (gpsjam daily: yellow/red fill; live ADS-B: cyan outline on top).
+      map.addLayer({
+        id: "gnss-fill",
+        type: "fill",
+        source: "gnss",
+        filter: ["==", ["get", "source"], "daily"],
+        layout: { visibility: initial.gnssOn ? "visible" : "none" },
+        paint: {
+          "fill-color": ["case", [">=", ["get", "level"], 2], GNSS_COLORS.high, GNSS_COLORS.low],
+          "fill-opacity": ["case", [">=", ["get", "level"], 2], 0.32, 0.16],
+          "fill-outline-color": "rgba(0,0,0,0)",
+        },
+      });
+      map.addLayer({
+        id: "gnss-live",
+        type: "line",
+        source: "gnss",
+        filter: ["==", ["get", "source"], "live"],
+        layout: { visibility: initial.gnssOn ? "visible" : "none" },
+        paint: { "line-color": GNSS_COLORS.live, "line-width": ["case", [">=", ["get", "level"], 2], 2.4, 1.2] },
+      });
+      map.addLayer({
+        id: "gnss-live-fill",
+        type: "fill",
+        source: "gnss",
+        filter: ["==", ["get", "source"], "live"],
+        layout: { visibility: initial.gnssOn ? "visible" : "none" },
+        paint: { "fill-color": GNSS_COLORS.live, "fill-opacity": 0.12 },
+      });
+      // Internet outages (IODA): circles at country / region centroid, pulsing ring when active.
+      map.addLayer({
+        id: "net-ring",
+        type: "circle",
+        source: "net",
+        filter: ["==", ["get", "active"], true],
+        layout: { visibility: initial.netOn ? "visible" : "none" },
+        paint: {
+          "circle-radius": ["+", 10, ["*", 4, ["get", "severity"]]],
+          "circle-color": "rgba(0,0,0,0)",
+          "circle-stroke-color": ["get", "color"],
+          "circle-stroke-width": 2,
+          "circle-stroke-opacity": 0.8,
+        },
+      });
+      map.addLayer({
+        id: "net-pts",
+        type: "circle",
+        source: "net",
+        layout: { visibility: initial.netOn ? "visible" : "none" },
+        paint: {
+          "circle-radius": ["+", 4, ["*", 2.5, ["get", "severity"]]],
+          "circle-color": ["get", "color"],
+          "circle-opacity": ["case", ["to-boolean", ["get", "active"]], 0.95, 0.55],
+          "circle-stroke-color": "#070B12",
+          "circle-stroke-width": 1,
+        },
+      });
+      map.addLayer({
+        id: "net-label",
+        type: "symbol",
+        source: "net",
+        minzoom: 5,
+        layout: {
+          visibility: initial.netOn ? "visible" : "none",
+          "text-field": ["get", "label"],
+          "text-font": ["Noto Sans Regular"],
+          "text-size": 10,
+          "text-offset": [0, 1.4],
+          "text-optional": true,
+        },
+        paint: { "text-color": ["get", "color"], "text-halo-color": "#070B12", "text-halo-width": 1.3 },
+      });
+      const popup = new maplibregl.Popup({ closeButton: true, maxWidth: "300px", className: "zx-popup" });
+      const esc = (x: unknown) => String(x ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+      const fmtT = (ms: number) => new Date(ms).toLocaleString("pl-PL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+      map.on("click", "net-pts", (e) => {
+        const f = e.features?.[0];
+        if (!f) return;
+        const it = (useStore.getState().netOutages?.items ?? []).find((x) => x.id === f.properties?.id);
+        if (!it) return;
+        const al = it.alerts.slice(0, 4).map((a) =>
+          `<li>${esc(fmtT(a.time))}: ${esc(a.source_pl)} ${a.level === "critical" ? "spadek" : "ostrzeżenie"}${a.value != null && a.expected ? ` (${a.value} z ${a.expected}, ${Math.round((a.value / a.expected) * 100)}%)` : ""}</li>`).join("");
+        popup
+          .setLngLat([it.lon, it.lat])
+          .setHTML(`<b>Internet — ${esc(it.name)}</b><br>${it.active ? "<b>Trwa zakłócenie</b> (alert w ostatnich 3 h)" : "Zakłócenie w ostatnich 24 h"}<br>Skala: ${esc(NET_LEVEL_PL[it.severity] ?? "?")}${it.events ? ` · zdarzeń: ${it.events}` : ""}<br>Sygnały: ${esc(it.sources_pl.join(", ") || "—")}${al ? `<ul>${al}</ul>` : ""}<small>Źródło: <a href="https://ioda.inetintel.cc.gatech.edu/" target="_blank" rel="noopener">IODA (Georgia Tech)</a></small>`)
+          .addTo(map);
+      });
+      for (const id of ["gnss-fill", "gnss-live-fill"]) {
+        map.on("click", id, (e) => {
+          const f = e.features?.[0];
+          const p = f?.properties;
+          if (!p) return;
+          const live = p.source === "live";
+          popup
+            .setLngLat(e.lngLat)
+            .setHTML(`<b>Zakłócenia GNSS ${live ? "(na żywo)" : `(${esc(p.date)})`}</b><br>${esc(p.pct)}% samolotów z obniżoną jakością pozycji (${esc(p.bad)} z ${esc(p.total)})<br>Poziom: ${Number(p.level) >= 2 ? "wysoki (&gt;10%)" : "niski (2–10%)"}<br><small>${live ? "Ostatnie 45 min, ADS-B: adsb.lol (ODbL) / adsb.fi" : 'Dane dobowe: <a href="https://gpsjam.org/" target="_blank" rel="noopener">gpsjam.org</a> (ADS-B Exchange)'}. Zakłócanie lub fałszowanie sygnału GPS — nie wiadomo które.</small>`)
+            .addTo(map);
+        });
+      }
+      for (const id of ["net-pts", "gnss-fill", "gnss-live-fill"]) {
+        map.on("mouseenter", id, () => (map.getCanvas().style.cursor = "pointer"));
+        map.on("mouseleave", id, () => (map.getCanvas().style.cursor = ""));
+      }
 
       // Permanent P/R/D/TSA/TRA areas (OpenAIP): faint, dashed — they exist, they are not necessarily active.
       map.addLayer({
@@ -1188,6 +1298,26 @@ export function MapCanvas() {
     const painted = !!state?.powiaty;
     for (const v of state?.voivodeships ?? []) map.setFeatureState({ source: "pl", id: v.id }, { pp: painted });
   }, [powiatLevels, mapReadyTick, adminTick]);
+
+  // Internet outages + GNSS interference.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready.current) return;
+    const vis = (on: boolean) => (on ? "visible" : "none");
+    for (const l of ["net-ring", "net-pts", "net-label"]) if (map.getLayer(l)) map.setLayoutProperty(l, "visibility", vis(netOn));
+    for (const l of ["gnss-fill", "gnss-live", "gnss-live-fill"]) if (map.getLayer(l)) map.setLayoutProperty(l, "visibility", vis(gnssOn));
+    const net: FeatureCollection = {
+      type: "FeatureCollection",
+      features: (netOutages?.items ?? []).map((it) => ({
+        type: "Feature" as const,
+        properties: { id: it.id, active: it.active, severity: it.severity, color: NET_COLORS[it.severity] ?? NET_COLORS[1],
+          label: `${it.active ? "⚠ " : ""}${it.name}` },
+        geometry: { type: "Point" as const, coordinates: [it.lon, it.lat] },
+      })),
+    };
+    (map.getSource("net") as GeoJSONSource | undefined)?.setData(net);
+    (map.getSource("gnss") as GeoJSONSource | undefined)?.setData(gnss?.features ?? { type: "FeatureCollection", features: [] });
+  }, [netOutages, gnss, netOn, gnssOn, mapReadyTick]);
 
   // NOTAM areas + permanent areas.
   useEffect(() => {

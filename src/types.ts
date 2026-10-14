@@ -365,3 +365,46 @@ export interface AirspaceSnapshot {
     items: AirspaceZone[];
   };
 }
+
+/** Internet outage item from server/netoutage.mjs (IODA). Times in ms since epoch. */
+export interface NetOutageItem {
+  scope: "country" | "region";
+  id: string;
+  country: string;
+  name: string;
+  lat: number;
+  lon: number;
+  score: number;
+  severity: number;
+  events: number;
+  active: boolean;
+  last_alert: number | null;
+  sources: string[];
+  sources_pl: string[];
+  alerts: { time: number; level: string; source: string; source_pl: string; value: number | null; expected: number | null }[];
+}
+
+export interface NetOutagesSnapshot {
+  enabled: boolean;
+  ok: boolean;
+  fetched_at: string | null;
+  error: string | null;
+  window_h: number;
+  items: NetOutageItem[];
+  signals: Record<string, { source: string; source_pl: string; from: number; step_s: number | null; values: (number | null)[] }[]>;
+  cloudflare: { enabled: boolean; ok: boolean | null; error: string | null;
+    items: { id: string; countries: string[]; start: string | null; end: string | null; cause: string | null; type: string | null; description: string; link: string | null }[] };
+  attribution: string;
+}
+
+/** GNSS interference snapshot from server/gnss.mjs. */
+export interface GnssSnapshot {
+  enabled: boolean;
+  generated_at: string;
+  method: string;
+  attribution: string[];
+  daily: { ok: boolean; date: string | null; fetched_at: string | null; error: string | null; cells: number };
+  live: { enabled: boolean; ok: boolean; updated_at: string | null; error: string | null; provider: string | null;
+    window_min: number; cells: number; samples: number; hot_cells: number };
+  features: import("geojson").FeatureCollection;
+}

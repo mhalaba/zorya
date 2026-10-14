@@ -10,6 +10,8 @@ import { ingestLive, emptyInput, INGEST_EVERY_MS } from "./ingest.mjs";
 import { notifyFromState, pushPublicKey, upsertPushSub, removePushSub } from "./push.mjs";
 import { addReport, horizonFromFusion, loadFixtures, statusFromFusion, withdrawReport } from "./horizon.mjs";
 import { mapaUaSnapshot, startMapaUa } from "./mapaua.mjs";
+import { netOutagesSnapshot, startNetOutages } from "./netoutage.mjs";
+import { gnssSnapshot, startGnss } from "./gnss.mjs";
 import { archiveReport, archiveState, archiveStats, markReportWithdrawn, openArchive, queryArchive, startPruneTimer, toCsv, trackById } from "./archive.mjs";
 import { localStore, startLocalFeeds } from "./local.mjs";
 import { notamSnapshot, startNotams } from "./notam.mjs";
@@ -150,6 +152,18 @@ app.get("/api/track/:id", (req, res) => {
 app.get("/api/ua-threats", (_req, res) => {
   res.setHeader("Cache-Control", "public, max-age=15");
   res.json(mapaUaSnapshot());
+});
+
+/** Internet outages (IODA, optional Cloudflare Radar) for PL and neighbours (see server/netoutage.mjs). */
+app.get("/api/net-outages", (_req, res) => {
+  res.setHeader("Cache-Control", "public, max-age=120");
+  res.json(netOutagesSnapshot());
+});
+
+/** GNSS interference hexes: gpsjam.org daily + live ADS-B NIC/NACp aggregation (see server/gnss.mjs). */
+app.get("/api/gnss", (_req, res) => {
+  res.setHeader("Cache-Control", "public, max-age=60");
+  res.json(gnssSnapshot());
 });
 
 /** Water / power / gas outages and exercises per voivodeship (RSO + optional feeds). Informational. */
@@ -475,6 +489,8 @@ server.listen(PORT, HOST, () => {
   void cycle();
   setInterval(() => void cycle(), INGEST_EVERY_MS);
   startMapaUa();
+  startNetOutages();
+  startGnss();
   startNotams();
   startAup();
   startAirspace();

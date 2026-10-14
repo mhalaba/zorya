@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../store";
 import { MAPAUA_URL } from "../mapaua";
-import { LOCAL_META, LOCAL_ORDER, visibleLocal } from "../overlays";
+import { GNSS_COLORS, GPSJAM_URL, IODA_URL, LOCAL_META, LOCAL_ORDER, NET_COLORS, visibleLocal } from "../overlays";
 import type { LocalCategory } from "../types";
 
 /** Always-visible shortcuts: NOTAM list and local alerts list, with live counts. */
@@ -54,12 +54,16 @@ export function MapLayers() {
   const snap = useStore((s) => s.uaThreats);
   const air = useStore((s) => s.airspace);
   const local = useStore((s) => s.localAlerts);
+  const net = useStore((s) => s.netOutages);
+  const gnss = useStore((s) => s.gnss);
   // Only the fields this menu shows: a whole-store subscription would re-render on every map hover.
   const st = useStore(
     useShallow((s) => ({
       notamOn: s.notamOn,
       zonesOn: s.zonesOn,
       localOn: s.localOn,
+      netOn: s.netOn,
+      gnssOn: s.gnssOn,
       localCats: s.localCats,
       uaMissilesOn: s.uaMissilesOn,
       uaBombsOn: s.uaBombsOn,
@@ -124,6 +128,39 @@ export function MapLayers() {
               Lista alertów lokalnych →
             </button>
 
+            {(net?.enabled !== false || gnss?.enabled !== false) && <div className="ly-h">Internet i GPS (PL, Bałtyk, Białoruś, Ukraina)</div>}
+            {net?.enabled !== false && (
+              <label title="IODA (Georgia Tech): spadki tras BGP, aktywnego sondowania i ruchu w ostatnich 24 h">
+                <input type="checkbox" checked={st.netOn} onChange={(e) => st.setOverlay("netOn", e.target.checked)} />
+                <span className="ua-sw" style={{ background: NET_COLORS[3] }} /> Awarie internetu{" "}
+                <span className="muted">{net?.items.filter((i) => i.active).length ?? 0} trwa / {net?.items.length ?? 0}</span>
+              </label>
+            )}
+            {gnss?.enabled !== false && (
+              <label title={gnss?.method}>
+                <input type="checkbox" checked={st.gnssOn} onChange={(e) => st.setOverlay("gnssOn", e.target.checked)} />
+                <span className="ua-sw" style={{ background: GNSS_COLORS.high }} /> Zakłócenia GPS{" "}
+                <span className="muted">{gnss?.daily.cells ?? 0} dob. · {gnss?.live.hot_cells ?? 0} na żywo</span>
+              </label>
+            )}
+            {(st.netOn || st.gnssOn) && (
+              <div className="tiny ly-legend">
+                {st.netOn && (
+                  <div>
+                    Internet: <span className="mq-dot" style={{ background: NET_COLORS[1] }} /> drobne{" "}
+                    <span className="mq-dot" style={{ background: NET_COLORS[2] }} /> wyraźne{" "}
+                    <span className="mq-dot" style={{ background: NET_COLORS[3] }} /> poważne, pierścień = trwa
+                  </div>
+                )}
+                {st.gnssOn && (
+                  <div>
+                    GPS: <span className="mq-dot" style={{ background: GNSS_COLORS.low }} /> 2–10%{" "}
+                    <span className="mq-dot" style={{ background: GNSS_COLORS.high }} /> &gt;10% samolotów (wczoraj){" "}
+                    <span className="mq-dot" style={{ background: GNSS_COLORS.live }} /> na żywo (45 min)
+                  </div>
+                )}
+              </div>
+            )}
             {snap?.enabled !== false && (
               <>
                 <div className="ly-h">Nad Ukrainą (MAPA.UA)</div>
@@ -144,11 +181,32 @@ export function MapLayers() {
             <div className="tiny">
               {air && !air.notam.ok && air.notam.enabled ? `NOTAM: brak świeżych danych (${air.notam.error}). ` : ""}
               {snap?.ok === false && snap.error ? `MAPA.UA: brak świeżych danych (${snap.error}). ` : ""}
+              {net && net.enabled && !net.ok ? `IODA: brak świeżych danych (${net.error}). ` : ""}
+              {gnss && gnss.enabled && !gnss.daily.ok ? `gpsjam: brak danych (${gnss.daily.error}). ` : ""}
               Warstwy informacyjne — nie zmieniają poziomu zagrożenia województw.
             </div>
           </div>
         )}
       </div>
+      {((st.netOn && net?.enabled) || (st.gnssOn && gnss?.enabled)) && (
+        <div className="ua-attr net-attr">
+          {st.netOn && net?.enabled && (
+            <>
+              Internet:{" "}
+              <a href={IODA_URL} target="_blank" rel="noopener noreferrer">IODA, Georgia Tech</a>
+              {net.cloudflare.enabled ? " · Cloudflare Radar (CC BY-NC 4.0)" : ""}.{" "}
+            </>
+          )}
+          {st.gnssOn && gnss?.enabled && (
+            <>
+              GPS:{" "}
+              <a href={GPSJAM_URL} target="_blank" rel="noopener noreferrer">gpsjam.org</a> (ADS-B Exchange) ·{" "}
+              <a href="https://adsb.lol" target="_blank" rel="noopener noreferrer">adsb.lol</a> (ODbL) ·{" "}
+              <a href="https://adsb.fi" target="_blank" rel="noopener noreferrer">adsb.fi</a>
+            </>
+          )}
+        </div>
+      )}
       {uaOn && (
         <div className="ua-attr">
           Dane o rakietach:{" "}
