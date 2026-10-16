@@ -1275,3 +1275,39 @@ footer.site-foot .lk a { text-decoration: none; }
 @media (max-width: 900px) {
   .starlink-clock { order: -1; flex-basis: 100%; }
 }
+
+/* Starlink panel in the map's top-right corner; zoom buttons and "Warstwy" shift down below it. */
+.live-map { --sl-h: 104px; }
+.starlink-map {
+  position: absolute;
+  z-index: 6;
+  top: max(10px, env(safe-area-inset-top));
+  right: max(10px, env(safe-area-inset-right));
+  max-width: min(380px, calc(100% - 150px));
+  padding: 6px 8px;
+  text-align: right;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+  color: var(--z-text);
+  background: color-mix(in srgb, var(--z-bg) 78%, transparent);
+  border: 1px solid var(--z-line-strong);
+  pointer-events: auto;
+}
+.starlink-map .sm-label, .starlink-map .sm-sub { font-size: 11px; color: var(--z-text-2); }
+.starlink-map .sm-time { font-size: 20px; font-weight: 700; }
+.starlink-map .sm-none { font-size: 13px; font-weight: 600; color: var(--z-text-2); }
+.starlink-map .sm-sats { font-size: 12px; }
+.starlink-map .sm-short { display: none; }
+.live-map .map-root .maplibregl-ctrl-top-right { top: calc(max(0px, env(safe-area-inset-top)) + var(--sl-h)); }
+.live-map .ua-layers { top: calc(max(150px, calc(env(safe-area-inset-top) + 140px)) + var(--sl-h)); }
+@media (max-width: 820px) {
+  .live-map { --sl-h: 72px; --sl-push: 30px; }
+  .live-map .map-top { top: calc(max(50px, calc(env(safe-area-inset-top) + 42px)) + var(--sl-push)); }
+  .starlink-map { padding: 3px 6px; line-height: 1.2; max-width: calc(100% - 140px); }
+  .starlink-map .sm-long { display: none; }
+  .starlink-map .sm-short { display: inline; }
+  .starlink-map .sm-label, .starlink-map .sm-sub, .starlink-map .sm-sats { font-size: 10px; }
+  .starlink-map .sm-label { display: inline; margin-right: 6px; }
+  .starlink-map .sm-time { font-size: 14px; display: inline; }
+  .starlink-map .sm-none { font-size: 11px; }
+}

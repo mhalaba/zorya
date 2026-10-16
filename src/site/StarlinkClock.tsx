@@ -1,23 +1,24 @@
 import { useEffect, useRef, useState } from "react";
 
-// Top-right clock showing time from the Starlink dish's NTP server (via /api/starlink-time).
+// Time from the Starlink dish's NTP server (via /api/starlink-time).
 // Between syncs it ticks with performance.now(); it never shows the browser's own clock.
 const RESYNC_MS = 60_000;
 const STALE_MS = 3 * 60_000;
-const TZ = "Europe/Warsaw";
+export const TZ = "Europe/Warsaw";
+export const LABEL = "Czas Starlink (serwer czasu Starlinka, GPS) · Europe/Warsaw";
+export const NO_SYNC = "brak synchronizacji ze Starlinkiem";
+export const TITLE =
+  "Czas z serwera czasu NTP anteny Starlink (GPS, 192.168.100.1), odczytywany przez serwer Zoryi. To nie jest zegar Twojego urządzenia.";
 
-const fmt = (ms: number, seconds = true) =>
-  new Intl.DateTimeFormat("pl-PL", {
-    timeZone: TZ,
-    hour: "2-digit",
-    minute: "2-digit",
-    second: seconds ? "2-digit" : undefined,
-    hour12: false,
-  }).format(new Date(ms));
+export const fmtWarsaw = (ms: number) =>
+  new Intl.DateTimeFormat("pl-PL", { timeZone: TZ, hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(
+    new Date(ms)
+  );
 
 type Sync = { base: number; mono: number; syncedAt: number };
 
-export function StarlinkClock() {
+/** Current Starlink time in ms (or null when not synced) and the time of the last sync. */
+export function useStarlinkTime(): { now: number | null; syncedAt: number | null } {
   const sync = useRef<Sync | null>(null);
   const [, tick] = useState(0);
 
@@ -49,22 +50,22 @@ export function StarlinkClock() {
   }, []);
 
   const s = sync.current;
-  const fresh = s !== null && performance.now() - s.mono < STALE_MS;
+  if (s === null || performance.now() - s.mono >= STALE_MS) return { now: null, syncedAt: null };
+  return { now: s.base + (performance.now() - s.mono), syncedAt: s.syncedAt };
+}
+
+export function StarlinkClock() {
+  const { now, syncedAt } = useStarlinkTime();
   return (
-    <div
-      className="starlink-clock"
-      role="timer"
-      aria-live="off"
-      title="Czas z serwera czasu NTP anteny Starlink (GPS, 192.168.100.1), odczytywany przez serwer Zoryi. To nie jest zegar Twojego urządzenia."
-    >
-      <div className="sc-label">Czas Starlink (serwer czasu Starlinka, GPS) · Europe/Warsaw</div>
-      {s && fresh ? (
+    <div className="starlink-clock" role="timer" aria-live="off" title={TITLE}>
+      <div className="sc-label">{LABEL}</div>
+      {now !== null && syncedAt !== null ? (
         <>
-          <div className="sc-time">{fmt(s.base + (performance.now() - s.mono))}</div>
-          <div className="sc-sync">ostatnia synchronizacja {fmt(s.syncedAt)}</div>
+          <div className="sc-time">{fmtWarsaw(now)}</div>
+          <div className="sc-sync">ostatnia synchronizacja {fmtWarsaw(syncedAt)}</div>
         </>
       ) : (
-        <div className="sc-time sc-none">brak synchronizacji ze Starlinkiem</div>
+        <div className="sc-time sc-none">{NO_SYNC}</div>
       )}
     </div>
   );

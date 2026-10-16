@@ -8,6 +8,7 @@ import { MapDetail } from "../components/MapDetail";
 import { MapLayers, QuickChips } from "../components/MapLayers";
 import { MapSearch } from "../components/MapSearch";
 import { useMapFeeds, visibleLocal } from "../overlays";
+import { StarlinkMapPanel } from "../components/StarlinkMapPanel";
 
 class MapErrorBoundary extends Component<{ children: ReactNode }, { err: string | null }> {
   state = { err: null as string | null };
@@ -41,6 +42,7 @@ export function Mapa() {
         <MapCanvas />
       </MapErrorBoundary>
       <MapHud />
+      <StarlinkMapPanel />
       <div className="map-top">
         <MapSearch />
         <QuickChips />

@@ -22,6 +22,7 @@ import { startImgw } from "./imgw.mjs";
 import { rateLimit, safeEqual, securityHeaders } from "./security.mjs";
 import { search } from "./search.mjs";
 import { starlinkTime } from "./starlinktime.mjs";
+import { starlinkDish } from "./starlinkdish.mjs";
 import { ADMIN_READY, gminaAt, gminaById, gminaInfo, powiatById, powiatInfo } from "./admin.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -225,6 +226,15 @@ app.get("/api/starlink-time", async (_req, res, next) => {
   try {
     res.setHeader("Cache-Control", "no-store");
     res.json(await starlinkTime());
+  } catch (e) {
+    next(e);
+  }
+});
+
+app.get("/api/starlink-dish", async (_req, res, next) => {
+  try {
+    res.setHeader("Cache-Control", "no-store");
+    res.json(await starlinkDish());
   } catch (e) {
     next(e);
   }
