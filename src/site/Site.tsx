@@ -6,6 +6,7 @@ import { fetchStatus, landingHeroHorizon } from "../api";
 import type { StatusPayload } from "../model";
 import { LevelGlyph } from "../components/ui";
 import { ABOUT_EN, ABOUT_PL, type AboutCopy } from "./about";
+import { StarlinkClock } from "./StarlinkClock";
 
 function lockupSrc(theme: "noc" | "dzien", tagline = false) {
   if (tagline) return theme === "dzien" ? "/icons/zorya-lockup-h-tagline-day.svg" : "/icons/zorya-lockup-h-tagline-night.svg";
@@ -39,6 +40,7 @@ export function SiteHeader() {
           {s("web.open_app")}
         </a>
       </nav>
+      <StarlinkClock />
     </header>
   );
 }

@@ -1265,3 +1265,13 @@ footer.site-foot .lk a { text-decoration: none; }
 .zx-popup .maplibregl-popup-content ul { margin: 4px 0; padding-left: 16px; }
 .zx-popup .maplibregl-popup-content a { color: inherit; }
 .zx-popup .maplibregl-popup-tip { border-top-color: #0E1420; border-bottom-color: #0E1420; }
+
+/* Starlink time (top-right of the site header) */
+.starlink-clock { margin-left: auto; text-align: right; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.starlink-clock .sc-label { font-size: 11px; letter-spacing: 0.04em; color: var(--z-text-2); }
+.starlink-clock .sc-time { font-size: 20px; font-weight: 700; }
+.starlink-clock .sc-none { font-size: 14px; font-weight: 600; color: var(--z-text-2); }
+.starlink-clock .sc-sync { font-size: 11px; color: var(--z-text-2); }
+@media (max-width: 900px) {
+  .starlink-clock { order: -1; flex-basis: 100%; }
+}

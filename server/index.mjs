@@ -21,6 +21,7 @@ import { startOperators } from "./operators.mjs";
 import { startImgw } from "./imgw.mjs";
 import { rateLimit, safeEqual, securityHeaders } from "./security.mjs";
 import { search } from "./search.mjs";
+import { starlinkTime } from "./starlinktime.mjs";
 import { ADMIN_READY, gminaAt, gminaById, gminaInfo, powiatById, powiatInfo } from "./admin.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -218,6 +219,15 @@ app.get("/api/search", (req, res, next) => {
       })
       .catch(next);
   return full ? geocodeLimit(req, res, run) : run();
+});
+
+app.get("/api/starlink-time", async (_req, res, next) => {
+  try {
+    res.setHeader("Cache-Control", "no-store");
+    res.json(await starlinkTime());
+  } catch (e) {
+    next(e);
+  }
 });
 
 app.get("/api/health", (_req, res) => {
