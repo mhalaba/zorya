@@ -17,9 +17,10 @@ services:
       MAPAUA_ENABLED: ${MAPAUA_ENABLED:-1}
       # Own UA air-threat tracker (public Telegram previews, server/uatracker); 0 switches the own ingest off.
       UA_TRACKER_ENABLED: ${UA_TRACKER_ENABLED:-1}
-      # Fallback layers, used only where the own engine has nothing nearby; 0 switches each off.
+      # Fallback layers, used only where the own engine has nothing nearby; 0 switches each off, 1 on.
       UA_TRACKER_FALLBACK_MAPAUA: ${UA_TRACKER_FALLBACK_MAPAUA:-1}
-      UA_TRACKER_FALLBACK_NEPTUN: ${UA_TRACKER_FALLBACK_NEPTUN:-1}
+      # NEPTUN off by default: the own engine reads NEPTUN's published channel registry directly.
+      UA_TRACKER_FALLBACK_NEPTUN: ${UA_TRACKER_FALLBACK_NEPTUN:-0}
       # NOTAM layer (FAA NOTAM Search, FIR EPWW, every 30 min); 0 switches it off.
       ZORYA_NOTAM_ENABLED: ${ZORYA_NOTAM_ENABLED:-1}
       ZORYA_NOTAM_LOCATIONS: ${ZORYA_NOTAM_LOCATIONS:-EPWW}

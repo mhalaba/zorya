@@ -21,8 +21,11 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const flag = (name, def = "1") => !/^(0|false|off|no)$/i.test(String(process.env[name] ?? def).trim());
 export const OWN_ENABLED = flag("UA_TRACKER_ENABLED");
 const FB_MAPAUA = flag("UA_TRACKER_FALLBACK_MAPAUA");
-const FB_NEPTUN = flag("UA_TRACKER_FALLBACK_NEPTUN");
-const TICK_MS = 1500;
+// NEPTUN is off by default: the own engine reads the channels of NEPTUN's public registry itself.
+const FB_NEPTUN = flag("UA_TRACKER_FALLBACK_NEPTUN", "0");
+const TICK_MS = 1000;
+const JITTER = 0.15; // ±15% on every interval so channels do not line up
+const PAUSE_ON_429_MS = 90_000; // t.me rate limit: every channel waits
 const BOOTSTRAP_MS = 45 * 60_000; // first ever run: replay the last 45 min of each channel
 const LAST_KIND_MS = 10 * 60_000;
 const FALLBACK_NEAR_KM = 60;
@@ -31,7 +34,10 @@ const EVENTS_RING = 500;
 
 const cfg = JSON.parse(fs.readFileSync(path.join(here, "channels.json"), "utf8"));
 const CHANNELS = cfg.channels.filter((c) => c.enabled !== false);
-const DEFAULT_POLL_MS = Math.max(30, Number(process.env.UA_TRACKER_POLL_S) || cfg.poll_s || 45) * 1000;
+const DEFAULT_POLL_MS = Math.max(30, Number(process.env.UA_TRACKER_POLL_S) || cfg.poll_s || 90) * 1000;
+const baseMs = (c) => Math.max(30_000, (c.poll_s || 0) * 1000 || DEFAULT_POLL_MS);
+const jitter = (ms) => Math.round(ms * (1 - JITTER + Math.random() * 2 * JITTER));
+let pausedUntil = 0;
 
 const engine = new Engine();
 let store = null;
@@ -43,7 +49,7 @@ const ch = new Map(
     c.name,
     {
       cfg: c,
-      next: Date.now() + i * 1200, // stagger the first round
+      next: Date.now() + i * 1500, // stagger the first round
       lastId: null,
       fails: 0,
       ok: null,
@@ -163,14 +169,17 @@ async function pollOne(st) {
     st.error = null;
     st.fails = 0;
     st.fetched_at = now;
-    st.next = now + (st.cfg.poll_s ? st.cfg.poll_s * 1000 : DEFAULT_POLL_MS);
+    st.next = now + jitter(baseMs(st.cfg));
   } catch (err) {
     stats.fetch_errors++;
     st.fails++;
     st.ok = false;
     st.error = String(err.name === "AbortError" ? "timeout" : err.message || err).slice(0, 120);
-    const base = st.cfg.poll_s ? st.cfg.poll_s * 1000 : DEFAULT_POLL_MS;
-    st.next = Date.now() + Math.min(15 * 60_000, base * 2 ** Math.min(st.fails, 5));
+    if (err.retry) {
+      pausedUntil = Date.now() + PAUSE_ON_429_MS;
+      stats.rate_limited = (stats.rate_limited || 0) + 1;
+    }
+    st.next = Date.now() + jitter(Math.min(15 * 60_000, baseMs(st.cfg) * 2 ** Math.min(st.fails, 5)));
     if (st.fails <= 2 || st.fails % 20 === 0) console.error(`ua-tracker ${st.cfg.name} (#${st.fails})`, st.error);
   }
 }
@@ -184,7 +193,7 @@ async function tick() {
   try {
     const now = Date.now();
     let due = null;
-    for (const st of ch.values()) if (st.next <= now && (!due || st.next < due.next)) due = st;
+    if (now >= pausedUntil) for (const st of ch.values()) if (st.next <= now && (!due || st.next < due.next)) due = st;
     if (due) await pollOne(due);
     engine.tick(Date.now());
     if (store && Date.now() - lastSave > 10_000) {
@@ -373,6 +382,11 @@ export function trackerHealth() {
       own_share: totalSeen ? Math.round((ownSeen.size / totalSeen) * 1000) / 1000 : null,
     },
     parse: { ...stats },
+    polling: {
+      channels: ch.size,
+      requests_per_min: Math.round([...ch.values()].reduce((a, s) => a + 60_000 / baseMs(s.cfg), 0) * 10) / 10,
+      paused_until: pausedUntil > now ? new Date(pausedUntil).toISOString() : null,
+    },
     storage: store ? { ok: true, ...store.counts() } : { ok: false },
     channels: [...ch.values()].map((s) => ({
       name: s.cfg.name,

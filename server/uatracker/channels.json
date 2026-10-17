@@ -1,26 +1,514 @@
 {
-  "_comment": "Public Telegram channels read via their web preview https://t.me/s/<name> (no account, no API key). weight = trust in the source model (official 1.0, regional observers 0.8, national aggregators 0.6). oblast = GeoNames admin1 code used as a hint for regional channels. Selection: subset of the registry published by neptun.in.ua (sources section), checked to load and to post in Oct 2026. enabled:false keeps a channel listed but not polled.",
-  "poll_s": 45,
-  "channels": [
-    { "name": "kpszsu", "label": "Повітряні Сили ЗСУ", "type": "official", "weight": 1.0, "poll_s": 30, "national": true },
-    { "name": "rozvidkaneba", "label": "Розвідка неба", "type": "intel", "weight": 0.8, "national": true, "defaultKind": "drone_piston" },
-    { "name": "Ukrainian_Intelligence", "label": "Розвідка України", "type": "intel", "weight": 0.75, "national": true },
-    { "name": "kudy_letyt", "label": "Куди летить", "type": "aggregator", "weight": 0.6, "national": true, "defaultKind": "drone_piston" },
-    { "name": "raketa_trevoga", "label": "Ракетна тривога", "type": "aggregator", "weight": 0.6, "national": true, "defaultKind": "drone_piston" },
-    { "name": "monikppy", "label": "Моніторинг ППО", "type": "aggregator", "weight": 0.6, "national": true },
-    { "name": "eRadarrua", "label": "eRadar", "type": "aggregator", "weight": 0.6, "national": true },
-    { "name": "povitryanatrivogaaa", "label": "Повітряна тривога", "type": "aggregator", "weight": 0.6, "national": true, "defaultKind": "drone_piston" },
-    { "name": "radar_top_ua", "label": "Радар", "type": "aggregator", "weight": 0.55, "national": true, "defaultKind": "drone_piston" },
-    { "name": "UkraineRadar_24_7", "label": "Ukraine Radar 24/7", "type": "aggregator", "weight": 0.6, "national": true },
-    { "name": "sectorv666", "label": "Сектор V", "type": "aggregator", "weight": 0.6, "national": true },
-    { "name": "shahedradar", "label": "SkyOps Radar", "type": "aggregator", "weight": 0.6, "national": true, "defaultKind": "drone_piston" },
-    { "name": "horizon_of_war_Official", "label": "Horizon of War", "type": "aggregator", "weight": 0.6, "oblast": "02" },
-    { "name": "RadarChernihiv", "label": "Радар Чернігів", "type": "regional", "weight": 0.8, "oblast": "02", "defaultKind": "drone_piston" },
-    { "name": "PoltavaRadar", "label": "Полтава Радар", "type": "regional", "weight": 0.8, "oblast": "18" },
-    { "name": "Radar_Dnipra", "label": "Радар Дніпра", "type": "regional", "weight": 0.8, "oblast": "04" },
-    { "name": "cherkasy_nebbo", "label": "Черкаське небо", "type": "regional", "weight": 0.8, "oblast": "01", "defaultKind": "drone_piston" },
-    { "name": "odessa_knight", "label": "Тёмный рыцарь (Одеса)", "type": "regional", "weight": 0.75, "oblast": "17" },
-    { "name": "monitor_ukr", "label": "Моніторинг | Україна", "type": "aggregator", "weight": 0.55, "national": true, "enabled": false },
-    { "name": "kherson_non_drone", "label": "Херсон: повітря/БПЛА", "type": "regional", "weight": 0.7, "oblast": "08", "enabled": false }
-  ]
+ "_comment": "Public Telegram channels read via https://t.me/s/<name> (no account, no API key). Source: the full channel registry published by neptun.in.ua (69 channels, Oct 2026); every channel was checked to load and to post air-threat updates. weight: official 1.0, intel 0.75-0.8, regional observers 0.5-0.8, national aggregators 0.55-0.6. oblast = GeoNames admin1 code (home region hint). poll_s = base interval, ±15% jitter, one request at a time.",
+ "poll_s": 90,
+ "channels": [
+  {
+   "name": "kpszsu",
+   "label": "Повітряні Сили ЗСУ",
+   "type": "official",
+   "weight": 1.0,
+   "poll_s": 30,
+   "national": true
+  },
+  {
+   "name": "rozvidkaneba",
+   "label": "Розвідка неба",
+   "type": "intel",
+   "weight": 0.8,
+   "poll_s": 60,
+   "defaultKind": "drone_piston",
+   "national": true
+  },
+  {
+   "name": "Ukrainian_Intelligence",
+   "label": "Розвідка України",
+   "type": "intel",
+   "weight": 0.75,
+   "poll_s": 90,
+   "national": true
+  },
+  {
+   "name": "dnepr_nagladach",
+   "label": "Дніпро наглядач",
+   "type": "regional",
+   "weight": 0.75,
+   "oblast": "04",
+   "poll_s": 90
+  },
+  {
+   "name": "nikalert",
+   "label": "Нікополь/Кривбас alert",
+   "type": "regional",
+   "weight": 0.75,
+   "oblast": "04",
+   "poll_s": 90
+  },
+  {
+   "name": "Radar_Dnipra",
+   "label": "Радар Дніпра",
+   "type": "regional",
+   "weight": 0.8,
+   "oblast": "04",
+   "poll_s": 60
+  },
+  {
+   "name": "shovnebi",
+   "label": "Шо в небі (Дніпро)",
+   "type": "regional",
+   "weight": 0.75,
+   "oblast": "04",
+   "poll_s": 90
+  },
+  {
+   "name": "eyes_everywhere_ua",
+   "label": "Очі всюди (Запоріжжя)",
+   "type": "regional",
+   "weight": 0.75,
+   "oblast": "26",
+   "poll_s": 90
+  },
+  {
+   "name": "operatyvnohlep",
+   "label": "Оперативний (Запоріжжя)",
+   "type": "regional",
+   "weight": 0.7,
+   "oblast": "26",
+   "poll_s": 90
+  },
+  {
+   "name": "zaborzp",
+   "label": "ЗаБор Запоріжжя",
+   "type": "regional",
+   "weight": 0.5,
+   "oblast": "26",
+   "poll_s": 150
+  },
+  {
+   "name": "kremen_sv",
+   "label": "Кременчук/Світловодськ",
+   "type": "regional",
+   "weight": 0.7,
+   "oblast": "10",
+   "poll_s": 120
+  },
+  {
+   "name": "korabely_media",
+   "label": "Корабели (Миколаїв)",
+   "type": "regional",
+   "weight": 0.7,
+   "oblast": "16",
+   "poll_s": 90
+  },
+  {
+   "name": "odessa_inform",
+   "label": "Одеса інформ",
+   "type": "regional",
+   "weight": 0.7,
+   "oblast": "17",
+   "poll_s": 90
+  },
+  {
+   "name": "odessa_knight",
+   "label": "Тёмный рыцарь (Одеса)",
+   "type": "regional",
+   "weight": 0.75,
+   "oblast": "17",
+   "poll_s": 60
+  },
+  {
+   "name": "odessaveter",
+   "label": "Одесский ветер",
+   "type": "regional",
+   "weight": 0.7,
+   "oblast": "17",
+   "poll_s": 90
+  },
+  {
+   "name": "temporis_odesa",
+   "label": "Temporis Одеса",
+   "type": "regional",
+   "weight": 0.65,
+   "oblast": "17",
+   "poll_s": 120
+  },
+  {
+   "name": "veselyy_pivden",
+   "label": "Веселий південь",
+   "type": "regional",
+   "weight": 0.6,
+   "poll_s": 120
+  },
+  {
+   "name": "PoltavaRadar",
+   "label": "Полтава Радар",
+   "type": "regional",
+   "weight": 0.8,
+   "oblast": "18",
+   "poll_s": 60
+  },
+  {
+   "name": "PoltavaRanger",
+   "label": "Полтава Рейнджер",
+   "type": "regional",
+   "weight": 0.75,
+   "oblast": "18",
+   "poll_s": 90
+  },
+  {
+   "name": "pivden_varta",
+   "label": "Південна варта",
+   "type": "regional",
+   "weight": 0.65,
+   "poll_s": 90
+  },
+  {
+   "name": "krolevetsnews",
+   "label": "Кролевець",
+   "type": "regional",
+   "weight": 0.7,
+   "oblast": "21",
+   "poll_s": 90
+  },
+  {
+   "name": "sumygo",
+   "label": "SUMY GO",
+   "type": "regional",
+   "weight": 0.65,
+   "oblast": "21",
+   "poll_s": 90
+  },
+  {
+   "name": "sumyregion",
+   "label": "Сумщина",
+   "type": "regional",
+   "weight": 0.7,
+   "oblast": "21",
+   "poll_s": 90
+  },
+  {
+   "name": "svessainfo",
+   "label": "Свеса INFO",
+   "type": "regional",
+   "weight": 0.7,
+   "oblast": "21",
+   "poll_s": 120
+  },
+  {
+   "name": "Karkivw",
+   "label": "Харків W",
+   "type": "regional",
+   "weight": 0.7,
+   "oblast": "07",
+   "poll_s": 90
+  },
+  {
+   "name": "kharkivlife",
+   "label": "Харків life",
+   "type": "regional",
+   "weight": 0.65,
+   "oblast": "07",
+   "poll_s": 90
+  },
+  {
+   "name": "kharkov_media",
+   "label": "Харків медіа",
+   "type": "regional",
+   "weight": 0.65,
+   "oblast": "07",
+   "poll_s": 90
+  },
+  {
+   "name": "kuptg",
+   "label": "Куп'янськ",
+   "type": "regional",
+   "weight": 0.6,
+   "oblast": "07",
+   "poll_s": 120
+  },
+  {
+   "name": "monitor1654",
+   "label": "Монітор 1654 (Харків)",
+   "type": "regional",
+   "weight": 0.7,
+   "oblast": "07",
+   "poll_s": 90
+  },
+  {
+   "name": "Nablydatel_Dozor",
+   "label": "Наблюдатель Дозор",
+   "type": "aggregator",
+   "weight": 0.6,
+   "poll_s": 60,
+   "national": true
+  },
+  {
+   "name": "tlknewsua",
+   "label": "ТЛК (Харківщина)",
+   "type": "regional",
+   "weight": 0.6,
+   "oblast": "07",
+   "poll_s": 120
+  },
+  {
+   "name": "kherson_monitoring",
+   "label": "Херсонщина Моніторинг",
+   "type": "regional",
+   "weight": 0.75,
+   "oblast": "08",
+   "poll_s": 90
+  },
+  {
+   "name": "cherkasy_nebbo",
+   "label": "Черкаське небо",
+   "type": "regional",
+   "weight": 0.8,
+   "oblast": "01",
+   "poll_s": 60,
+   "defaultKind": "drone_piston"
+  },
+  {
+   "name": "my_safety_Chernigiv",
+   "label": "Моя безпека Чернігів",
+   "type": "regional",
+   "weight": 0.75,
+   "oblast": "02",
+   "poll_s": 90
+  },
+  {
+   "name": "Northern_Sich_ukr",
+   "label": "Північна Січ",
+   "type": "regional",
+   "weight": 0.75,
+   "oblast": "02",
+   "poll_s": 90
+  },
+  {
+   "name": "PhantomChe",
+   "label": "Phantom Чернігів",
+   "type": "regional",
+   "weight": 0.75,
+   "oblast": "02",
+   "poll_s": 90
+  },
+  {
+   "name": "RadarChernihiv",
+   "label": "Радар Чернігів",
+   "type": "regional",
+   "weight": 0.8,
+   "oblast": "02",
+   "poll_s": 60,
+   "defaultKind": "drone_piston"
+  },
+  {
+   "name": "ShahedChernihiv",
+   "label": "Шахед Чернігів",
+   "type": "regional",
+   "weight": 0.7,
+   "oblast": "02",
+   "poll_s": 120
+  },
+  {
+   "name": "taktychna_rukavuchkaa",
+   "label": "Тактична рукавичка (Чернігів)",
+   "type": "regional",
+   "weight": 0.6,
+   "oblast": "02",
+   "poll_s": 120
+  },
+  {
+   "name": "eRadarrua",
+   "label": "eRadar",
+   "type": "aggregator",
+   "weight": 0.6,
+   "poll_s": 60,
+   "national": true
+  },
+  {
+   "name": "horizon_of_war_Official",
+   "label": "Horizon of War",
+   "type": "aggregator",
+   "weight": 0.6,
+   "oblast": "02",
+   "poll_s": 60
+  },
+  {
+   "name": "kudy_letyt",
+   "label": "Куди летить",
+   "type": "aggregator",
+   "weight": 0.6,
+   "poll_s": 60,
+   "defaultKind": "drone_piston",
+   "national": true
+  },
+  {
+   "name": "monikppy",
+   "label": "Моніторинг ППО",
+   "type": "aggregator",
+   "weight": 0.6,
+   "poll_s": 90,
+   "national": true
+  },
+  {
+   "name": "monitor_ukr",
+   "label": "Моніторинг | Україна",
+   "type": "aggregator",
+   "weight": 0.6,
+   "poll_s": 60,
+   "national": true
+  },
+  {
+   "name": "povitryanatrivogaaa",
+   "label": "Повітряна тривога",
+   "type": "aggregator",
+   "weight": 0.6,
+   "poll_s": 60,
+   "defaultKind": "drone_piston",
+   "national": true
+  },
+  {
+   "name": "radar_raketaa",
+   "label": "Радар ракета",
+   "type": "aggregator",
+   "weight": 0.6,
+   "poll_s": 90,
+   "national": true
+  },
+  {
+   "name": "radar_top_ua",
+   "label": "Радар",
+   "type": "aggregator",
+   "weight": 0.55,
+   "poll_s": 90,
+   "defaultKind": "drone_piston",
+   "national": true
+  },
+  {
+   "name": "raketa_trevoga",
+   "label": "Ракетна тривога",
+   "type": "aggregator",
+   "weight": 0.6,
+   "poll_s": 60,
+   "defaultKind": "drone_piston",
+   "national": true
+  },
+  {
+   "name": "ReniHub",
+   "label": "Reni Hub",
+   "type": "aggregator",
+   "weight": 0.6,
+   "oblast": "17",
+   "poll_s": 120
+  },
+  {
+   "name": "sectorv666",
+   "label": "Сектор V",
+   "type": "aggregator",
+   "weight": 0.6,
+   "poll_s": 90,
+   "national": true
+  },
+  {
+   "name": "shahedradar",
+   "label": "SkyOps Radar",
+   "type": "aggregator",
+   "weight": 0.6,
+   "poll_s": 90,
+   "defaultKind": "drone_piston",
+   "national": true
+  },
+  {
+   "name": "UkraineRadar_24_7",
+   "label": "Ukraine Radar 24/7",
+   "type": "aggregator",
+   "weight": 0.6,
+   "poll_s": 60,
+   "national": true
+  },
+  {
+   "name": "vanek_nikolaev",
+   "label": "Ванёк Николаев",
+   "type": "aggregator",
+   "weight": 0.6,
+   "poll_s": 120,
+   "national": true
+  },
+  {
+   "name": "vibuxaviasia",
+   "label": "Вибухи",
+   "type": "aggregator",
+   "weight": 0.6,
+   "poll_s": 90,
+   "national": true
+  },
+  {
+   "name": "war_monitor",
+   "label": "War Monitor",
+   "type": "aggregator",
+   "weight": 0.6,
+   "poll_s": 120,
+   "national": true
+  },
+  {
+   "name": "zahidnimonitoring",
+   "label": "Західний моніторинг",
+   "type": "aggregator",
+   "weight": 0.6,
+   "poll_s": 120,
+   "national": true
+  }
+ ],
+ "excluded": [
+  {
+   "name": "JeniokSay",
+   "reason": "no public web preview (t.me/s redirects, HTTP 302)"
+  },
+  {
+   "name": "dangerousKiev",
+   "reason": "no public web preview (t.me/s redirects, HTTP 302)"
+  },
+  {
+   "name": "Donetskiy_on",
+   "reason": "inactive: last post ~84 days ago"
+  },
+  {
+   "name": "radarraketppo",
+   "reason": "inactive: last post ~56 days ago"
+  },
+  {
+   "name": "ukrainsiypposhnik",
+   "reason": "inactive: last post ~42 days ago"
+  },
+  {
+   "name": "UkraineAlarmSignal",
+   "reason": "siren status only (mirror of the official UkraineAlarm API), no positions or courses"
+  },
+  {
+   "name": "newspn",
+   "reason": "siren status per raion + general news, no positions"
+  },
+  {
+   "name": "info_zp",
+   "reason": "general city news / power schedules, no tracking"
+  },
+  {
+   "name": "operatyvnyi_donbas",
+   "reason": "general news and ads, no tracking"
+  },
+  {
+   "name": "place_kharkiv",
+   "reason": "general city news, no tracking"
+  },
+  {
+   "name": "pivden_FPV",
+   "reason": "almost only FPV / Molniya (front-line tactical drones, 19/20 posts)"
+  },
+  {
+   "name": "rdsprostir",
+   "reason": "mostly FPV / front-line tactical drones"
+  },
+  {
+   "name": "kherson_non_drone",
+   "reason": "FPV / Mavic activity by city micro-district"
+  }
+ ]
 }

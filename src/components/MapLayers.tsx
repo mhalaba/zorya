@@ -181,7 +181,7 @@ export function MapLayers() {
             <div className="tiny">
               {air && !air.notam.ok && air.notam.enabled ? `NOTAM: brak świeżych danych (${air.notam.error}). ` : ""}
               {snap?.ok === false ? `Ukraina: brak świeżych danych${snap.error ? ` (${snap.error})` : ""}. ` : ""}
-              {snap?.sources ? `Ukraina: własne ${snap.sources.own}, uzupełnienie NEPTUN ${snap.sources.neptun}, MAPA.UA ${snap.sources["mapa.ua"]}. ` : ""}
+              {snap?.sources ? `Ukraina: własne ${snap.sources.own}, uzupełnienie MAPA.UA ${snap.sources["mapa.ua"]}${snap.sources.neptun ? `, NEPTUN ${snap.sources.neptun}` : ""}. ` : ""}
               {net && net.enabled && !net.ok ? `IODA: brak świeżych danych (${net.error}). ` : ""}
               {gnss && gnss.enabled && !gnss.daily.ok ? `gpsjam: brak danych (${gnss.daily.error}). ` : ""}
               Warstwy informacyjne — nie zmieniają poziomu zagrożenia województw.
@@ -210,11 +210,11 @@ export function MapLayers() {
       )}
       {uaOn && (
         <div className="ua-attr">
-          Źródło: własny silnik Zorya (kanały Telegram) · uzupełnienie:{" "}
+          Źródło: własny silnik Zorya (kanały Telegram z rejestru{" "}
           <a href={NEPTUN_URL} target="_blank" rel="noopener noreferrer">
             NEPTUN
           </a>
-          ,{" "}
+          ) · uzupełnienie:{" "}
           <a href={MAPAUA_URL} target="_blank" rel="noopener noreferrer">
             MAPA.UA
           </a>
