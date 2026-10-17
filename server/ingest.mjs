@@ -362,6 +362,12 @@ const cache = {
 
 export const INGEST_EVERY_MS = 60_000;
 
+/** Last raw NEPTUN threat list (used as a fallback layer by server/uatracker). */
+let neptunRawCache = null;
+export function neptunRaw() {
+  return neptunRawCache;
+}
+
 const ADSB_GAP_MS = 3500;
 let adsbPartialError = "";
 
@@ -376,7 +382,11 @@ async function settle(name, fn) {
 
 export async function ingestLive() {
   await Promise.all([
-    settle("neptun", async () => mapThreats((await getJson("https://neptun.in.ua/api/v1/threats")).json)),
+    settle("neptun", async () => {
+      const json = (await getJson("https://neptun.in.ua/api/v1/threats")).json;
+      neptunRawCache = { at: Date.now(), threats: Array.isArray(json?.threats) ? json.threats : [] };
+      return mapThreats(json);
+    }),
     settle("ua", async () => mapUaAlerts((await getJson("https://neptun.in.ua/api/v1/alerts")).json)),
     settle("adsb", async () => {
       // adsb.lol rate-limits per client: a second request within ~2 s gets HTTP 429, so space them out.

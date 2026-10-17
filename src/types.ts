@@ -183,7 +183,15 @@ export interface Place {
   notifyPriority: boolean;
 }
 
-/** MAPA.UA object, trimmed by server/mapaua.mjs. Times in ms since epoch. */
+/** Report (Telegram post line) behind an own-engine object. */
+export interface UaReport {
+  channel: string;
+  url: string;
+  ts: number;
+  text: string;
+}
+
+/** Threat over Ukraine: Zorya's own tracker (source "own") or a fallback object (MAPA.UA / NEPTUN). Times in ms. */
 export interface UaThreat {
   id: string;
   kind: string;
@@ -203,6 +211,10 @@ export interface UaThreat {
   from_name: string | null;
   to_city: string | null;
   to_name: string | null;
+  source?: "own" | "mapa.ua" | "neptun";
+  confidence?: number | null;
+  channels?: string[];
+  reports?: UaReport[];
 }
 
 export interface UaThreatsSnapshot {
@@ -214,6 +226,7 @@ export interface UaThreatsSnapshot {
   attack: { id: number; status: string; started_at: number | null } | null;
   objects: UaThreat[];
   pl_violations: { count: number; hours: number; checked_at: string } | null;
+  sources?: { own: number; "mapa.ua": number; neptun: number };
 }
 
 /**

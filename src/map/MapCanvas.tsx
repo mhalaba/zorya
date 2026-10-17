@@ -644,7 +644,7 @@ export function MapCanvas() {
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
           "line-color": ["case", ["get", "dead"], "#6B7480", ["get", "color"]],
-          "line-opacity": ["case", ["get", "sel"], 1, ["get", "dead"], 0.45, 0.8],
+          "line-opacity": ["case", ["get", "sel"], 1, ["get", "dead"], 0.45, ["get", "fb"], 0.5, 0.8],
           "line-width": ["case", ["get", "sel"], 3.2, 1.6],
         },
       });
@@ -673,7 +673,8 @@ export function MapCanvas() {
           "icon-rotation-alignment": "map",
           "symbol-sort-key": ["case", ["get", "dead"], 0, 1],
         },
-        paint: { "icon-opacity": ["case", ["get", "dead"], 0.6, 1] },
+        // Fallback objects (MAPA.UA / NEPTUN) are drawn a little fainter than the own engine's.
+        paint: { "icon-opacity": ["case", ["get", "dead"], 0.6, ["get", "fb"], 0.75, 1] },
       });
       map.addLayer({
         id: "adsb-civ",
@@ -1236,6 +1237,7 @@ export function MapCanvas() {
           heading: o.heading ?? 0,
           dead: uaDead(o),
           sel: o.id === selectedUa,
+          fb: !!o.source && o.source !== "own",
         },
         geometry: { type: "Point" as const, coordinates: [o.lon, o.lat] },
       })),
@@ -1244,7 +1246,7 @@ export function MapCanvas() {
       type: "FeatureCollection",
       features: list.flatMap((o) => {
         const dead = uaDead(o);
-        const base = { id: o.id, dead, sel: o.id === selectedUa, color: color(o.kind) };
+        const base = { id: o.id, dead, sel: o.id === selectedUa, color: color(o.kind), fb: !!o.source && o.source !== "own" };
         const out: FeatureCollection["features"] = [];
         const tr = [...o.trail];
         const last = tr[tr.length - 1];

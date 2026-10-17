@@ -6,10 +6,11 @@ import { fileURLToPath } from "node:url";
 import express from "express";
 import { WebSocketServer } from "ws";
 import { buildState, emptyHistory, stampHistory, VOIV } from "./fusion.mjs";
-import { ingestLive, emptyInput, INGEST_EVERY_MS } from "./ingest.mjs";
+import { ingestLive, emptyInput, INGEST_EVERY_MS, neptunRaw } from "./ingest.mjs";
 import { notifyFromState, pushPublicKey, upsertPushSub, removePushSub } from "./push.mjs";
 import { addReport, horizonFromFusion, loadFixtures, statusFromFusion, withdrawReport } from "./horizon.mjs";
 import { mapaUaSnapshot, startMapaUa } from "./mapaua.mjs";
+import { mergedSnapshot, recentEvents, startUaTracker, trackerHealth } from "./uatracker/index.mjs";
 import { netOutagesSnapshot, startNetOutages } from "./netoutage.mjs";
 import { gnssSnapshot, startGnss } from "./gnss.mjs";
 import { archiveReport, archiveState, archiveStats, markReportWithdrawn, openArchive, queryArchive, startPruneTimer, toCsv, trackById } from "./archive.mjs";
@@ -150,10 +151,29 @@ app.get("/api/track/:id", (req, res) => {
   }
 });
 
-/** MAPA.UA missiles / KAB / drones over Ukraine, trimmed (see server/mapaua.mjs). */
-app.get("/api/ua-threats", (_req, res) => {
+/**
+ * Air threats over Ukraine: Zorya's own tracker (public Telegram channels, server/uatracker) first,
+ * MAPA.UA / NEPTUN objects only where the own engine has nothing nearby. ?source=mapaua → raw MAPA.UA layer.
+ */
+app.get(["/api/ua-threats", "/api/ua-tracker/objects"], (req, res) => {
   res.setHeader("Cache-Control", "public, max-age=15");
-  res.json(mapaUaSnapshot());
+  if (req.query.source === "mapaua") return res.json(mapaUaSnapshot());
+  const snap = mergedSnapshot();
+  const src = typeof req.query.source === "string" ? req.query.source : null;
+  if (src && ["own", "mapa.ua", "neptun"].includes(src)) return res.json({ ...snap, objects: snap.objects.filter((o) => o.source === src) });
+  sendCached(req, res, "ua-threats", snap, "public, max-age=15");
+});
+
+/** Parsed events (newest first) with the raw post line and a link to the post. ?limit=&since=(ms)&type=track|kill|clear */
+app.get("/api/ua-tracker/events", (req, res) => {
+  res.setHeader("Cache-Control", "public, max-age=10");
+  res.json({ events: recentEvents({ limit: req.query.limit, since: req.query.since, type: typeof req.query.type === "string" ? req.query.type : null }) });
+});
+
+/** Per-channel ingest status, parse counters, own vs fallback share. */
+app.get("/api/ua-tracker/health", (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json(trackerHealth());
 });
 
 /** Internet outages (IODA, optional Cloudflare Radar) for PL and neighbours (see server/netoutage.mjs). */
@@ -509,6 +529,7 @@ server.listen(PORT, HOST, () => {
   void cycle();
   setInterval(() => void cycle(), INGEST_EVERY_MS);
   startMapaUa();
+  void startUaTracker({ dataDir: process.env.ZORYA_DATA_DIR || path.join(root, "data"), mapaUa: mapaUaSnapshot, neptun: neptunRaw });
   startNetOutages();
   startGnss();
   startNotams();

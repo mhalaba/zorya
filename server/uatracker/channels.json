@@ -1,0 +1,26 @@
+{
+  "_comment": "Public Telegram channels read via their web preview https://t.me/s/<name> (no account, no API key). weight = trust in the source model (official 1.0, regional observers 0.8, national aggregators 0.6). oblast = GeoNames admin1 code used as a hint for regional channels. Selection: subset of the registry published by neptun.in.ua (sources section), checked to load and to post in Oct 2026. enabled:false keeps a channel listed but not polled.",
+  "poll_s": 45,
+  "channels": [
+    { "name": "kpszsu", "label": "Повітряні Сили ЗСУ", "type": "official", "weight": 1.0, "poll_s": 30, "national": true },
+    { "name": "rozvidkaneba", "label": "Розвідка неба", "type": "intel", "weight": 0.8, "national": true, "defaultKind": "drone_piston" },
+    { "name": "Ukrainian_Intelligence", "label": "Розвідка України", "type": "intel", "weight": 0.75, "national": true },
+    { "name": "kudy_letyt", "label": "Куди летить", "type": "aggregator", "weight": 0.6, "national": true, "defaultKind": "drone_piston" },
+    { "name": "raketa_trevoga", "label": "Ракетна тривога", "type": "aggregator", "weight": 0.6, "national": true, "defaultKind": "drone_piston" },
+    { "name": "monikppy", "label": "Моніторинг ППО", "type": "aggregator", "weight": 0.6, "national": true },
+    { "name": "eRadarrua", "label": "eRadar", "type": "aggregator", "weight": 0.6, "national": true },
+    { "name": "povitryanatrivogaaa", "label": "Повітряна тривога", "type": "aggregator", "weight": 0.6, "national": true, "defaultKind": "drone_piston" },
+    { "name": "radar_top_ua", "label": "Радар", "type": "aggregator", "weight": 0.55, "national": true, "defaultKind": "drone_piston" },
+    { "name": "UkraineRadar_24_7", "label": "Ukraine Radar 24/7", "type": "aggregator", "weight": 0.6, "national": true },
+    { "name": "sectorv666", "label": "Сектор V", "type": "aggregator", "weight": 0.6, "national": true },
+    { "name": "shahedradar", "label": "SkyOps Radar", "type": "aggregator", "weight": 0.6, "national": true, "defaultKind": "drone_piston" },
+    { "name": "horizon_of_war_Official", "label": "Horizon of War", "type": "aggregator", "weight": 0.6, "oblast": "02" },
+    { "name": "RadarChernihiv", "label": "Радар Чернігів", "type": "regional", "weight": 0.8, "oblast": "02", "defaultKind": "drone_piston" },
+    { "name": "PoltavaRadar", "label": "Полтава Радар", "type": "regional", "weight": 0.8, "oblast": "18" },
+    { "name": "Radar_Dnipra", "label": "Радар Дніпра", "type": "regional", "weight": 0.8, "oblast": "04" },
+    { "name": "cherkasy_nebbo", "label": "Черкаське небо", "type": "regional", "weight": 0.8, "oblast": "01", "defaultKind": "drone_piston" },
+    { "name": "odessa_knight", "label": "Тёмный рыцарь (Одеса)", "type": "regional", "weight": 0.75, "oblast": "17" },
+    { "name": "monitor_ukr", "label": "Моніторинг | Україна", "type": "aggregator", "weight": 0.55, "national": true, "enabled": false },
+    { "name": "kherson_non_drone", "label": "Херсон: повітря/БПЛА", "type": "regional", "weight": 0.7, "oblast": "08", "enabled": false }
+  ]
+}

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../store";
-import { MAPAUA_URL } from "../mapaua";
+import { MAPAUA_URL, NEPTUN_URL } from "../mapaua";
 import { GNSS_COLORS, GPSJAM_URL, IODA_URL, LOCAL_META, LOCAL_ORDER, NET_COLORS, visibleLocal } from "../overlays";
 import type { LocalCategory } from "../types";
 
@@ -163,7 +163,7 @@ export function MapLayers() {
             )}
             {snap?.enabled !== false && (
               <>
-                <div className="ly-h">Nad Ukrainą (MAPA.UA)</div>
+                <div className="ly-h">Nad Ukrainą (własny silnik Zorya)</div>
                 <label>
                   <input type="checkbox" checked={st.uaMissilesOn} onChange={(e) => st.setUaLayer("uaMissilesOn", e.target.checked)} />
                   <span className="ua-sw cruise" /> Rakiety <span className="muted">{nm}</span>
@@ -180,7 +180,8 @@ export function MapLayers() {
             )}
             <div className="tiny">
               {air && !air.notam.ok && air.notam.enabled ? `NOTAM: brak świeżych danych (${air.notam.error}). ` : ""}
-              {snap?.ok === false && snap.error ? `MAPA.UA: brak świeżych danych (${snap.error}). ` : ""}
+              {snap?.ok === false ? `Ukraina: brak świeżych danych${snap.error ? ` (${snap.error})` : ""}. ` : ""}
+              {snap?.sources ? `Ukraina: własne ${snap.sources.own}, uzupełnienie NEPTUN ${snap.sources.neptun}, MAPA.UA ${snap.sources["mapa.ua"]}. ` : ""}
               {net && net.enabled && !net.ok ? `IODA: brak świeżych danych (${net.error}). ` : ""}
               {gnss && gnss.enabled && !gnss.daily.ok ? `gpsjam: brak danych (${gnss.daily.error}). ` : ""}
               Warstwy informacyjne — nie zmieniają poziomu zagrożenia województw.
@@ -209,7 +210,11 @@ export function MapLayers() {
       )}
       {uaOn && (
         <div className="ua-attr">
-          Dane o rakietach:{" "}
+          Źródło: własny silnik Zorya (kanały Telegram) · uzupełnienie:{" "}
+          <a href={NEPTUN_URL} target="_blank" rel="noopener noreferrer">
+            NEPTUN
+          </a>
+          ,{" "}
           <a href={MAPAUA_URL} target="_blank" rel="noopener noreferrer">
             MAPA.UA
           </a>

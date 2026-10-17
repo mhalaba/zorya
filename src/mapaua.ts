@@ -85,3 +85,11 @@ export function uaIcon(o: Pick<UaThreat, "kind" | "status">): string {
 }
 
 export const MAPAUA_URL = "https://mapa.ua/";
+export const NEPTUN_URL = "https://neptun.in.ua/";
+
+/** Who produced the object: our own engine or a fallback source. */
+export function uaSourceLabel(src: string | undefined): string {
+  if (src === "mapa.ua") return "MAPA.UA (uzupełnienie)";
+  if (src === "neptun") return "NEPTUN (uzupełnienie)";
+  return "własny silnik Zorya (kanały Telegram)";
+}

@@ -240,7 +240,7 @@ export function Landing() {
           </div>
           <div>
             <b>Rakiety nad Ukrainą</b>
-            <span>MAPA.UA: szacunkowe pozycje rakiet, bomb KAB i dronów z publicznych komunikatów. Osobna warstwa na mapie, nie wpływa na poziom województwa.</span>
+            <span>Nad Ukrainą: własny silnik Zorya (publiczne kanały Telegram) szacuje pozycje dronów, rakiet i bomb KAB; NEPTUN i MAPA.UA uzupełniają tylko to, czego silnik nie wychwycił. Osobna warstwa na mapie, nie wpływa na poziom województwa.</span>
           </div>
         </div>
       </section>

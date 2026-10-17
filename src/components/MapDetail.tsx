@@ -17,7 +17,7 @@ import type {
   UaThreatsSnapshot,
   VoivodeshipState,
 } from "../types";
-import { MAPAUA_URL, uaDead, uaStatusLabel, uaTypeLabel } from "../mapaua";
+import { MAPAUA_URL, NEPTUN_URL, uaDead, uaSourceLabel, uaStatusLabel, uaTypeLabel } from "../mapaua";
 import { azimuthDeg, haversineKm } from "../lib";
 import { powiatLevels } from "../admin";
 import {
@@ -499,8 +499,8 @@ function UaPanel({ snap, id, onClose }: { snap: UaThreatsSnapshot | null; id: st
   const o: UaThreat | undefined = snap?.objects.find((x) => x.id === id);
   if (!o) {
     return (
-      <Shell title="MAPA.UA" onClose={onClose}>
-        <p className="md-empty">Tego obiektu nie ma już w danych MAPA.UA (brak aktualizacji od ponad 60 minut).</p>
+      <Shell title="Nad Ukrainą" onClose={onClose}>
+        <p className="md-empty">Tego obiektu nie ma już na mapie (brak aktualizacji od ponad 60 minut).</p>
       </Shell>
     );
   }
@@ -518,14 +518,21 @@ function UaPanel({ snap, id, onClose }: { snap: UaThreatsSnapshot | null; id: st
   if (o.first_seen) rows.push(["Pierwszy raz", `${fmtDateTime(new Date(o.first_seen).toISOString())}`]);
   rows.push(["Ostatnio", `${fmtDateTime(new Date(o.last_seen).toISOString())} (${ago(o.last_seen)})`]);
   if (o.title) rows.push(["Komunikat", o.title]);
+  const own = !o.source || o.source === "own";
   rows.push([
     "Źródło",
-    <a key="s" href={MAPAUA_URL} target="_blank" rel="noopener noreferrer">
-      MAPA.UA
-    </a>,
+    own ? (
+      uaSourceLabel(o.source)
+    ) : (
+      <a key="s" href={o.source === "neptun" ? NEPTUN_URL : MAPAUA_URL} target="_blank" rel="noopener noreferrer">
+        {uaSourceLabel(o.source)}
+      </a>
+    ),
   ]);
+  if (own && o.confidence != null) rows.push(["Pewność", `${Math.round(o.confidence * 100)}% (${o.channels?.length ?? 0} kan.)`]);
+  const srcShort = own ? "Zorya" : o.source === "neptun" ? "NEPTUN" : "MAPA.UA";
   return (
-    <Shell title={uaTypeLabel(o)} sub={`MAPA.UA · ${when(o.last_seen)}${dead ? " · " + uaStatusLabel(o.status) : ""}`} onClose={onClose}>
+    <Shell title={uaTypeLabel(o)} sub={`${srcShort} · ${when(o.last_seen)}${dead ? " · " + uaStatusLabel(o.status) : ""}`} onClose={onClose}>
       <dl className="md-dl">
         {rows.map(([k, val]) => (
           <div key={k}>
@@ -534,8 +541,26 @@ function UaPanel({ snap, id, onClose }: { snap: UaThreatsSnapshot | null; id: st
           </div>
         ))}
       </dl>
+      {own && (o.reports?.length ?? 0) > 0 && (
+        <>
+          <h3 className="md-h">Komunikaty źródłowe (kanały Telegram)</h3>
+          <ul className="md-list ua-reports">
+            {[...(o.reports ?? [])].reverse().map((r) => (
+              <li key={`${r.url}-${r.text}`} className="md-item">
+                <div className="md-meta">
+                  <a href={r.url} target="_blank" rel="noopener noreferrer">
+                    @{r.channel}
+                  </a>{" "}
+                  · {fmtDateTime(new Date(r.ts).toISOString())}
+                </div>
+                <div className="md-title">{r.text}</div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       <p className="md-foot">
-        Szacunkowe pozycje z komunikatów, to nie jest oficjalne ostrzeżenie. {snap?.ok === false ? "MAPA.UA nie odpowiada, dane mogą być nieaktualne. " : ""}
+        Szacunkowe pozycje z komunikatów, to nie jest oficjalne ostrzeżenie. {snap?.ok === false ? "Źródła nie odpowiadają, dane mogą być nieaktualne. " : ""}
         Czasy: Europa/Warszawa.
       </p>
     </Shell>
@@ -845,7 +870,7 @@ function threatsNear(anchor: [number, number], st: FusionState | null, ua: UaThr
     add(`n:${o.id}`, TYPE[o.type] ?? o.type, o.lat, o.lon, o.course, o.speed, o.unc_km, "NEPTUN", () => useStore.getState().setSelectedObj(String(o.id)));
   }
   for (const o of ua?.enabled ? ua.objects : []) {
-    add(`u:${o.id}`, uaTypeLabel(o), o.lat, o.lon, o.heading, o.speed_kmh, null, "MAPA.UA", () => useStore.getState().setSelectedUa(o.id), uaDead(o));
+    add(`u:${o.id}`, uaTypeLabel(o), o.lat, o.lon, o.heading, o.speed_kmh, null, !o.source || o.source === "own" ? "Zorya (UA)" : o.source === "neptun" ? "NEPTUN" : "MAPA.UA", () => useStore.getState().setSelectedUa(o.id), uaDead(o));
   }
   return out.sort((a, b) => Number(b.toward) - Number(a.toward) || a.km - b.km).slice(0, 8);
 }
@@ -994,7 +1019,7 @@ function GminaPanel({
       )}
       <p className="md-foot">
         Granice gmin: PRG (Geoportal, 2025), uproszczone — przy samej granicy gminy wynik może dotyczyć sąsiedniej. Odległości od
-        środka gminy; pozycje NEPTUN i MAPA.UA są szacunkowe. Czasy: Europa/Warszawa.
+        środka gminy; pozycje NEPTUN, MAPA.UA i własnego silnika Zorya są szacunkowe. Czasy: Europa/Warszawa.
       </p>
     </Shell>
   );
