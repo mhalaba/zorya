@@ -3,6 +3,7 @@
  * Telegram/monitoring messages, not radar). Polled at most every 30 s, last good snapshot kept in
  * memory, trimmed before it reaches the browser. MAPAUA_ENABLED=0 switches it off without a rebuild.
  */
+import { capTrail } from "./uatracker/trail.mjs";
 const BASE = (process.env.MAPAUA_BASE || "https://mapa.ua").replace(/\/$/, "");
 const UA = "zorya.website (+m@zorya.website)";
 const off = /^(0|false|off|no)$/i.test(String(process.env.MAPAUA_ENABLED ?? "1").trim());
@@ -85,10 +86,13 @@ export function trimObjects(objects, nowS) {
     const last = num(o.last_seen);
     if (last == null || nowS - last > MAX_AGE_S) continue;
     const kind = KINDS.has(o.kind) ? o.kind : String(o.kind || "unknown");
-    const trail = (Array.isArray(o.trail) ? o.trail : [])
+    // MAPA.UA dead-reckons the trail from the launch zone: keep the recent route only (45 min, capped length),
+    // so a guess from Bryansk does not draw a 250 km straight line across the border.
+    const raw = (Array.isArray(o.trail) ? o.trail : [])
       .slice(-TRAIL_MAX)
-      .map((p) => [r5(p?.[0]), r5(p?.[1])])
+      .map((p) => [r5(p?.[0]), r5(p?.[1]), typeof p?.[2] === "number" ? p[2] * 1000 : undefined])
       .filter((p) => p[0] != null && p[1] != null);
+    const trail = capTrail(raw, kind).map((p) => [r5(p[0]), r5(p[1])]);
     const plat = r5(o.predicted_lat);
     const plon = r5(o.predicted_lon);
     const predicted =

@@ -28,7 +28,7 @@ const JITTER = 0.15; // ±15% on every interval so channels do not line up
 const PAUSE_ON_429_MS = 90_000; // t.me rate limit: every channel waits
 const BOOTSTRAP_MS = 45 * 60_000; // first ever run: replay the last 45 min of each channel
 const LAST_KIND_MS = 5 * 60_000;
-const FALLBACK_NEAR_KM = 60;
+const FALLBACK_NEAR_KM = 40;
 const FALLBACK_MAX_AGE_MS = 20 * 60_000;
 const EVENTS_RING = 500;
 
@@ -250,15 +250,16 @@ function neptunKind(t) {
   return null;
 }
 
-/** Fast objects get classified differently by different sources (e.g. "Бандероль": cruise missile vs jet drone). */
-const FAST = new Set(["drone_jet", "missile_cruise"]);
 function compatible(a, b) {
-  return groupOf(a) === groupOf(b) || (FAST.has(a) && FAST.has(b));
+  return groupOf(a) === groupOf(b);
 }
 
+// Only an own object of the same weapon group hides a fallback one (an own jet drone near Kremenets must not
+// hide MAPA.UA's cruise missile there), and only within 40 km.
 function nearAny(list, kind, lat, lon) {
   return list.some((o) => {
-    const km = compatible(o.kind, kind) ? FALLBACK_NEAR_KM : 20;
+    if (!compatible(o.kind, kind)) return false;
+    const km = FALLBACK_NEAR_KM;
     if (distKm([o.lat, o.lon], [lat, lon]) <= km) return true;
     const p = o.predicted;
     return p ? distKm([p[1], p[0]], [lat, lon]) <= km : false;

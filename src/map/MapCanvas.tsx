@@ -3,9 +3,9 @@ import maplibregl, { type Map as MLMap, type GeoJSONSource } from "maplibre-gl";
 import { CAMERA, COLORS } from "../config";
 import { circlePoly, destPoint, prefersReducedMotion } from "../lib";
 import { iconForType, registerMapIcons } from "./icons";
-import { uaDead, uaFreshness, uaGroup, uaIcon, uaType } from "../mapaua";
+import { uaDead, uaDrawn, uaFreshness, uaIcon, uaType } from "../mapaua";
 import { UA_COLORS } from "./icons";
-import { inUkraine, onUaAreaReady } from "./uaArea";
+import { inUkraine, nearUkraine, onUaAreaReady, useUaAreaReady } from "./uaArea";
 import { uaThreatLayers } from "./uaLayers";
 import { GNSS_COLORS, LOCAL_META, LOCAL_ORDER, NET_COLORS, NET_LEVEL_PL, NOTAM_META, visibleLocal } from "../overlays";
 import { loadAdmin, loadGminy, powiatLevels as decodePowiaty, wojInView, type AdminLayers } from "../admin";
@@ -56,6 +56,7 @@ export function MapCanvas() {
   const selectedObj = useStore((s) => s.selectedObj);
   const objTrack = useStore((s) => s.objTrack);
   const uaThreats = useStore((s) => s.uaThreats);
+  const uaAreaReady = useUaAreaReady();
   const [mapReadyTick, setMapReadyTick] = useState(0);
   const [adminTick, setAdminTick] = useState(0);
   const adminRef = useRef<AdminLayers | null>(null);
@@ -895,8 +896,17 @@ export function MapCanvas() {
           [p.x + 10, p.y + 10],
         ];
         const fs = map.queryRenderedFeatures(box, { layers });
-        // MAPA.UA missiles first (they are the rarer, more urgent marker), then NEPTUN objects.
-        const f = fs.find((x) => x.layer.id === "mua-icon") ?? fs.find((x) => x.layer.id !== "mua-trail") ?? fs[0];
+        // Ukraine threat icons first, then NEPTUN objects, then a trail (a wider box: a 2 px line is hard to hit).
+        const wide: [maplibregl.PointLike, maplibregl.PointLike] = [
+          [p.x - 16, p.y - 16],
+          [p.x + 16, p.y + 16],
+        ];
+        const f =
+          fs.find((x) => x.layer.id === "mua-icon") ??
+          fs.find((x) => x.layer.id !== "mua-trail") ??
+          (map.getLayer("mua-icon") ? map.queryRenderedFeatures(wide, { layers: ["mua-icon"] })[0] : undefined) ??
+          fs[0] ??
+          (map.getLayer("mua-trail") ? map.queryRenderedFeatures(wide, { layers: ["mua-trail"] })[0] : undefined);
         if (!f) return null;
         const id = String(f.properties?.id ?? f.id ?? "");
         return f.layer.id === "mua-icon" || f.layer.id === "mua-trail" ? `ua:${id}` : id;
@@ -959,8 +969,9 @@ export function MapCanvas() {
           });
           return;
         }
-        // Inside NOTAM / permanent areas: list every area under the finger.
-        const areaLayers = ["notam-fill", "asz-fill"].filter((l) => map.getLayer(l));
+        // Inside NOTAM / permanent areas: list every area under the finger. Not over Ukraine, where the
+        // country-wide airspace closures would swallow every tap meant for a threat marker.
+        const areaLayers = inUkraine(e.lngLat.lng, e.lngLat.lat) ? [] : ["notam-fill", "asz-fill"].filter((l) => map.getLayer(l));
         const areas = areaLayers.length ? map.queryRenderedFeatures(e.point, { layers: areaLayers }) : [];
         if (areas.length) {
           const ids = [...new Set(areas.map((f) => String(f.properties?.key ?? "")).filter(Boolean))];
@@ -988,6 +999,9 @@ export function MapCanvas() {
         });
       });
 
+      // Ukraine threats above every other overlay (NOTAM areas, internet / GNSS hexagons, ADS-B, local alerts),
+      // only the search pin stays on top.
+      for (const id of ["mua-trail", "mua-pred", "mua-icon"]) if (map.getLayer(id)) map.moveLayer(id, map.getLayer("search-pin") ? "search-pin" : undefined);
       ready.current = true;
       setMapReadyTick((t) => t + 1);
       applyData(map);
@@ -1204,9 +1218,8 @@ export function MapCanvas() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready.current) return;
-    const on = { missile: uaMissilesOn, bomb: uaBombsOn, drone: uaDronesOn };
-    const list = (uaThreats?.objects ?? []).filter((o) => on[uaGroup(o.kind)]);
     const now = Date.now();
+    const list = uaDrawn(uaThreats?.objects, { missile: uaMissilesOn, bomb: uaBombsOn, drone: uaDronesOn }, nearUkraine, now);
     const color = (o: (typeof list)[number]) => UA_COLORS[uaType(o)] ?? "#FBBF24";
     const pts: FeatureCollection = {
       type: "FeatureCollection",
@@ -1248,7 +1261,7 @@ export function MapCanvas() {
     };
     (map.getSource("mua") as GeoJSONSource | undefined)?.setData(pts);
     (map.getSource("mua-lines") as GeoJSONSource | undefined)?.setData(lines);
-  }, [uaThreats, uaMissilesOn, uaBombsOn, uaDronesOn, selectedUa, mapReadyTick]);
+  }, [uaThreats, uaMissilesOn, uaBombsOn, uaDronesOn, selectedUa, mapReadyTick, uaAreaReady]);
 
   // Selected gmina: make sure its voivodeship's gminy are loaded, then highlight it and its powiat.
   useEffect(() => {

@@ -487,6 +487,56 @@
       "weight": 0.6,
       "poll_s": 90,
       "oblast": "27"
+    },
+    {
+      "name": "zahidnuiradar",
+      "label": "Західний радар (захід України)",
+      "type": "aggregator",
+      "weight": 0.75,
+      "poll_s": 60,
+      "national": true
+    },
+    {
+      "name": "rocket_danger_lviv",
+      "label": "Ракетна небезпека Львів",
+      "type": "regional",
+      "weight": 0.75,
+      "oblast": "15",
+      "poll_s": 60
+    },
+    {
+      "name": "lvivzahidradar",
+      "label": "Львів моніторинг",
+      "type": "regional",
+      "weight": 0.65,
+      "oblast": "15",
+      "poll_s": 90
+    },
+    {
+      "name": "lutsk_radar",
+      "label": "Луцьк радар",
+      "type": "regional",
+      "weight": 0.7,
+      "oblast": "24",
+      "poll_s": 90,
+      "defaultKind": "drone_piston"
+    },
+    {
+      "name": "vin_info_ppo",
+      "label": "ППО у Вінницькій області",
+      "type": "regional",
+      "weight": 0.7,
+      "oblast": "23",
+      "poll_s": 60,
+      "defaultKind": "drone_piston"
+    },
+    {
+      "name": "nashe_ppo_monitoring",
+      "label": "Наше ППО",
+      "type": "aggregator",
+      "weight": 0.6,
+      "poll_s": 90,
+      "national": true
     }
   ],
   "excluded": [

@@ -94,14 +94,51 @@ export function uaIcon(o: Pick<UaThreat, "kind" | "subkind" | "status">): string
  */
 export function uaFreshness(o: Pick<UaThreat, "status" | "last_seen">, now = Date.now()): number {
   const age = Math.max(0, (now - o.last_seen) / 60_000);
-  if (uaDead(o)) return Math.max(0.15, 0.55 - age / 40);
+  if (uaDead(o)) return Math.max(0.15, 0.5 - age / 30);
+  // mapa.ua-like: full for 5 min, then a clearly visible fade (0.2 at 30 min, 0.1 at 60 min).
   if (age <= 5) return 1;
-  return Math.max(0.35, 1 - ((age - 5) / 25) * 0.65);
+  if (age <= 30) return 1 - ((age - 5) / 25) * 0.8;
+  return Math.max(0.1, 0.2 - ((age - 30) / 30) * 0.1);
 }
 
 /** Units in flight (amount-weighted), the way mapa.ua's header counts them: fresh, not lost or shot down. */
 export function uaLiveUnits(list: Pick<UaThreat, "status" | "amount">[]): number {
   return list.reduce((n, o) => n + (uaDead(o) ? 0 : Math.max(1, o.amount || 1)), 0);
+}
+
+export type UaLayerToggles = { missile: boolean; bomb: boolean; drone: boolean };
+const HIDE_AFTER_MS = 60 * 60_000;
+
+/**
+ * The one list of Ukraine threats the map draws; every count (layer button, layer panel, status bar) is
+ * computed from it, so they always agree with what is on screen. Hidden: switched-off layers, FPV
+ * (tactical, not tracked), anything older than 60 min, and fallback objects (MAPA.UA / NEPTUN) still
+ * outside Ukraine (a launch-zone guess in Bryansk is not a threat on the map yet).
+ */
+export function uaDrawn(list: UaThreat[] | undefined, on: UaLayerToggles, inUa: (lon: number, lat: number) => boolean, now = Date.now()): UaThreat[] {
+  return (list ?? []).filter(
+    (o) =>
+      on[uaGroup(o.kind)] &&
+      o.kind !== "drone_fpv" &&
+      now - o.last_seen <= HIDE_AFTER_MS &&
+      (!o.source || o.source === "own" || inUa(o.lon, o.lat))
+  );
+}
+
+/** Counts over the drawn list: units in flight per group, and objects per source. */
+export function uaCounts(drawn: UaThreat[]) {
+  const live = drawn.filter((o) => !uaDead(o));
+  const units = (g: UaGroup) => uaLiveUnits(live.filter((o) => uaGroup(o.kind) === g));
+  return {
+    missile: units("missile"),
+    bomb: units("bomb"),
+    drone: units("drone"),
+    units: uaLiveUnits(live),
+    objects: drawn.length,
+    own: drawn.filter((o) => !o.source || o.source === "own").length,
+    mapaua: drawn.filter((o) => o.source === "mapa.ua").length,
+    neptun: drawn.filter((o) => o.source === "neptun").length,
+  };
 }
 
 export const MAPAUA_URL = "https://mapa.ua/";

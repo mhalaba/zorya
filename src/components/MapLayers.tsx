@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../store";
-import { MAPAUA_URL, NEPTUN_URL, uaDead, uaLiveUnits } from "../mapaua";
+import { MAPAUA_URL, NEPTUN_URL, uaCounts, uaDrawn } from "../mapaua";
+import { nearUkraine, useUaAreaReady } from "../map/uaArea";
 import { GNSS_COLORS, GPSJAM_URL, IODA_URL, LOCAL_META, LOCAL_ORDER, NET_COLORS, visibleLocal } from "../overlays";
 import type { LocalCategory } from "../types";
 
@@ -75,13 +76,14 @@ export function MapLayers() {
     }))
   );
   const [open, setOpen] = useState(false);
-  const objs = snap?.objects ?? [];
-  // Counts = objects in flight; grey lost / shot-down markers are drawn but not counted.
-  // Counted like mapa.ua's header: units in flight (a group of 4 counts 4); grey lost markers are not counted.
-  const count = (pred: (k: string) => boolean) => uaLiveUnits(objs.filter((o) => !uaDead(o) && pred(o.kind)));
-  const nm = count((k) => k.startsWith("missile"));
-  const nb = count((k) => k === "bomb");
-  const nd = count((k) => k.startsWith("drone"));
+  useUaAreaReady();
+  // Counted like mapa.ua's header (units in flight; a group of 4 counts 4; grey lost markers are drawn, not
+  // counted) over exactly what the map draws. Each group is counted even when its layer is off.
+  const all = uaCounts(uaDrawn(snap?.objects, { missile: true, bomb: true, drone: true }, nearUkraine));
+  const drawn = uaCounts(uaDrawn(snap?.objects, { missile: st.uaMissilesOn, bomb: st.uaBombsOn, drone: st.uaDronesOn }, nearUkraine));
+  const nm = all.missile;
+  const nb = all.bomb;
+  const nd = all.drone;
   const uaOn = !!snap?.enabled && (st.uaMissilesOn || st.uaBombsOn || st.uaDronesOn);
   const notamZones = air?.notam.items.filter((n) => n.map).length ?? 0;
   const allLocal = (local?.items ?? []).filter((a) => a.state !== "ended");
@@ -183,7 +185,7 @@ export function MapLayers() {
             <div className="tiny">
               {air && !air.notam.ok && air.notam.enabled ? `NOTAM: brak świeżych danych (${air.notam.error}). ` : ""}
               {snap?.ok === false ? `Ukraina: brak świeżych danych${snap.error ? ` (${snap.error})` : ""}. ` : ""}
-              {snap?.sources ? `Ukraina: własne ${snap.sources.own}, uzupełnienie MAPA.UA ${snap.sources["mapa.ua"]}${snap.sources.neptun ? `, NEPTUN ${snap.sources.neptun}` : ""}. ` : ""}
+              {snap?.sources ? `Ukraina na mapie: ${drawn.objects} znaczników (własne ${drawn.own}, uzupełnienie MAPA.UA ${drawn.mapaua}${drawn.neptun ? `, NEPTUN ${drawn.neptun}` : ""}), w locie ${drawn.units}. ` : ""}
               {net && net.enabled && !net.ok ? `IODA: brak świeżych danych (${net.error}). ` : ""}
               {gnss && gnss.enabled && !gnss.daily.ok ? `gpsjam: brak danych (${gnss.daily.error}). ` : ""}
               Warstwy informacyjne — nie zmieniają poziomu zagrożenia województw.

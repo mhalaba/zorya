@@ -211,6 +211,8 @@ export function variants(w) {
   rule("е", ["а"]);
   rule("ом", [""]);
   rule("ем", ["ь"]);
+  // Genitive plural of "-и" towns: "до Черкас" → Черкаси, "біля Сум" → Суми, "Чернівець" handled by "ець".
+  if (w.length >= 4 && /[бвгґджзклмнпрстфхцчшщ]$/u.test(w)) out.add(`${w}и`);
   return [...out];
 }
 
@@ -266,10 +268,12 @@ function choose(cands, hint) {
     if (inObl.length) return { p: inObl[0], score: 3 + Math.log10(1 + inObl[0][3]) / 10, exactHint: true };
     const o = OBLAST_BY_ID.get(hint);
     if (o) {
+      // Nearest to the region, but a real town beats a homonymous hamlet a bit closer
+      // ("Кременець" + Рівненщина → the town in Ternopil oblast, not the pop-0 village in Volyn).
       const near = cands
-        .map((p) => ({ p, d: distKm(o.c, [p[0], p[1]]) }))
+        .map((p) => ({ p, d: distKm(o.c, [p[0], p[1]]), s: distKm(o.c, [p[0], p[1]]) - 25 * Math.log10(1 + (p[3] || 0)) }))
         .filter((x) => x.d < 170)
-        .sort((a, b) => a.d - b.d)[0];
+        .sort((a, b) => a.s - b.s)[0];
       if (near) return { p: near.p, score: 2 };
     }
     // A region was named but no such town is in or near it: only a big city is still believable.
@@ -277,8 +281,10 @@ function choose(cands, hint) {
   }
   const top = cands[0];
   // Without a region hint only a clearly dominant town is trusted (homonymous villages are everywhere).
-  if (cands.length === 1) return { p: top, score: top[3] >= 500 || !hint ? 1.5 : 1 };
+  // A lone hamlet (pop < 500) must not beat a city reached through another inflection ("Черкас" village vs
+  // "Черкаси" city, both keys of "на Черкаси"): it scores below a dominant town (1.2+).
+  if (cands.length === 1) return { p: top, score: top[3] >= 500 ? 1.5 + Math.log10(1 + top[3]) / 20 : 1 };
   const second = cands[1];
-  if (top[3] >= 20000 || (top[3] >= 3000 && top[3] > 5 * (second[3] || 0))) return { p: top, score: 1.2 };
+  if (top[3] >= 20000 || (top[3] >= 3000 && top[3] > 5 * (second[3] || 0))) return { p: top, score: 1.2 + Math.log10(1 + top[3]) / 10 };
   return null;
 }

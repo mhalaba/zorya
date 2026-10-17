@@ -135,13 +135,13 @@ export function routeFor(path: string): SeoRoute | null {
   return ROUTES.find((r) => r.path === p) ?? null;
 }
 
+// Zorya is Matthew Halaba's personal project: he is the author and publisher in the structured data.
 const PUBLISHER = {
-  "@type": "Organization",
+  "@type": "Person",
   "@id": `${SITE}/#publisher`,
-  name: "Baiame Mateusz Halaba",
+  name: "Matthew Halaba",
   url: SITE,
   email: "m@zorya.website",
-  founder: { "@type": "Person", name: "Mateusz Halaba", alternateName: "Matthew Halaba" },
   contactPoint: { "@type": "ContactPoint", email: "m@zorya.website", contactType: "customer support", availableLanguage: ["pl", "en"] },
   sameAs: ["https://github.com/mhalaba/zorya"],
 };
@@ -159,6 +159,7 @@ export function jsonLd(r: SeoRoute): object {
       alternateName: "Zorya — czuwanie świtu",
       inLanguage: ["pl", "en"],
       publisher: { "@id": `${SITE}/#publisher` },
+      author: { "@id": `${SITE}/#publisher` },
     },
     {
       "@type": "WebApplication",

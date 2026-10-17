@@ -2,6 +2,9 @@ import { Component, useEffect, type ReactNode } from "react";
 import { openGmina } from "../place";
 import { s } from "../strings";
 import { useStore } from "../store";
+import { useShallow } from "zustand/react/shallow";
+import { uaCounts, uaDrawn } from "../mapaua";
+import { nearUkraine, useUaAreaReady } from "../map/uaArea";
 import { MapCanvas } from "../map/MapCanvas";
 import { MapHud } from "../components/Chrome";
 import { MapDetail } from "../components/MapDetail";
@@ -35,6 +38,11 @@ export function Mapa() {
     if (g && /^\d{6,7}$/.test(g)) void openGmina({ gmina: g }, true);
   }, []);
   const ua = fusion ? fusion.ua_alerts.filter((a) => a.active).length : 0;
+  // Same list and rules as the map layer and the layer panel (uaDrawn): the number equals the icons in flight on screen.
+  useUaAreaReady();
+  const uaOn = useStore(useShallow((x) => ({ missile: x.uaMissilesOn, bomb: x.uaBombsOn, drone: x.uaDronesOn })));
+  const uaSnap = useStore((x) => x.uaThreats);
+  const uaLive = uaCounts(uaDrawn(uaSnap?.objects, uaOn, nearUkraine)).units;
 
   return (
     <main className="map live-map" aria-label={s("map.a11y")}>
@@ -52,7 +60,7 @@ export function Mapa() {
       {connecting && !fusion && <div className="map-status">{s("home.loading")}</div>}
       {fusion && (
         <div className="map-attr">
-          NEPTUN {fusion.objects.length} · ADS-B {fusion.adsb.length} · UA {ua} · NOTAM {notams} · lokalne {local}
+          Ukraina: w locie {uaLive} · alarmy UA {ua} · NEPTUN {fusion.objects.length} · ADS-B {fusion.adsb.length} · NOTAM {notams} · lokalne {local}
         </div>
       )}
     </main>

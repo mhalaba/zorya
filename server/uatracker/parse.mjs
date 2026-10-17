@@ -41,13 +41,14 @@ const RX = {
 };
 
 const KIND_RX = [
-  ["skip", /mavic|мавік|мавик|\bfpv\b|фпв|молні|молни|ланцет|lancet|мінувальник|квадрокоптер/u],
+  ["skip", /mavic|мавік|мавик|\bfpv\b|фпв|молні|молни|ланцет|lancet|мінувальник|квадрокоптер|разведчик|розвідник|розвідувальн|развед\S* бпла|бпла-развед|суперкам|supercam|орлан|(?:^|[^а-яєіїґ])zala|(?:^|[^а-яєіїґ])зала(?:[^а-яєіїґ]|$)/u],
   ["missile_ballistic", /баліст|баллист|іскандер|искандер|кинджал|кинжал|kn-?23|кн-?23|швидкісн\S* ціл|скоростн\S* цел|циркон/u],
   ["bomb", /(?:^|[^а-яєіїґ])каб(?:и|ів|ами)?(?:[^а-яєіїґ]|$)|керован\S* авіа|авіабомб|авиабомб|авіаційн\S* бомб|авиационн\S* бомб|(?:^|\s)бомб/u],
   // S8000 "Бандероль": a jet loitering munition; MAPA.UA files it under jet drones (subkind banderol).
   ["drone_jet", /бандерол|бандерод/u],
-  ["missile_cruise", /крилат|крылат|(?:^|[^а-яєіїґ])кр(?:[^а-яєіїґ]|$)|калібр|калибр|х-?101|х-?555|х-?59|х-?69|х-?22|х-?32|х-?35|ракет|🚀|онікс|оникс/u],
-  ["drone_jet", /реактивн|реакт(?:[^а-яєіїґ]|$)|🏍|джет|герань-?3|geran-?3/u],
+  ["missile_cruise", /крилат|крылат|(?:^|[^а-яєіїґ])кр(?:[^а-яєіїґ]|$)|калібр|калибр|х-?101|х-?555|х-?59|х-?69|х-?22|х-?32|х-?35|ракет|онікс|оникс/u],
+  ["drone_jet", /реактив|реакт(?:[^а-яєіїґ.]|\.|$)|ректальн|еректив|🏍|джет|герань-?3|geran-?3/u],
+  ["missile_cruise", /🚀/u],
   ["drone_piston", /бпла|бпла|(?:^|[^а-яєіїґ])бп(?:[^а-яєіїґ]|$)|бпл(?:[^а-яєіїґ]|$)|шахед|шахід|шохєд|шахєд|(?:^|[^а-яєіїґ])шах(?:и|ів)?(?:[^а-яєіїґ]|$)|герань|гербер|італмас|италмас|дрон|мопед|🛵|ударн|звичайн|безпілот|беспилот/u],
 ];
 
@@ -57,12 +58,15 @@ export function kindOf(lc) {
   return null;
 }
 
+const BARE_RX = new RegExp(`(?:реактив\\S*|ударн\\S*|бпла|шахед\\S*|бп|мопед\\S*|🛵|🏍|🚀)\\s*${PLACE}`, "iu");
 const RAION_NOM = new RegExp(`([А-ЯЄІЇҐ][${L}\\-]+?)(?:ський|цький|зький|ский|цкий)\\s+(?:район|р-н)`, "gu");
 const KILL_RX = /збит|знищен|сбит|уничтож|(?:^|\s)мінус(?:\s|$|\d)|(?:^|\s)минус|ліквідован|приземлив|впав|упал/u;
 const CLEAR_RX = /відбій|отбой|область чист|області чист|в області чисто|по області чисто|без фіксації|чисто\s*[📡✅]*$|не фіксу|не фиксиру|небо чисте|чисте небо|небо чистое|загроз немає|загроз нема|угроз нет/u;
 /** Past-tense news about strikes and damage: not a live position report. */
 const NEWS_RX = /завдав|завдали|атакував|атакували|постражд|загин|поранен|унаслідок|внаслідок|зруйнов|пошкодж|ударів по|уразил|влучан|наслідки|заявив|повідомив|за даними|минулої доби|у ніч на/u;
 const ALARM_RX = /тривог|тревог|загроза застосування|угроза применения/u;
+/** Siren-app style lines ("ЖОВТИЙ рівень загрози", "Дронова загроза", "Ракетна загроза (червоний рівень)"): no object. */
+const LEVEL_RX = /рівень загрози|рівень небезпеки|уровень угрозы|(?:жовтий|червоний|помаранчевий|желтый|красный) рівень|(?:жовтий|червоний) рівень|дронова загроза|ракетна загроза|загроза кабів|загроза каб(?:[^а-яєіїґ]|$)|загроза для област/u;
 /** Things after "на/до" that are not places. */
 const NOT_PLACE = /^(Мапа|Карта|Увага|Уточнюється|Наразі|Ціль|Цілі|Повітрян|Тривог|Відбій|Загроза|Схід|Захід|Північ|Південь|Схід|Час|Висот|Швидк|Дорозвідк)/u;
 
@@ -145,6 +149,7 @@ export function parsePost(rawText, opts = {}) {
     const lineKindRaw = kindOf(lc);
     if (lineKindRaw === "skip") continue;
     if (NEWS_RX.test(lc)) continue;
+    if (LEVEL_RX.test(lc)) continue;
 
     // Kill / all-clear first: they carry no new position.
     if (KILL_RX.test(lc) && !/курс|→|напрям/u.test(lc)) {
@@ -174,7 +179,9 @@ export function parsePost(rawText, opts = {}) {
     const targets = [...line.matchAll(RX.target)].filter((m) => !NOT_PLACE.test(m[1]));
     const poss = [...line.matchAll(RX.pos)];
     const raions = [...line.matchAll(RX.raion)];
-    if (obls.length && !targets.some((m) => !oblastsIn(m[1]).length) && !poss.length && !raions.length) {
+    const bare = line.match(BARE_RX);
+    const bareTown = bare && !oblastsIn(bare[1]).length ? bare[1] : null;
+    if (obls.length && !bareTown && !targets.some((m) => !oblastsIn(m[1]).length) && !poss.length && !raions.length) {
       const fromMatch = /(?:^|\s)(?:з|із|зі|от|из|с)\s+\S*щин/u.test(lc);
       if (!fromMatch) {
         header = { oblast: obls[0], kind: lineKindRaw || null };
@@ -241,11 +248,8 @@ export function parsePost(rawText, opts = {}) {
       }
     }
     if (pos && target && pos.lat === target.lat && pos.lon === target.lon) target = null;
-    // "Реактивний Ярмолинці" (kind word directly followed by a town) → position.
-    if (!pos && !target && lineKindRaw) {
-      const m = line.match(new RegExp(`(?:реактивн\\S*|ударн\\S*|бпла|шахед\\S*|бп)\\s+${PLACE}`, "iu"));
-      if (m) pos = placeFrom(m[1], phint);
-    }
+    // "Реактивний Ярмолинці", "🛵 Броди", "🚀Дубровиця" (weapon word or emoji directly before a town) → position.
+    if (!pos && !target && lineKindRaw && bareTown) pos = placeFrom(bareTown, phint);
     // "Дрімайлівка гербера", "Ямпіль невідомий БпЛа": a town first, then the weapon.
     if (!pos && !target && lineKindRaw) {
       const m = line.match(new RegExp(`^[^А-ЯЄІЇҐЁ]*${PLACE}\\s+(?:невідом\\S*\\s+)?(?:реактивн|ударн|бпла|бпл|шахед|шах|гербер|герань|італмас|мопед|бандерол|каб)`, "iu"));
@@ -290,6 +294,7 @@ export function parsePost(rawText, opts = {}) {
       continue;
     }
     const count = countOf(line);
+    if (also.length && count > 1 && also.length + 1 > count) also.splice(count - 1);
     const subkind = kind === "drone_jet" && /бандерол|бандерод/u.test(/бандерол|бандерод/u.test(lc) ? lc : lcAll) ? "banderol" : null;
     // A count spread over a list of towns: split it, the first town keeps the remainder.
     const share = also.length && !pos ? Math.max(1, Math.floor(count / (also.length + 1))) : count;

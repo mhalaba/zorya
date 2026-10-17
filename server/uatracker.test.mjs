@@ -64,3 +64,44 @@ test("town lists, locative region hint, region-only heading", () => {
   assert.equal(kp.pos.name, "Добрянка");
   assert.equal(kp.heading, 225);
 });
+
+test("audit 17.10 19:40: geocoding, siren-level lines, recon drones, count caps, terse western posts", () => {
+  // "Черкас" (genitive) is the city, not the hamlet "Черкас" in Kyiv oblast; "Кременець" + Rivne channel → the town.
+  assert.equal(parsePost("БпЛА над водосховищем у напрямку Черкас").events[0].target.lat, 49.4445);
+  assert.equal(parsePost("Тривога по реактивному в напрямку Кременець", { oblast: "19" }).events[0].target.oblast, "22");
+  // Siren-app level lines and recon drones create no object.
+  assert.equal(parsePost("🟡 Увага! У Харківському районі ЖОВТИЙ рівень загрози!", { oblast: "07", lastKind: "drone_piston" }).events.length, 0);
+  assert.equal(parsePost("⚠️БпЛА-разведчик Суперкам над Хатнее", { oblast: "07" }).events.length, 0);
+  // An explicit count caps the town list.
+  assert.equal(parsePost("2 реактивних шахеда з Донецька на Білозерське, Башилівку, Уплатне", { oblast: "07" }).events.length, 2);
+  // Terse western channels: weapon word / emoji right before a town.
+  const a = parsePost("Реактив на Луцьк").events[0];
+  assert.equal(a.kind, "drone_jet");
+  assert.equal(a.target.name, "Луцьк");
+  assert.equal(parsePost("🛵 Броди", { oblast: "15" }).events[0].pos.name, "Броди");
+  const m = parsePost("Тернопільська: 🚀Вишнівець", { oblast: "15" }).events[0];
+  assert.equal(m.kind, "missile_cruise");
+  assert.equal(m.pos.name, "Вишнівець");
+  assert.equal(parsePost("Реактивний 🚀 на Тернопіль").events[0].kind, "drone_jet");
+});
+
+test("engine: no impossible jumps, no far launch-zone line, trail capped", async () => {
+  const { capTrail } = await import("./uatracker/trail.mjs");
+  const e = new Engine();
+  const t0 = Date.parse("2026-10-17T16:00:00Z");
+  const meta = (ts, ch = "a") => ({ channel: ch, msgId: ts, url: `u${ts}`, ts, weight: 0.8 });
+  const id1 = e.ingest(parsePost("Реактивний БпЛА повз Балту").events[0], meta(t0));
+  // 4 min later a "fix" 170 km away: 2500 km/h for a jet drone → a different object.
+  const id2 = e.ingest(parsePost("Реактивний БпЛА повз Умань").events[0], meta(t0 + 4 * 60_000, "b"));
+  assert.notEqual(id1, id2);
+  // "з Брянщини" first seen deep inside Ukraine: no straight line from Bryansk.
+  const id3 = e.ingest(parsePost("Реактивний БпЛА з Брянщини на Бровари").events[0], meta(t0));
+  const o3 = e.snapshot(t0 + 60_000).find((o) => o.id === id3);
+  assert.ok(o3.trail.every(([lon]) => lon < 33));
+  // capTrail: 45 min window and length cap.
+  const pts = Array.from({ length: 30 }, (_, i) => [30 + i * 0.1, 50, t0 + i * 5 * 60_000]);
+  const c = capTrail(pts, "drone_piston");
+  assert.ok(c.length <= 11);
+  const long = Array.from({ length: 10 }, (_, i) => [28 + i, 50, t0 + i * 60_000]);
+  assert.ok(capTrail(long, "drone_piston").length <= 3);
+});

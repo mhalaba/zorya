@@ -6,6 +6,7 @@
  */
 import { OBLAST_BY_ID, ZONES, bearing, distKm, move } from "./geo.mjs";
 import { SPEED } from "./parse.mjs";
+import { VMAX, capTrail } from "./trail.mjs";
 
 const MIN = 60_000;
 /** How long an object stays "active" without a new report. */
@@ -16,6 +17,8 @@ const KEEP_MS = 60 * MIN;
 /** Distance (km) before the named target where a "на X" report places the object. */
 const LEAD_KM = { drone_piston: 30, drone_jet: 50, missile_cruise: 50, missile_ballistic: 0, bomb: 12 };
 const TRAIL_MAX = 60;
+/** A launch zone is drawn as the first trail point only when it is this close to the first fix. */
+const ORIGIN_TRAIL_MAX_KM = 150;
 const REPORTS_MAX = 8;
 
 /**
@@ -116,6 +119,12 @@ export class Engine {
         if (!pos || dtMin > 5) continue;
         reach = 10;
       }
+      // A fix the object cannot have reached since its last fix (at a generous max speed) is another object.
+      if (pos) {
+        const jump = distKm([o.lat, o.lon], pos);
+        const dtH = Math.max(Math.abs(t - o.last_seen), 8 * MIN) / 3600_000; // reports lag: 8 min floor
+        if (jump > 25 && jump / dtH > (VMAX[o.kind] ?? 1e9)) continue;
+      }
       const sameTarget = o.target && tgt && distKm(o.target, tgt) < 12;
       const d = pos ? distKm(last, pos) : distKm(last, tgt);
       let score = null;
@@ -138,11 +147,11 @@ export class Engine {
         fromZone = org.zone || null;
         const dist = distKm(tgt, org.p);
         point = move(tgt, bearing(tgt, org.p), Math.min(LEAD_KM[ev.kind] ?? 15, dist / 2));
-        if (org.zone) trail.push([org.p[1], org.p[0], t - Math.round((distKm(org.p, point) / sp) * 3600_000)]);
+        if (org.zone && distKm(org.p, point) <= ORIGIN_TRAIL_MAX_KM) trail.push([org.p[1], org.p[0], t - Math.round((distKm(org.p, point) / sp) * 3600_000)]);
       } else if (ev.from?.zone && ZONES[ev.from.zone]) {
         fromZone = ev.from.zone;
         const zp = ZONES[ev.from.zone].c;
-        trail.push([zp[1], zp[0], t - Math.round((distKm(zp, point) / sp) * 3600_000)]);
+        if (distKm(zp, point) <= ORIGIN_TRAIL_MAX_KM) trail.push([zp[1], zp[0], t - Math.round((distKm(zp, point) / sp) * 3600_000)]);
       }
       trail.push([point[1], point[0], t]);
       o = {
@@ -197,10 +206,8 @@ export class Engine {
         if (ev.speed_kmh) o.speed_kmh = ev.speed_kmh;
         o.oblast = ev.oblast || o.oblast;
         if (o.status === "lost") o.status = "active";
-      } else if (pos && !o.trail.some((p) => distKm([p[1], p[0]], pos) < 3)) {
-        o.trail.push([pos[1], pos[0], t]);
-        o.trail.sort((a, b) => a[2] - b[2]);
       }
+      // Older news from a slower channel never goes into the trail: inserting it drew back-and-forth zig-zags.
       if (ev.kind === "drone_jet" && o.kind === "drone_piston" && meta.weight >= 0.8 && o.amount === 1 && (ev.count || 1) === 1) o.kind = "drone_jet";
       if (ev.subkind && !o.subkind) o.subkind = ev.subkind;
       o.amount = Math.max(o.amount, ev.count || 1);
@@ -337,9 +344,11 @@ export class Engine {
           predicted = [p[1], p[0]];
         }
       }
-      const trail = o.trail.map((p) => [p[0], p[1]]);
-      const tl = trail[trail.length - 1];
-      if (!tl || distKm([tl[1], tl[0]], est) > 1) trail.push([est[1], est[0]]);
+      const tr = [...o.trail];
+      const tl = tr[tr.length - 1];
+      if (!tl || distKm([tl[1], tl[0]], est) > 1) tr.push([est[1], est[0], Math.max(now, tl?.[2] || 0)]);
+      // Only the recent route: last 45 min, at most a kind-specific length, never across an impossible jump.
+      const trail = capTrail(tr, o.kind).map((p) => [Math.round(p[0] * 1e5) / 1e5, Math.round(p[1] * 1e5) / 1e5]);
       const last = o.reports[o.reports.length - 1];
       out.push({
         id: o.id,

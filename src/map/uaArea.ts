@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 /**
  * Is a point inside Ukraine? Used to keep NEPTUN's Polish-side fusion markers off Ukrainian territory, where the
  * own Ukraine tracker draws the threats (two different marker styles for the same drone only confuse).
@@ -62,4 +63,18 @@ export function inUkraine(lon: number, lat: number): boolean {
     if (inRing(lon, lat, p.rings[0]) && !p.rings.slice(1).some((h) => inRing(lon, lat, h))) return true;
   }
   return false;
+}
+
+/** Inside Ukraine or within ~30 km of it (sea approaches, the border strip). */
+export function nearUkraine(lon: number, lat: number): boolean {
+  if (inUkraine(lon, lat)) return true;
+  const d = 0.3;
+  return [[d, 0], [-d, 0], [0, d], [0, -d], [d, d], [-d, -d], [d, -d], [-d, d]].some(([x, y]) => inUkraine(lon + x * 1.5, lat + y));
+}
+
+/** Re-render once the outline is in (counts and fallback filtering depend on it). */
+export function useUaAreaReady(): boolean {
+  const [ok, setOk] = useState(false);
+  useEffect(() => onUaAreaReady(() => setOk(true)), []);
+  return ok;
 }
