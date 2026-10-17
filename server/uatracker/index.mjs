@@ -273,7 +273,8 @@ export function mergedSnapshot() {
   if (mergedCache && now - mergedAt < 5000) return mergedCache;
   const own = OWN_ENABLED ? engine.snapshot(now) : [];
   for (const o of own) ownSeen.add(o.id);
-  const ownLive = own.filter((o) => o.status === "active" || now - o.last_seen < FALLBACK_MAX_AGE_MS);
+  // Only live own objects may hide a fallback object: a "lost"/shot-down own marker must not mask an active one.
+  const ownLive = own.filter((o) => o.status === "active");
   const objects = [...own];
   const added = { "mapa.ua": 0, neptun: 0 };
   const skipped = { "mapa.ua": 0, neptun: 0 };
@@ -293,7 +294,7 @@ export function mergedSnapshot() {
   }
   const nep = getNeptun() || null;
   if (FB_NEPTUN && nep?.threats) {
-    const base = objects.filter((o) => o.status === "active" || now - o.last_seen < FALLBACK_MAX_AGE_MS);
+    const base = objects.filter((o) => o.status === "active");
     for (const t of nep.threats) {
       if (!t || t.status === "resolved" || t.areaOnly || typeof t.lat !== "number" || typeof t.lon !== "number") continue;
       const kind = neptunKind(t);
