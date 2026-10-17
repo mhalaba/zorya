@@ -8,10 +8,11 @@
     "dev": "concurrently -k -n server,web -c cyan,magenta \"npm:dev:server\" \"npm:dev:web\"",
     "dev:web": "vite",
     "dev:server": "node server/index.mjs",
-    "build": "tsc --noEmit && vite build && vite build --ssr src/seo/prerender-entry.tsx --outDir dist-ssr && node scripts/prerender.mjs",
+    "build": "node scripts/check-ua-layers.mjs && tsc --noEmit && vite build && vite build --ssr src/seo/prerender-entry.tsx --outDir dist-ssr && node scripts/prerender.mjs",
     "preview": "vite preview",
     "start": "NODE_ENV=production node server/index.mjs",
-    "test": "node --test server/*.test.mjs"
+    "test": "node --test server/*.test.mjs",
+    "check:ua-layers": "node scripts/check-ua-layers.mjs"
   },
   "dependencies": {
     "express": "^4.21.2",

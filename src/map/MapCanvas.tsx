@@ -5,7 +5,8 @@ import { circlePoly, destPoint, prefersReducedMotion } from "../lib";
 import { iconForType, registerMapIcons } from "./icons";
 import { uaDead, uaFreshness, uaGroup, uaIcon, uaType } from "../mapaua";
 import { UA_COLORS } from "./icons";
-import { inUkraine } from "./uaArea";
+import { inUkraine, onUaAreaReady } from "./uaArea";
+import { uaThreatLayers } from "./uaLayers";
 import { GNSS_COLORS, LOCAL_META, LOCAL_ORDER, NET_COLORS, NET_LEVEL_PL, NOTAM_META, visibleLocal } from "../overlays";
 import { loadAdmin, loadGminy, powiatLevels as decodePowiaty, wojInView, type AdminLayers } from "../admin";
 import { openGmina } from "../place";
@@ -124,6 +125,10 @@ export function MapCanvas() {
       // effects that sync them skip while !ready, so the layers below start from the store.
       const initial = useStore.getState();
       registerMapIcons(map);
+      // Safety net: if a style reload ever drops our images, re-register them instead of rendering nothing.
+      map.on("styleimagemissing", (e: { id: string }) => {
+        if (/^(mua|obj|loc)-/.test(e.id) && !map.hasImage("mua-drone")) registerMapIcons(map);
+      });
       if (map.getLayer("place_state")) {
         map.setLayoutProperty("place_state", "visibility", "none");
       }
@@ -645,64 +650,11 @@ export function MapCanvas() {
           "text-halo-width": 1.3,
         },
       });
-      // MAPA.UA (missiles / KAB / drones over Ukraine): trail, dashed line to the predicted position, icon.
-      map.addLayer({
-        id: "mua-trail",
-        type: "line",
-        source: "mua-lines",
-        filter: ["==", ["get", "role"], "trail"],
-        layout: { "line-cap": "round", "line-join": "round" },
-        paint: {
-          "line-color": ["case", ["get", "dead"], "#6B7480", ["get", "color"]],
-          // mapa.ua-style: the trail fades with the object's age; the selected one is fully lit.
-          "line-opacity": ["case", ["get", "sel"], 1, ["*", ["get", "fr"], ["case", ["get", "dead"], 0.5, ["get", "fb"], 0.55, 0.85]]],
-          "line-width": ["case", ["get", "sel"], 3.4, ["get", "dead"], 1.4, 2.2],
-        },
-      });
-      map.addLayer({
-        id: "mua-pred",
-        type: "line",
-        source: "mua-lines",
-        filter: ["==", ["get", "role"], "pred"],
-        paint: {
-          "line-color": ["get", "color"],
-          "line-opacity": 0.9,
-          "line-width": ["case", ["get", "sel"], 2.4, 1.4],
-          "line-dasharray": [2, 2],
-        },
-      });
-      map.addLayer({
-        id: "mua-icon",
-        type: "symbol",
-        source: "mua",
-        layout: {
-          "icon-image": ["get", "icon"],
-          // 96 px canvas at pixelRatio 2 = 48 px; ~26 px on screen, ~20 px when lost / shot down (like mapa.ua).
-          "icon-size": ["case", ["get", "sel"], 0.72, ["get", "dead"], 0.4, ["interpolate", ["linear"], ["zoom"], 4, 0.46, 6, 0.55, 9, 0.66]],
-          "icon-allow-overlap": true,
-          "icon-ignore-placement": true,
-          "icon-rotate": ["get", "heading"],
-          "icon-rotation-alignment": "map",
-          "symbol-sort-key": ["case", ["get", "dead"], 0, 1],
-          // Group size badge ("×4") next to the icon.
-          "text-field": ["case", [">", ["get", "amount"], 1], ["concat", "×", ["to-string", ["get", "amount"]]], ""],
-          "text-font": ["Noto Sans Regular"],
-          "text-size": 12,
-          "text-offset": [1.25, -0.9],
-          "text-anchor": "left",
-          "text-allow-overlap": true,
-          "text-ignore-placement": true,
-          "text-rotation-alignment": "viewport",
-        },
-        paint: {
-          // Fades with age like mapa.ua; fallback objects (MAPA.UA / NEPTUN) a little fainter than our own.
-          "icon-opacity": ["*", ["get", "fr"], ["case", ["get", "fb"], 0.8, 1]],
-          "text-color": "#FFFFFF",
-          "text-halo-color": "#070B12",
-          "text-halo-width": 1.6,
-          "text-opacity": ["get", "fr"],
-        },
-      });
+      // Ukraine threats (own engine + MAPA.UA): trail, dashed line to the predicted position, icon + ×N badge.
+      // Specs live in uaLayers.ts and are validated against the style spec at build time (scripts/check-ua-layers.mjs).
+      for (const l of uaThreatLayers()) map.addLayer(l);
+      // Re-filter NEPTUN markers as soon as the Ukraine outline is in (the first data pass may come before it).
+      onUaAreaReady(() => applyData(map));
       map.addLayer({
         id: "adsb-civ",
         type: "symbol",
@@ -931,7 +883,8 @@ export function MapCanvas() {
         useStore.getState().setHoverVoiv(null);
       });
       // Drone markers win over the region underneath; a tap on empty map closes the panel.
-      const OBJ_LAYERS = ["mua-icon", "obj-icon", "obj-pulse"];
+      // A trail is clickable too (it opens its object), so a marker hidden under another one stays reachable.
+      const OBJ_LAYERS = ["mua-icon", "obj-icon", "obj-pulse", "mua-trail"];
       const objAt = (pt: maplibregl.PointLike) => {
         const layers = OBJ_LAYERS.filter((l) => map.getLayer(l));
         if (!layers.length) return null;
@@ -943,10 +896,10 @@ export function MapCanvas() {
         ];
         const fs = map.queryRenderedFeatures(box, { layers });
         // MAPA.UA missiles first (they are the rarer, more urgent marker), then NEPTUN objects.
-        const f = fs.find((x) => x.layer.id === "mua-icon") ?? fs[0];
+        const f = fs.find((x) => x.layer.id === "mua-icon") ?? fs.find((x) => x.layer.id !== "mua-trail") ?? fs[0];
         if (!f) return null;
         const id = String(f.properties?.id ?? f.id ?? "");
-        return f.layer.id === "mua-icon" ? `ua:${id}` : id;
+        return f.layer.id === "mua-icon" || f.layer.id === "mua-trail" ? `ua:${id}` : id;
       };
       for (const l of [...OBJ_LAYERS, "local-icon", "local-icon-wide", "local-pt-icon", "local-pt-cluster"]) {
         map.on("mouseenter", l, () => {
@@ -1148,8 +1101,7 @@ export function MapCanvas() {
 
     // NEPTUN markers over Ukraine are left to the own Ukraine tracker (its icons, trails and popups); NEPTUN
     // stays the Polish-side layer.
-    const uaTracker = !!useStore.getState().uaThreats?.sources;
-    const objects = histMode || !neptunOn ? [] : (st?.objects ?? []).filter((o) => !(uaTracker && inUkraine(o.lon, o.lat)));
+    const objects = histMode || !neptunOn ? [] : (st?.objects ?? []).filter((o) => !inUkraine(o.lon, o.lat));
     const objFc: FeatureCollection = {
       type: "FeatureCollection",
       features: objects.map((o) => {

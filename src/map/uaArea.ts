@@ -6,6 +6,16 @@
 type Ring = [number, number][];
 let polys: { bbox: [number, number, number, number]; rings: Ring[] }[] | null = null;
 let loading = false;
+const ready: (() => void)[] = [];
+
+/** Run cb once the outline is loaded (immediately if it already is). */
+export function onUaAreaReady(cb: () => void) {
+  if (polys) cb();
+  else {
+    ready.push(cb);
+    load();
+  }
+}
 
 function load() {
   if (polys || loading || typeof fetch === "undefined") return;
@@ -26,6 +36,7 @@ function load() {
         }
       }
       polys = out;
+      for (const cb of ready.splice(0)) cb();
     })
     .catch(() => {
       loading = false;

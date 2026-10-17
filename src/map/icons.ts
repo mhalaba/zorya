@@ -33,7 +33,7 @@ export const UA_COLORS: Record<string, string> = {
   bomb: "#EF4444",
 };
 const UA_DEAD = "#8A909C";
-const UA_SHAPES: Record<string, string[]> = {
+export const UA_SHAPES: Record<string, string[]> = {
   drone: ["M50 6 C54 6 56 12 56 20 L56 34 L90 70 L90 79 L56 74 L56 86 L44 86 L44 74 L10 79 L10 70 L44 34 L44 20 C44 12 46 6 50 6 Z"],
   jet: ["M50 4 L58 30 L92 78 L92 85 L57 77 L55 92 L45 92 L43 77 L8 85 L8 78 L42 30 Z", "M37 69 L32 94 L40 94 L44 74 Z", "M63 69 L68 94 L60 94 L56 74 Z"],
   banderol: [
