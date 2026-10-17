@@ -271,6 +271,11 @@ let mergedAt = 0;
 export function mergedSnapshot() {
   const now = Date.now();
   if (mergedCache && now - mergedAt < 5000) return mergedCache;
+  const mua = getMapaUa() || null;
+  // MAPA.UA sees a clear sky (nothing live in 15 min): our silent objects (no report for 10 min) are lost too.
+  const muaQuiet =
+    !!mua?.enabled && mua.ok && !(mua.objects || []).some((o) => o.status === "active" && now - o.last_seen < 15 * 60_000);
+  if (OWN_ENABLED && muaQuiet) engine.ageOut(10 * 60_000, now);
   const own = OWN_ENABLED ? engine.snapshot(now) : [];
   for (const o of own) ownSeen.add(o.id);
   // Only live own objects may hide a fallback object: a "lost"/shot-down own marker must not mask an active one.
@@ -278,7 +283,6 @@ export function mergedSnapshot() {
   const objects = [...own];
   const added = { "mapa.ua": 0, neptun: 0 };
   const skipped = { "mapa.ua": 0, neptun: 0 };
-  const mua = getMapaUa() || null;
   if (FB_MAPAUA && mua?.enabled) {
     for (const o of mua.objects || []) {
       if (now - o.last_seen > FALLBACK_MAX_AGE_MS) continue;
@@ -346,6 +350,8 @@ export function mergedSnapshot() {
     objects,
     pl_violations: mua?.pl_violations || null,
     sources: { own: own.length, "mapa.ua": added["mapa.ua"], neptun: added.neptun },
+    live: objects.filter((o) => o.status === "active").length,
+    mapaua_quiet: muaQuiet,
     fallback_skipped_as_duplicate: skipped,
     credit: {
       own: "własny silnik Zorya (publiczne kanały Telegram)",

@@ -51,8 +51,9 @@ export function kindOf(lc) {
   return null;
 }
 
+const RAION_NOM = new RegExp(`([А-ЯЄІЇҐ][${L}\\-]+?)(?:ський|цький|зький|ский|цкий)\\s+(?:район|р-н)`, "gu");
 const KILL_RX = /збит|знищен|сбит|уничтож|(?:^|\s)мінус(?:\s|$|\d)|(?:^|\s)минус|ліквідован|приземлив|впав|упал/u;
-const CLEAR_RX = /відбій|отбой|область чист|області чист|в області чисто|по області чисто|без фіксації|чисто\s*[📡✅]*$/u;
+const CLEAR_RX = /відбій|отбой|область чист|області чист|в області чисто|по області чисто|без фіксації|чисто\s*[📡✅]*$|не фіксу|не фиксиру|небо чисте|чисте небо|небо чистое|загроз немає|загроз нема|угроз нет/u;
 /** Past-tense news about strikes and damage: not a live position report. */
 const NEWS_RX = /завдав|завдали|атакував|атакували|постражд|загин|поранен|унаслідок|внаслідок|зруйнов|пошкодж|ударів по|уразил|влучан|наслідки|заявив|повідомив|за даними|минулої доби|у ніч на/u;
 const ALARM_RX = /тривог|тревог|загроза застосування|угроза применения/u;
@@ -137,8 +138,21 @@ export function parsePost(rawText, opts = {}) {
       out.kills.push({ kind: lineKindRaw || msgKind, place: m ? placeFrom(m[1], obls[0] || header.oblast) : null, oblast: obls[0] || header.oblast, line });
       continue;
     }
-    if (CLEAR_RX.test(lc) && !/район(?!у)/u.test(lc) && !/курс|→|на [А-ЯЄІЇҐ]/u.test(line)) {
-      out.clears.push({ oblast: obls[0] || header.oblast || null, all: !obls.length && !header.oblast && !!opts.national, line });
+    if (CLEAR_RX.test(lc) && !/курс|→|на [А-ЯЄІЇҐ]/u.test(line)) {
+      // "Ніжинський район — відбій": clears around the raion centre only.
+      const rm = [...line.matchAll(RX.raion)][0] || [...line.matchAll(RAION_NOM)][0];
+      if (rm) {
+        let place = null;
+        for (const cand of [rm[1], `${rm[1]}ський`, `${rm[1]}а`, `${rm[1]}и`, `${rm[1]}е`]) {
+          place = placeFrom(cand, obls[0] || header.oblast || opts.oblast || null);
+          if (place) break;
+        }
+        if (place) out.clears.push({ place, oblast: place.oblast, all: false, line });
+        continue;
+      }
+      if (/район/u.test(lc)) continue;
+      const nationwide = /не фіксу|не фиксиру|небо чисте|чисте небо|небо чистое|загроз немає|загроз нема|угроз нет|всій україні|всей украине/u.test(lc);
+      out.clears.push({ oblast: obls[0] || header.oblast || null, all: nationwide && !obls.length && !header.oblast && !!opts.national, line });
       continue;
     }
 

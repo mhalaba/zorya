@@ -105,6 +105,14 @@ export function MapCanvas() {
     }
     mapRef.current = map;
     map.on("error", (e) => console.error("Zorya map", e.error || e));
+    // The canvas can be created before the layout settles (fonts, panels): keep it sized to its box,
+    // otherwise the map stays black until something else forces a resize.
+    if (typeof ResizeObserver !== "undefined") {
+      const ro = new ResizeObserver(() => map.resize());
+      ro.observe(ref.current);
+      map.once("remove", () => ro.disconnect());
+    }
+    for (const ms of [300, 1500]) setTimeout(() => map.resize(), ms);
     map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     map.addControl(new FitAllControl(), "top-right");

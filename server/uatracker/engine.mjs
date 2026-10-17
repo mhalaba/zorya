@@ -9,7 +9,9 @@ import { SPEED } from "./parse.mjs";
 
 const MIN = 60_000;
 /** How long an object stays "active" without a new report. */
-export const TTL = { drone_piston: 45 * MIN, drone_jet: 20 * MIN, missile_cruise: 20 * MIN, missile_ballistic: 6 * MIN, bomb: 8 * MIN };
+export const TTL = { drone_piston: 30 * MIN, drone_jet: 15 * MIN, missile_cruise: 10 * MIN, missile_ballistic: 4 * MIN, bomb: 5 * MIN };
+/** Lost / shot-down markers stay visible (grey) this long, then leave the map. */
+const DEAD_SHOW_MS = 10 * MIN;
 const KEEP_MS = 60 * MIN;
 /** Distance (km) before the named target where a "на X" report places the object. */
 const LEAD_KM = { drone_piston: 15, drone_jet: 30, missile_cruise: 50, missile_ballistic: 0, bomb: 12 };
@@ -162,6 +164,7 @@ export class Engine {
       o.amount = Math.max(o.amount, ev.count || 1);
     }
     o.alive = Math.max(o.alive || 0, t);
+    if (o.status === "active") delete o.dead_at;
     // heading: explicit compass > towards target > along the last trail segment
     const here = [o.lat, o.lon];
     if (ev.heading != null) o.heading = ev.heading;
@@ -206,22 +209,28 @@ export class Engine {
     if (!best) return null;
     const o = best.o;
     if (o.amount > 1) o.amount -= 1;
-    else o.status = "eliminated";
+    else {
+      o.status = "eliminated";
+      o.dead_at = t;
+    }
     o.reports.push({ channel: meta.channel, msg_id: meta.msgId, url: meta.url, ts: t, text: k.line });
     if (o.reports.length > REPORTS_MAX) o.reports = o.reports.slice(-REPORTS_MAX);
     this.changed.add(o.id);
     return o.id;
   }
 
-  /** All-clear for an oblast (or everything): objects there without a fresh report become "lost". */
+  /** All-clear for an oblast, a raion (place) or everything: objects there without a fresh report become "lost". */
   clear(c, meta) {
     const t = meta.ts;
     let n = 0;
     for (const o of this.objects.values()) {
       if (o.status !== "active") continue;
-      if (!c.all && (!c.oblast || o.oblast !== c.oblast)) continue;
+      if (c.place) {
+        if (distKm([o.lat, o.lon], [c.place.lat, c.place.lon]) > 40) continue;
+      } else if (!c.all && (!c.oblast || o.oblast !== c.oblast)) continue;
       if (t - o.last_seen < (c.all ? 10 : 5) * MIN) continue;
       o.status = "lost";
+      o.dead_at = t;
       this.changed.add(o.id);
       n++;
     }
@@ -246,9 +255,26 @@ export class Engine {
       }
       if (o.status === "active" && now - Math.max(o.last_seen, o.alive || 0) > TTL[o.kind]) {
         o.status = "lost";
+        o.dead_at = now;
         this.changed.add(o.id);
       }
     }
+  }
+
+  /**
+   * Quiet sky elsewhere (MAPA.UA shows nothing live): every own object without a report for `quietMs` is lost.
+   */
+  ageOut(quietMs, now = Date.now()) {
+    let n = 0;
+    for (const o of this.objects.values()) {
+      if (o.status === "active" && now - Math.max(o.last_seen, o.alive || 0) > quietMs) {
+        o.status = "lost";
+        o.dead_at = now;
+        this.changed.add(o.id);
+        n++;
+      }
+    }
+    return n;
   }
 
   /** Objects in the /api/ua-threats shape (times in ms), newest first. */
@@ -256,6 +282,7 @@ export class Engine {
     const out = [];
     for (const o of this.objects.values()) {
       if (now - o.last_seen > KEEP_MS) continue;
+      if (o.status !== "active" && now - (o.dead_at || o.last_seen) > DEAD_SHOW_MS) continue;
       const w = Object.values(o.sources).map((s) => s.w);
       const confidence = Math.round((1 - w.reduce((p, x) => p * (1 - x), 1)) * 100) / 100;
       let predicted = null;
