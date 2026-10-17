@@ -241,13 +241,18 @@ function neptunKind(t) {
   return null;
 }
 
+/** Fast objects get classified differently by different sources (e.g. "Бандероль": cruise missile vs jet drone). */
+const FAST = new Set(["drone_jet", "missile_cruise"]);
+function compatible(a, b) {
+  return groupOf(a) === groupOf(b) || (FAST.has(a) && FAST.has(b));
+}
+
 function nearAny(list, kind, lat, lon) {
-  const g = groupOf(kind);
   return list.some((o) => {
-    if (groupOf(o.kind) !== g) return false;
-    if (distKm([o.lat, o.lon], [lat, lon]) <= FALLBACK_NEAR_KM) return true;
+    const km = compatible(o.kind, kind) ? FALLBACK_NEAR_KM : 20;
+    if (distKm([o.lat, o.lon], [lat, lon]) <= km) return true;
     const p = o.predicted;
-    return p ? distKm([p[1], p[0]], [lat, lon]) <= FALLBACK_NEAR_KM : false;
+    return p ? distKm([p[1], p[0]], [lat, lon]) <= km : false;
   });
 }
 
@@ -258,6 +263,7 @@ export function mergedSnapshot() {
   const now = Date.now();
   if (mergedCache && now - mergedAt < 5000) return mergedCache;
   const own = OWN_ENABLED ? engine.snapshot(now) : [];
+  for (const o of own) ownSeen.add(o.id);
   const ownLive = own.filter((o) => o.status === "active" || now - o.last_seen < FALLBACK_MAX_AGE_MS);
   const objects = [...own];
   const added = { "mapa.ua": 0, neptun: 0 };
