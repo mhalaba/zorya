@@ -18,85 +18,62 @@ function add(map: MLMap, name: string, canvas: HTMLCanvasElement) {
 }
 
 
-/** MAPA.UA icons (pointing up = north, rotated by heading on the map); "-dead" = eliminated/lost/hit. */
-function registerMapaUaIcons(map: MLMap) {
-  const variants: [string, string, string][] = [
-    ["", "", ""],
-    ["-dead", "#6B7480", "#3A414B"],
-  ];
-  for (const [suf, grey, greyDark] of variants) {
-    add(
-      map,
-      `mua-cruise${suf}`,
-      drawIcon((g, s) => {
-        g.translate(s / 2, s / 2);
-        g.fillStyle = grey || "#FF3B30";
-        g.strokeStyle = "#070B12";
-        g.lineWidth = 2;
-        g.beginPath();
-        g.moveTo(0, -18);
-        g.lineTo(4, -8);
-        g.lineTo(4, 8);
-        g.lineTo(11, 15);
-        g.lineTo(-11, 15);
-        g.lineTo(-4, 8);
-        g.lineTo(-4, -8);
-        g.closePath();
-        g.stroke();
-        g.fill();
-      })
-    );
-    add(
-      map,
-      `mua-ballistic${suf}`,
-      drawIcon((g, s) => {
-        g.translate(s / 2, s / 2);
-        g.fillStyle = greyDark || "#8E0E1B";
-        g.strokeStyle = grey ? "#070B12" : "#FF8A80";
-        g.lineWidth = 2;
-        g.beginPath();
-        g.moveTo(0, -20);
-        g.lineTo(7, 12);
-        g.lineTo(0, 7);
-        g.lineTo(-7, 12);
-        g.closePath();
-        g.fill();
-        g.stroke();
-      })
-    );
-    add(
-      map,
-      `mua-bomb${suf}`,
-      drawIcon((g, s) => {
-        g.translate(s / 2, s / 2);
-        g.fillStyle = grey || "#F0783A";
-        g.strokeStyle = "#070B12";
-        g.lineWidth = 2;
-        g.beginPath();
-        g.ellipse(0, 0, 6, 13, 0, 0, Math.PI * 2);
-        g.fill();
-        g.stroke();
-        g.fillRect(-8, 10, 16, 3);
-      })
-    );
-    add(
-      map,
-      `mua-drone${suf}`,
-      drawIcon((g, s) => {
-        g.translate(s / 2, s / 2);
-        g.fillStyle = grey || "#F2B544";
-        g.strokeStyle = "#070B12";
-        g.lineWidth = 2;
-        g.beginPath();
-        g.moveTo(0, -14);
-        g.lineTo(13, 8);
-        g.lineTo(0, 3);
-        g.lineTo(-13, 8);
-        g.closePath();
-        g.fill();
-        g.stroke();
-      })
-    );
+/**
+ * Ukraine threat icons (own engine / MAPA.UA), pointing up = north and rotated by heading on the map.
+ * Silhouettes and palette follow mapa.ua: Shahed delta (amber), jet Shahed with swept wings and twin fins
+ * (orange), S8000 "Бандероль" with straight wings (magenta), cruise missile (violet), ballistic (teal),
+ * guided bomb / KAB (red). A dark halo keeps them readable over red alert fills. "-dead" = lost / shot down.
+ */
+export const UA_COLORS: Record<string, string> = {
+  drone: "#FBBF24",
+  jet: "#F97316",
+  banderol: "#D946EF",
+  cruise: "#A78BFA",
+  ballistic: "#5EEAD4",
+  bomb: "#EF4444",
+};
+const UA_DEAD = "#8A909C";
+const UA_SHAPES: Record<string, string[]> = {
+  drone: ["M50 6 C54 6 56 12 56 20 L56 34 L90 70 L90 79 L56 74 L56 86 L44 86 L44 74 L10 79 L10 70 L44 34 L44 20 C44 12 46 6 50 6 Z"],
+  jet: ["M50 4 L58 30 L92 78 L92 85 L57 77 L55 92 L45 92 L43 77 L8 85 L8 78 L42 30 Z", "M37 69 L32 94 L40 94 L44 74 Z", "M63 69 L68 94 L60 94 L56 74 Z"],
+  banderol: [
+    "M50 6 C45 6 42 14 42 24 L42 84 L58 84 L58 24 C58 14 55 6 50 6 Z",
+    "M42 40 L8 44 L8 54 L42 58 Z",
+    "M58 40 L92 44 L92 54 L58 58 Z",
+    "M42 68 L25 70 L25 78 L42 81 Z",
+    "M58 68 L75 70 L75 78 L58 81 Z",
+  ],
+  cruise: ["M50 3 C46 3 43 13 43 25 L43 64 L31 78 L31 91 L50 83 L69 91 L69 78 L57 64 L57 25 C57 13 54 3 50 3 Z", "M43 38 L26 50 L26 57 L43 52 Z", "M57 38 L74 50 L74 57 L57 52 Z"],
+  ballistic: ["M50 2 C44 9 42 17 42 25 L42 74 L31 93 L50 86 L69 93 L58 74 L58 25 C58 17 56 9 50 2 Z"],
+  bomb: ["M37 72 L37 24 C37 7 63 7 63 24 L63 72 Z", "M14 94 L50 76 L86 94 L64 72 L36 72 Z"],
+};
+
+function registerUaThreatIcons(map: MLMap) {
+  const S = 96;
+  for (const [type, paths] of Object.entries(UA_SHAPES)) {
+    for (const dead of [false, true]) {
+      add(
+        map,
+        `mua-${type}${dead ? "-dead" : ""}`,
+        drawIcon((g, s) => {
+          const k = (s - 8) / 100;
+          g.translate(4, 4);
+          g.scale(k, k);
+          const ps = paths.map((d) => new Path2D(d));
+          g.lineJoin = "round";
+          g.strokeStyle = "rgba(7,11,18,0.92)";
+          g.lineWidth = 9;
+          for (const p of ps) g.stroke(p);
+          g.fillStyle = dead ? UA_DEAD : UA_COLORS[type];
+          for (const p of ps) g.fill(p);
+          if (!dead) {
+            g.strokeStyle = "rgba(255,255,255,0.35)";
+            g.lineWidth = 1.5;
+            for (const p of ps) g.stroke(p);
+          }
+        }, S)
+      );
+    }
   }
 }
 
@@ -221,7 +198,7 @@ function registerLocalIcons(map: MLMap) {
 }
 
 export function registerMapIcons(map: MLMap) {
-  registerMapaUaIcons(map);
+  registerUaThreatIcons(map);
   registerLocalIcons(map);
   add(
     map,

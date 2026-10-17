@@ -116,6 +116,8 @@ interface Live {
   uaMissilesOn: boolean;
   uaBombsOn: boolean;
   uaDronesOn: boolean;
+  /** One-off migration marker: drones/KAB defaults switched on (10.2026). */
+  uaDefaults2?: boolean;
   /** Archived route of the selected drone, [lon, lat] pairs, drawn as a highlight. */
   objTrack: [number, number][] | null;
   hoverVoiv: string | null;
@@ -267,8 +269,8 @@ export const useStore = create<Store>()(
       listPanel: null,
       focus: null,
       uaMissilesOn: true,
-      uaBombsOn: false,
-      uaDronesOn: false,
+      uaBombsOn: true,
+      uaDronesOn: true,
       objTrack: null,
       hoverVoiv: null,
       cameraPreset: "default",
@@ -437,6 +439,7 @@ export const useStore = create<Store>()(
         uaMissilesOn: s.uaMissilesOn,
         uaBombsOn: s.uaBombsOn,
         uaDronesOn: s.uaDronesOn,
+        uaDefaults2: true,
         showTracks: s.showTracks,
         showCivAdsb: s.showCivAdsb,
         showMilAdsb: s.showMilAdsb,
@@ -456,7 +459,11 @@ export const useStore = create<Store>()(
       // New settings added after a user's first visit must get their defaults, not undefined.
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<Store>;
-        return { ...current, ...p, localCats: { ...current.localCats, ...(p.localCats ?? {}) } };
+        const out = { ...current, ...p, localCats: { ...current.localCats, ...(p.localCats ?? {}) } };
+        // 10.2026: drones and KAB over Ukraine are on by default now (own tracker); older saved "off" values were
+        // the previous default, not a choice. Applied once, then the user's toggles stick again.
+        if (!(p as { uaDefaults2?: boolean }).uaDefaults2) Object.assign(out, { uaDronesOn: true, uaBombsOn: true, uaDefaults2: true });
+        return out;
       },
       onRehydrateStorage: () => (s) => {
         if (s?.lastHorizon?.sample) s.cacheHorizon(null);

@@ -14,20 +14,52 @@ export const TTL = { drone_piston: 30 * MIN, drone_jet: 15 * MIN, missile_cruise
 const DEAD_SHOW_MS = 10 * MIN;
 const KEEP_MS = 60 * MIN;
 /** Distance (km) before the named target where a "на X" report places the object. */
-const LEAD_KM = { drone_piston: 15, drone_jet: 30, missile_cruise: 50, missile_ballistic: 0, bomb: 12 };
+const LEAD_KM = { drone_piston: 30, drone_jet: 50, missile_cruise: 50, missile_ballistic: 0, bomb: 12 };
 const TRAIL_MAX = 60;
 const REPORTS_MAX = 8;
 
-/** Where strikes usually come from, used when a report gives no origin: the nearest one to the target. */
-const DEFAULT_ORIGINS = [
+/**
+ * Where strikes usually come from when a report gives no origin. Measured on MAPA.UA tracks (attack of 17.10.2026):
+ * north and centre (lat >= 48) are approached from the north-east (Bryansk / Kursk / Belgorod, bearing 210-245°),
+ * the south from Crimea / occupied Zaporizhzhia (bearing ~315°).
+ */
+const NORTH_ORIGINS = [
   [52.35, 33.6], // Bryansk border
   [51.3, 35.3], // Kursk border
   [50.4, 36.8], // Belgorod border
-  [48.05, 38.0], // occupied Donbas
-  [47.35, 35.9], // Zaporizhzhia front
-  [46.3, 33.5], // Crimea / Kherson
-  [45.6, 30.7], // Black Sea west
 ];
+const SOUTH_ORIGINS = [
+  [45.2, 33.9], // Crimea
+  [47.2, 35.9], // occupied Zaporizhzhia
+  [48.05, 38.0], // occupied Donbas
+];
+
+/** Dead reckoning: share of the nominal speed assumed between reports (routes zig-zag, reports lag). */
+const DR_FACTOR = Number(process.env.UA_TRACKER_DR_FACTOR || 0.8);
+
+/** Estimated position now: the last fix advanced along the heading at the typical speed, stopping at the target. */
+export function estimate(o, now) {
+  const here = [o.lat, o.lon];
+  if (o.status !== "active" || o.heading == null) return here;
+  const dtH = Math.min(Math.max(0, now - o.last_seen), TTL[o.kind] || 0) / 3600_000;
+  let km = (o.speed_kmh || SPEED[o.kind] || 165) * dtH * DR_FACTOR;
+  if (!o.target) return km > 0.5 ? move(here, o.heading, Math.min(km, 60)) : here;
+  const rest = Math.max(0, distKm(here, o.target) - 2);
+  if (km <= rest) return km > 0.5 ? move(here, bearing(here, o.target), km) : here;
+  // Past the named town: carry on towards the next waypoint ("на X / Y") if the report gave one.
+  if (o.next && distKm(o.target, o.next) > 3) return move(o.target, bearing(o.target, o.next), Math.min(km - rest, Math.max(0, distKm(o.target, o.next) - 2)));
+  return rest > 0.5 ? move(here, bearing(here, o.target), rest) : here;
+}
+
+/** After reaching the named town (and the next waypoint, if any) an object without news is over. */
+const ARRIVED_GRACE_MS = 8 * MIN;
+function arrived(o, now, grace = 0) {
+  if (!o.target || o.status !== "active") return false;
+  const sp = ((o.speed_kmh || SPEED[o.kind] || 165) * DR_FACTOR) / 60; // km per minute
+  let km = distKm([o.lat, o.lon], o.target);
+  if (o.next) km += distKm(o.target, o.next);
+  return now - o.last_seen > (km / sp) * MIN + grace;
+}
 
 const group = (k) => (k?.startsWith("drone") ? "drone" : k?.startsWith("missile") ? k : k || "?");
 const ll = (p) => [p.lat, p.lon];
@@ -36,8 +68,10 @@ function originPoint(ev, target) {
   if (ev.from?.zone && ZONES[ev.from.zone]) return { p: ZONES[ev.from.zone].c, zone: ev.from.zone };
   if (ev.from?.oblast && OBLAST_BY_ID.get(ev.from.oblast)) return { p: OBLAST_BY_ID.get(ev.from.oblast).c, oblast: ev.from.oblast };
   if (ev.from?.compass != null) return { p: move(target, ev.from.compass, 60) };
-  let best = DEFAULT_ORIGINS[0];
-  for (const o of DEFAULT_ORIGINS) if (distKm(o, target) < distKm(best, target)) best = o;
+  // "Бандероль" (S8000) is launched from the occupied south.
+  const list = target[0] >= 48 && ev.subkind !== "banderol" ? NORTH_ORIGINS : SOUTH_ORIGINS;
+  let best = list[0];
+  for (const o of list) if (distKm(o, target) < distKm(best, target)) best = o;
   return { p: best, guessed: true };
 }
 
@@ -74,10 +108,14 @@ export class Engine {
       if (o._msg === `${meta.channel}/${meta.msgId}`) continue; // one post lists distinct objects
       const dtMin = (t - o.last_seen) / MIN;
       if (dtMin < -15 || dtMin > TTL[o.kind] / MIN + 10) continue;
-      const last = [o.lat, o.lon];
+      const last = estimate(o, t);
       const osp = SPEED[o.kind] || 165;
       let reach = 20 + (osp * Math.max(dtMin, 0) * 1.3) / 60;
-      if (o.kind !== ev.kind) reach *= 0.6;
+      // Jet and piston drones fly at 450 vs 165 km/h: different objects unless it is clearly the same fix.
+      if (o.kind !== ev.kind) {
+        if (!pos || dtMin > 5) continue;
+        reach = 10;
+      }
       const sameTarget = o.target && tgt && distKm(o.target, tgt) < 12;
       const d = pos ? distKm(last, pos) : distKm(last, tgt);
       let score = null;
@@ -110,6 +148,7 @@ export class Engine {
       o = {
         id: this.newId(t),
         kind: ev.kind,
+        subkind: ev.subkind || null,
         amount: ev.count || 1,
         status: "active",
         lat: point[0],
@@ -118,6 +157,7 @@ export class Engine {
         speed_kmh: sp,
         trail,
         target: tgt,
+        next: ev.next?.lat != null ? ll(ev.next) : null,
         to_name: ev.target?.name || null,
         next_name: ev.next?.name || (ev.next?.oblast ? OBLAST_BY_ID.get(ev.next.oblast)?.uk : null) || null,
         from_zone: fromZone,
@@ -150,6 +190,7 @@ export class Engine {
         o.last_seen = t;
         if (tgt) {
           o.target = tgt;
+          o.next = ev.next?.lat != null ? ll(ev.next) : null;
           o.to_name = ev.target.name;
           o.next_name = ev.next?.name || (ev.next?.oblast ? OBLAST_BY_ID.get(ev.next.oblast)?.uk : null) || null;
         }
@@ -161,6 +202,7 @@ export class Engine {
         o.trail.sort((a, b) => a[2] - b[2]);
       }
       if (ev.kind === "drone_jet" && o.kind === "drone_piston" && meta.weight >= 0.8 && o.amount === 1 && (ev.count || 1) === 1) o.kind = "drone_jet";
+      if (ev.subkind && !o.subkind) o.subkind = ev.subkind;
       o.amount = Math.max(o.amount, ev.count || 1);
     }
     o.alive = Math.max(o.alive || 0, t);
@@ -241,7 +283,7 @@ export class Engine {
   regional(r, meta) {
     for (const o of this.objects.values()) {
       if (o.oblast === r.oblast && group(o.kind) === group(r.kind) && o.status !== "eliminated") {
-        if (meta.ts - o.last_seen < TTL[o.kind] + 10 * MIN) o.alive = Math.max(o.alive || 0, meta.ts);
+        if (meta.ts - o.last_seen < TTL[o.kind] / 2 && !arrived(o, meta.ts)) o.alive = Math.max(o.alive || 0, meta.ts);
       }
     }
   }
@@ -253,7 +295,7 @@ export class Engine {
         this.changed.add(o.id);
         continue;
       }
-      if (o.status === "active" && now - Math.max(o.last_seen, o.alive || 0) > TTL[o.kind]) {
+      if (o.status === "active" && (now - Math.max(o.last_seen, o.alive || 0) > TTL[o.kind] || arrived(o, now, ARRIVED_GRACE_MS))) {
         o.status = "lost";
         o.dead_at = now;
         this.changed.add(o.id);
@@ -285,29 +327,35 @@ export class Engine {
       if (o.status !== "active" && now - (o.dead_at || o.last_seen) > DEAD_SHOW_MS) continue;
       const w = Object.values(o.sources).map((s) => s.w);
       const confidence = Math.round((1 - w.reduce((p, x) => p * (1 - x), 1)) * 100) / 100;
+      const est = estimate(o, now);
       let predicted = null;
       if (o.status === "active" && o.heading != null) {
         let km = ((o.speed_kmh || SPEED[o.kind]) * 10) / 60;
-        if (o.target) km = Math.min(km, distKm([o.lat, o.lon], o.target));
+        if (o.target) km = Math.min(km, distKm(est, o.target));
         if (km > 1) {
-          const p = move([o.lat, o.lon], o.heading, km);
+          const p = move(est, o.heading, km);
           predicted = [p[1], p[0]];
         }
       }
+      const trail = o.trail.map((p) => [p[0], p[1]]);
+      const tl = trail[trail.length - 1];
+      if (!tl || distKm([tl[1], tl[0]], est) > 1) trail.push([est[1], est[0]]);
       const last = o.reports[o.reports.length - 1];
       out.push({
         id: o.id,
         kind: o.kind,
-        subkind: null,
+        subkind: o.subkind || null,
         amount: o.amount,
         title: last?.text || "",
         status: o.status,
         heading: o.heading,
         speed_kmh: o.speed_kmh,
-        lat: o.lat,
-        lon: o.lon,
+        lat: est[0],
+        lon: est[1],
+        fix: [o.lon, o.lat],
+        fix_ts: o.last_seen,
         predicted,
-        trail: o.trail.map((p) => [p[0], p[1]]),
+        trail,
         first_seen: o.first_seen,
         last_seen: o.last_seen,
         from_zone: o.from_zone,

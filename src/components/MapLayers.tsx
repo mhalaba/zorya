@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../store";
-import { MAPAUA_URL, NEPTUN_URL, uaDead } from "../mapaua";
+import { MAPAUA_URL, NEPTUN_URL, uaDead, uaLiveUnits } from "../mapaua";
 import { GNSS_COLORS, GPSJAM_URL, IODA_URL, LOCAL_META, LOCAL_ORDER, NET_COLORS, visibleLocal } from "../overlays";
 import type { LocalCategory } from "../types";
 
@@ -77,7 +77,8 @@ export function MapLayers() {
   const [open, setOpen] = useState(false);
   const objs = snap?.objects ?? [];
   // Counts = objects in flight; grey lost / shot-down markers are drawn but not counted.
-  const count = (pred: (k: string) => boolean) => objs.filter((o) => !uaDead(o) && pred(o.kind)).length;
+  // Counted like mapa.ua's header: units in flight (a group of 4 counts 4); grey lost markers are not counted.
+  const count = (pred: (k: string) => boolean) => uaLiveUnits(objs.filter((o) => !uaDead(o) && pred(o.kind)));
   const nm = count((k) => k.startsWith("missile"));
   const nb = count((k) => k === "bomb");
   const nd = count((k) => k.startsWith("drone"));

@@ -3,7 +3,9 @@ import maplibregl, { type Map as MLMap, type GeoJSONSource } from "maplibre-gl";
 import { CAMERA, COLORS } from "../config";
 import { circlePoly, destPoint, prefersReducedMotion } from "../lib";
 import { iconForType, registerMapIcons } from "./icons";
-import { uaDead, uaGroup, uaIcon } from "../mapaua";
+import { uaDead, uaFreshness, uaGroup, uaIcon, uaType } from "../mapaua";
+import { UA_COLORS } from "./icons";
+import { inUkraine } from "./uaArea";
 import { GNSS_COLORS, LOCAL_META, LOCAL_ORDER, NET_COLORS, NET_LEVEL_PL, NOTAM_META, visibleLocal } from "../overlays";
 import { loadAdmin, loadGminy, powiatLevels as decodePowiaty, wojInView, type AdminLayers } from "../admin";
 import { openGmina } from "../place";
@@ -652,8 +654,9 @@ export function MapCanvas() {
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
           "line-color": ["case", ["get", "dead"], "#6B7480", ["get", "color"]],
-          "line-opacity": ["case", ["get", "sel"], 1, ["get", "dead"], 0.45, ["get", "fb"], 0.5, 0.8],
-          "line-width": ["case", ["get", "sel"], 3.2, 1.6],
+          // mapa.ua-style: the trail fades with the object's age; the selected one is fully lit.
+          "line-opacity": ["case", ["get", "sel"], 1, ["*", ["get", "fr"], ["case", ["get", "dead"], 0.5, ["get", "fb"], 0.55, 0.85]]],
+          "line-width": ["case", ["get", "sel"], 3.4, ["get", "dead"], 1.4, 2.2],
         },
       });
       map.addLayer({
@@ -674,15 +677,31 @@ export function MapCanvas() {
         source: "mua",
         layout: {
           "icon-image": ["get", "icon"],
-          "icon-size": ["case", ["get", "sel"], 0.95, 0.75],
+          // 96 px canvas at pixelRatio 2 = 48 px; ~26 px on screen, ~20 px when lost / shot down (like mapa.ua).
+          "icon-size": ["case", ["get", "sel"], 0.72, ["get", "dead"], 0.4, ["interpolate", ["linear"], ["zoom"], 4, 0.46, 6, 0.55, 9, 0.66]],
           "icon-allow-overlap": true,
           "icon-ignore-placement": true,
           "icon-rotate": ["get", "heading"],
           "icon-rotation-alignment": "map",
           "symbol-sort-key": ["case", ["get", "dead"], 0, 1],
+          // Group size badge ("×4") next to the icon.
+          "text-field": ["case", [">", ["get", "amount"], 1], ["concat", "×", ["to-string", ["get", "amount"]]], ""],
+          "text-font": ["Noto Sans Regular"],
+          "text-size": 12,
+          "text-offset": [1.25, -0.9],
+          "text-anchor": "left",
+          "text-allow-overlap": true,
+          "text-ignore-placement": true,
+          "text-rotation-alignment": "viewport",
         },
-        // Fallback objects (MAPA.UA / NEPTUN) are drawn a little fainter than the own engine's.
-        paint: { "icon-opacity": ["case", ["get", "dead"], 0.6, ["get", "fb"], 0.75, 1] },
+        paint: {
+          // Fades with age like mapa.ua; fallback objects (MAPA.UA / NEPTUN) a little fainter than our own.
+          "icon-opacity": ["*", ["get", "fr"], ["case", ["get", "fb"], 0.8, 1]],
+          "text-color": "#FFFFFF",
+          "text-halo-color": "#070B12",
+          "text-halo-width": 1.6,
+          "text-opacity": ["get", "fr"],
+        },
       });
       map.addLayer({
         id: "adsb-civ",
@@ -1127,7 +1146,10 @@ export function MapCanvas() {
       }
     }
 
-    const objects = histMode || !neptunOn ? [] : st?.objects ?? [];
+    // NEPTUN markers over Ukraine are left to the own Ukraine tracker (its icons, trails and popups); NEPTUN
+    // stays the Polish-side layer.
+    const uaTracker = !!useStore.getState().uaThreats?.sources;
+    const objects = histMode || !neptunOn ? [] : (st?.objects ?? []).filter((o) => !(uaTracker && inUkraine(o.lon, o.lat)));
     const objFc: FeatureCollection = {
       type: "FeatureCollection",
       features: objects.map((o) => {
@@ -1232,8 +1254,8 @@ export function MapCanvas() {
     if (!map || !ready.current) return;
     const on = { missile: uaMissilesOn, bomb: uaBombsOn, drone: uaDronesOn };
     const list = (uaThreats?.objects ?? []).filter((o) => on[uaGroup(o.kind)]);
-    const color = (kind: string) =>
-      kind === "missile_ballistic" ? "#B3122A" : kind.startsWith("missile") ? "#FF3B30" : kind === "bomb" ? "#F0783A" : "#F2B544";
+    const now = Date.now();
+    const color = (o: (typeof list)[number]) => UA_COLORS[uaType(o)] ?? "#FBBF24";
     const pts: FeatureCollection = {
       type: "FeatureCollection",
       features: list.map((o) => ({
@@ -1244,6 +1266,8 @@ export function MapCanvas() {
           icon: uaIcon(o),
           heading: o.heading ?? 0,
           dead: uaDead(o),
+          amount: Math.max(1, o.amount || 1),
+          fr: uaFreshness(o, now),
           sel: o.id === selectedUa,
           fb: !!o.source && o.source !== "own",
         },
@@ -1254,7 +1278,7 @@ export function MapCanvas() {
       type: "FeatureCollection",
       features: list.flatMap((o) => {
         const dead = uaDead(o);
-        const base = { id: o.id, dead, sel: o.id === selectedUa, color: color(o.kind), fb: !!o.source && o.source !== "own" };
+        const base = { id: o.id, dead, sel: o.id === selectedUa, color: color(o), fb: !!o.source && o.source !== "own", fr: uaFreshness(o, now) };
         const out: FeatureCollection["features"] = [];
         const tr = [...o.trail];
         const last = tr[tr.length - 1];

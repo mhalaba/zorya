@@ -22,7 +22,8 @@ test("aggregator list with oblast headers and counts", () => {
 });
 
 test("missile, origin zone, all-clear, kill", () => {
-  assert.equal(parsePost("Бандероль🚀→Дніпро/р-н").events[0].kind, "missile_cruise");
+  // S8000 "Бандероль" is a jet loitering munition (MAPA.UA: drone_jet / banderol), not a cruise missile.
+  assert.equal(parsePost("Бандероль🚀→Дніпро/р-н").events[0].kind, "drone_jet");
   assert.equal(parsePost("Реактивний від Брянщини на Корюківку", { oblast: "02" }).events[0].from.zone, "bryansk");
   assert.equal(parsePost("відбій по області 📡", { oblast: "01" }).clears[0].oblast, "01");
   assert.equal(parsePost("Знищено").kills.length, 1);
@@ -48,4 +49,18 @@ test("preview HTML parser", () => {
   assert.equal(m.length, 1);
   assert.equal(m[0].id, 5);
   assert.equal(m[0].text, "БпЛА на Остер\n2!");
+});
+
+test("town lists, locative region hint, region-only heading", () => {
+  const list = parsePost("Одещина:\n• 8х шахедів курсом на Південне, Татарбунари;").events;
+  assert.deepEqual(list.map((e) => e.target.name).sort(), ["Південне", "Татарбунари"]);
+  assert.equal(list.reduce((a, e) => a + e.count, 0), 8);
+  const sm = parsePost("⚠️2 реактивні шахеди на Черкащині повз Смілу на Київщину", { national: true }).events[0];
+  assert.equal(sm.pos.name, "Сміла");
+  assert.equal(sm.count, 2);
+  assert.ok(sm.heading > 280 && sm.heading < 360);
+  assert.equal(parsePost("⚠️1 шахед з Вінниччини на Хмельниччину на Віньківці").events[0].target.name, "Віньківці");
+  const kp = parsePost("🏍 Реактивні БпЛА на Чернігівщині в р-ні. Добрянки курс південно-західний.", { national: true }).events[0];
+  assert.equal(kp.pos.name, "Добрянка");
+  assert.equal(kp.heading, 225);
 });

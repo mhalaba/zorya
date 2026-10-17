@@ -36,7 +36,7 @@ const SUBKIND: Record<string, string> = {
   s300: "S-300 (pocisk przeciwlotniczy na cel naziemny)",
   s400: "S-400 (pocisk przeciwlotniczy na cel naziemny)",
   ballistic: "pocisk balistyczny",
-  banderol: "Banderol (pocisk manewrujący)",
+  banderol: "Banderol S8000 (odrzutowa amunicja krążąca)",
   shahed: "Shahed / Gerań (dron)",
   geran: "Shahed / Gerań (dron)",
   gerbera: "Gerbera (dron-wabik)",
@@ -72,16 +72,36 @@ export function uaGroup(kind: string): UaGroup {
   return "drone";
 }
 
-export function uaIcon(o: Pick<UaThreat, "kind" | "status">): string {
-  const base =
-    o.kind === "missile_ballistic"
-      ? "mua-ballistic"
-      : o.kind.startsWith("missile")
-        ? "mua-cruise"
-        : o.kind === "bomb"
-          ? "mua-bomb"
-          : "mua-drone";
+/** Icon family for a threat: drone (Shahed), jet, banderol, cruise, ballistic, bomb (see map/icons.ts). */
+export function uaType(o: Pick<UaThreat, "kind" | "subkind">): string {
+  const sk = (o.subkind || "").toLowerCase();
+  if (sk.includes("banderol")) return "banderol";
+  if (o.kind === "missile_ballistic" || sk.includes("ballistic") || sk.includes("iskander") || sk.includes("kinzhal")) return "ballistic";
+  if (o.kind.startsWith("missile")) return "cruise";
+  if (o.kind === "bomb") return "bomb";
+  if (o.kind === "drone_jet") return "jet";
+  return "drone";
+}
+
+export function uaIcon(o: Pick<UaThreat, "kind" | "subkind" | "status">): string {
+  const base = `mua-${uaType(o)}`;
   return uaDead(o) ? `${base}-dead` : base;
+}
+
+/**
+ * mapa.ua's live fading: full brightness up to 5 min after the last update, then fading (to 0.35 at 30 min).
+ * Dead markers start dimmed and fade out.
+ */
+export function uaFreshness(o: Pick<UaThreat, "status" | "last_seen">, now = Date.now()): number {
+  const age = Math.max(0, (now - o.last_seen) / 60_000);
+  if (uaDead(o)) return Math.max(0.15, 0.55 - age / 40);
+  if (age <= 5) return 1;
+  return Math.max(0.35, 1 - ((age - 5) / 25) * 0.65);
+}
+
+/** Units in flight (amount-weighted), the way mapa.ua's header counts them: fresh, not lost or shot down. */
+export function uaLiveUnits(list: Pick<UaThreat, "status" | "amount">[]): number {
+  return list.reduce((n, o) => n + (uaDead(o) ? 0 : Math.max(1, o.amount || 1)), 0);
 }
 
 export const MAPAUA_URL = "https://mapa.ua/";
