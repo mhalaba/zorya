@@ -45,7 +45,10 @@ export function SiteHeader() {
   );
 }
 
-export function SiteFooter({ status }: { status?: StatusPayload | null }) {
+/** Support link: plain link to the buycoffee.to profile, no widget, no script, no tracking parameters. */
+const SUPPORT_URL = "https://buycoffee.to/maha";
+
+export function SiteFooter({ status, lang = "pl" }: { status?: StatusPayload | null; lang?: "pl" | "en" }) {
   const theme = useSiteTheme();
   const date = status?.data_as_of ? status.data_as_of.slice(0, 10) : "2026-09-20";
   const time = status?.data_as_of ? fmtTime(status.data_as_of) : "05:41";
@@ -64,6 +67,12 @@ export function SiteFooter({ status }: { status?: StatusPayload | null }) {
         </div>
         <div>{s("web.footer_status", { active, total, time })}</div>
         <div className="note">{s("pages.foundation_line")}. {s("pages.foundation_krs")}</div>
+        <div className="support">
+          <a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer">
+            {lang === "en" ? "☕ Buy me a coffee" : "☕ Postaw kawę"}
+          </a>{" "}
+          — {lang === "en" ? "keeps the domain and server running" : "Zorya działa na prywatnym serwerze, wsparcie pokrywa domenę i utrzymanie"}
+        </div>
       </div>
       <div className="lk">
         <a href="/o-projekcie">O projekcie</a>
@@ -260,7 +269,7 @@ export function Landing() {
   );
 }
 
-export function SitePage({ title, children }: { title: string; children: ReactNode }) {
+export function SitePage({ title, children, lang = "pl" }: { title: string; children: ReactNode; lang?: "pl" | "en" }) {
   const [status, setStatus] = useState<StatusPayload | null>(null);
   useEffect(() => {
     void fetchStatus().then(setStatus).catch(() => undefined);
@@ -272,7 +281,7 @@ export function SitePage({ title, children }: { title: string; children: ReactNo
         <h1 className="z-h1">{title}</h1>
         {children}
       </article>
-      <SiteFooter status={status} />
+      <SiteFooter status={status} lang={lang} />
     </div>
   );
 }
@@ -391,7 +400,7 @@ function renderInline(text: string): ReactNode[] {
 export function AboutPage({ lang }: { lang: "pl" | "en" }) {
   const copy: AboutCopy = lang === "en" ? ABOUT_EN : ABOUT_PL;
   return (
-    <SitePage title={copy.title}>
+    <SitePage title={copy.title} lang={lang}>
       <p className="about-switch">
         <a href={copy.switchHref} hrefLang={lang === "en" ? "pl" : "en"}>
           {copy.switchLabel}

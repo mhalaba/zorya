@@ -847,6 +847,8 @@ footer.site-foot {
 }
 footer.site-foot .lk { display: grid; gap: 4px; }
 footer.site-foot .lk a { text-decoration: none; }
+footer.site-foot .support { margin-top: 8px; font-size: 13px; color: var(--z-text-2); }
+footer.site-foot .support a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .horizon-diagram { border: 1px solid var(--z-line-strong); padding: var(--z-space-6); }
 .horizon-diagram svg { width: 100%; height: auto; display: block; }
 .cobrand {
